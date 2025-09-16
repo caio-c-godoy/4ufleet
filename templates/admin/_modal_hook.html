@@ -1,0 +1,52 @@
+<!-- Shared Edit Modal + script -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center text-muted py-5">Carregando...</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function initModalHook(){
+  function ready(fn){ if(document.readyState!='loading'){ fn(); } else { document.addEventListener('DOMContentLoaded', fn);} }
+  function afterBootstrap(fn){
+    if(window.bootstrap && bootstrap.Modal){ fn(); }
+    else { setTimeout(()=>afterBootstrap(fn), 50); }
+  }
+  ready(function(){
+    afterBootstrap(function(){
+      const modalEl = document.getElementById('editModal');
+      if(!modalEl) return;
+      const modal = new bootstrap.Modal(modalEl);
+      document.addEventListener('click', async function(e){
+        const btn = e.target.closest('[data-edit-modal]');
+        if(!btn) return;
+        e.preventDefault();
+        const href = btn.getAttribute('href');
+        modal.show();
+        const body = modalEl.querySelector('.modal-body');
+        body.innerHTML = '<div class="text-center text-muted py-5">Carregando...</div>';
+        const res = await fetch(href, {headers:{'X-Requested-With':'fetch'}});
+        body.innerHTML = await res.text();
+        const form = body.querySelector('#modalForm');
+        form.addEventListener('submit', async function(ev){
+          ev.preventDefault();
+          const fd = new FormData(form);
+          const resp = await fetch(form.getAttribute('action') || href, {method:'POST', body: fd});
+          if(resp.ok){ location.reload(); }
+          else{
+            try{ const j = await resp.json(); alert(j.error || 'Erro ao salvar'); }
+            catch(_){ alert('Erro ao salvar'); }
+          }
+        });
+      });
+    });
+  });
+})();
+</script>

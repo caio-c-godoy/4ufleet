@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Bem-vindo(a) — {{ app_name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{margin:0;background:#f6f8fb;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;color:#111}
+    .wrap{max-width:640px;margin:0 auto;padding:32px 16px}
+    .card{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.06);overflow:hidden}
+    .hero{background:linear-gradient(135deg,#0d6efd,#67b0ff);padding:24px 24px 40px;color:#fff}
+    .hero h1{margin:0;font-size:22px}
+    .content{padding:24px}
+    .cta{display:inline-block;background:#0d6efd;color:#fff!important;text-decoration:none;
+         padding:12px 18px;border-radius:10px;font-weight:600}
+    .muted{color:#6b7280;font-size:13px}
+    .pill{display:inline-block;border:1px solid #e5e7eb;color:#374151;border-radius:999px;padding:6px 10px;font-size:12px}
+    .section{margin-top:18px}
+    .list li{margin-bottom:6px}
+    .footer{padding:18px 24px;border-top:1px solid #eef2f7;background:#fafbfd}
+    a{color:#0d6efd}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="hero">
+        <h1>Bem-vindo(a) à {{ app_name }}, {{ tenant.name }}!</h1>
+        <div class="muted" style="margin-top:6px">
+          Sua conta foi criada com sucesso.
+        </div>
+      </div>
+
+      <div class="content">
+        <p>Agora é só completar alguns passos rápidos para começar a alugar:</p>
+
+        <div class="section">
+          <a class="cta" href="{{ admin_url }}" target="_blank" rel="noopener">Acessar o painel</a>
+          <div class="muted" style="margin-top:8px">Use o e-mail cadastrado no sign-up.</div>
+        </div>
+
+        <div class="section">
+          <span class="pill">Próximos passos sugeridos</span>
+          <ul class="list">
+            <li><b>Configurar o remetente do seu domínio</b>: defina SMTP em <a href="{{ mail_settings_url }}" target="_blank">Configurações → E-mail</a> para enviar contratos, checklists e faturas.</li>
+            <li><b>Cadastrar sua frota</b> em <a href="{{ vehicles_url }}" target="_blank">Frota</a>.</li>
+            <li><b>Definir tarifas</b> em <a href="{{ rates_url }}" target="_blank">Tarifas</a>.</li>
+            <li><b>Personalizar contrato</b> em <a href="{{ contract_url }}" target="_blank">Configurações → Contrato</a>.</li>
+          </ul>
+        </div>
+
+        <div class="section muted">
+          Precisa de ajuda? Responda este e-mail e nossa equipe entra em contato.
+        </div>
+      </div>
+
+      <div class="footer muted">
+        Enviado por {{ app_name }} • Tenant: {{ tenant.slug }}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

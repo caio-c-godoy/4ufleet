@@ -1,0 +1,46 @@
+<form id="catEditForm" action="{{ url_for('admin.update_category_modal', category_id=category.id) }}" method="post">
+  <div class="mb-2">
+    <label class="form-label">Nome</label>
+    <input name="name" class="form-control" value="{{ category.name }}" required>
+  </div>
+
+  <div class="mb-2">
+    <label class="form-label">Descrição</label>
+    <textarea name="description" class="form-control" rows="2">{{ category.description or '' }}</textarea>
+  </div>
+
+  <div class="row g-2">
+    <div class="col-4">
+      <label class="form-label">Assentos</label>
+      <input name="seats" type="number" min="1" class="form-control" value="{{ category.seats or 5 }}">
+    </div>
+    <div class="col-8">
+      <label class="form-label">Transmissão</label>
+      <select name="transmission" class="form-select">
+        <option value="Automatic" {{ 'selected' if (category.transmission or 'Automatic')=='Automatic' else '' }}>Automatic</option>
+        <option value="Manual" {{ 'selected' if category.transmission=='Manual' else '' }}>Manual</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row g-2 mt-2">
+    <div class="col-6">
+      <label class="form-label">Malas grandes</label>
+      <input name="large_bags" type="number" min="0" class="form-control" value="{{ category.large_bags or 1 }}">
+    </div>
+    <div class="col-6">
+      <label class="form-label">Malas pequenas</label>
+      <input name="small_bags" type="number" min="0" class="form-control" value="{{ category.small_bags or 1 }}">
+    </div>
+  </div>
+
+  <div class="mt-2">
+    <label class="form-label">Quilometragem</label>
+    <input name="mileage_text" class="form-control" value="{{ category.mileage_text or 'Unlimited mileage' }}">
+  </div>
+
+  <div class="modal-footer px-0 mt-3">
+    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+    <button class="btn btn-primary">Salvar</button>
+  </div>
+</form>

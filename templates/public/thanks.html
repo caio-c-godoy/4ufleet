@@ -1,0 +1,36 @@
+{% extends "base_public.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="card shadow-sm mx-auto" style="max-width:680px">
+    <div class="card-body text-center py-5">
+      <div class="display-6 text-success mb-2"><i class="bi bi-check2-circle"></i></div>
+      <h4 class="mb-2">Reserva registrada!</h4>
+      <p class="text-muted mb-4">
+        Enviamos seus dados para nossa equipe. Você receberá um contato em breve.
+      </p>
+
+      {# Se houver link de KYC, mostra o botão para o cliente enviar a CNH #}
+      {% if session.kyc_url %}
+        <div class="alert alert-info d-flex justify-content-between align-items-center mx-auto" style="max-width:560px">
+          <div>
+            Seu pagamento está em <strong>análise</strong>. Para concluir mais rápido,
+            envie sua <strong>CNH</strong> na área segura da GlobalPays.
+          </div>
+          <a class="btn btn-primary ms-3" href="{{ session.kyc_url }}" target="_blank" rel="noopener">
+            Enviar documento
+          </a>
+        </div>
+      {% elif session.kyc_pending %}
+        <div class="alert alert-warning mx-auto" style="max-width:560px">
+          Seu pagamento está em <strong>análise</strong>. Enviamos um e-mail com o link
+          para envio da CNH pela GlobalPays. Se preferir, você pode enviar a CNH para nossa equipe
+          e nós encaminharemos.
+        </div>
+      {% endif %}
+
+      <a href="{{ url_for('public.search') }}" class="btn btn-primary mt-2">Nova busca</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,177 @@
+# app/__init__.py
+from __future__ import annotations
+import os
+
+from flask import Flask, redirect, g, request
+from flask_migrate import Migrate
+from dotenv import load_dotenv, find_dotenv
+from datetime import date, datetime
+
+
+from .extensions import db, login_manager
+from .config import Config
+
+migrate = Migrate()
+
+
+def create_app():
+    # Carrega .env
+    load_dotenv(find_dotenv(), override=True)
+
+    # IMPORTANTE: templates/static estão na RAIZ do projeto
+    app = Flask(
+        __name__,
+        static_folder="../static",
+        template_folder="../templates",
+        instance_relative_config=True,
+    )
+    app.config.from_object(Config())
+    app.config.setdefault("TEMPLATES_AUTO_RELOAD", True)
+
+
+    # ---------------------------------------------------------------
+    # Filtro Jinja: data por extenso em PT-BR (ex.: 11 de setembro de 2025)
+    # ---------------------------------------------------------------
+    def datefmt_long_pt(value):
+        """
+        Aceita date, datetime ou string em ISO (YYYY-MM-DD) ou DD/MM/AAAA.
+        Retorna: 'D de <mês> de AAAA' em português.
+        """
+        def _to_date(val):
+            if isinstance(val, date) and not isinstance(val, datetime):
+                return val
+            if isinstance(val, datetime):
+                return val.date()
+            if isinstance(val, str):
+                val = val.strip()
+                # tenta ISO 'YYYY-MM-DD'
+                try:
+                    return datetime.fromisoformat(val).date()
+                except Exception:
+                    pass
+                # tenta 'DD/MM/AAAA'
+                try:
+                    d, m, y = val.split("/")
+                    return date(int(y), int(m), int(d))
+                except Exception:
+                    pass
+            # fallback: hoje
+            return date.today()
+
+        d = _to_date(value)
+        meses = [
+            "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+            "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+        ]
+        return f"{d.day} de {meses[d.month - 1]} de {d.year}"
+
+    app.add_template_filter(datefmt_long_pt, "datefmt_long_pt")
+
+
+    # ------------------------------------------------------------------
+    # Configs de Payment Link / GlobalPay (usadas nas rotas públicas)
+    # ------------------------------------------------------------------
+    api_base = (
+        os.getenv("GP_API_V1_BASE")
+        or os.getenv("GP_PL_BASE")
+        or "https://apihml.tryglobalpays.com/v1"
+    ).rstrip("/")
+
+    gp_token    = (os.getenv("GP_TOKEN") or "").strip()
+    gp_pub_key  = (os.getenv("GP_PUB_KEY") or "").strip()
+    gp_merchant = (os.getenv("GP_MERCHANT_CODE") or "").strip()
+    pl_endpoint = (os.getenv("GP_PAYMENT_LINK_ENDPOINT") or "").strip() or None
+
+    app.config.update(
+        EXTERNAL_BASE_URL=(os.getenv("EXTERNAL_BASE_URL") or "").strip(),
+        GP_API_V1_BASE=api_base,
+        GP_TOKEN=gp_token,
+        GP_PUB_KEY=gp_pub_key,
+        GP_MERCHANT_CODE=gp_merchant,
+        GP_PAYMENT_LINK_ENDPOINT=pl_endpoint,
+        COMMISSION_RATE=float(os.getenv("COMMISSION_RATE", "0.05")),
+        PLATFORM_MERCHANT_CODE=os.getenv("PLATFORM_MERCHANT_CODE", "").strip(),
+        MIN_DEPOSIT_USD=float(os.getenv("MIN_DEPOSIT_USD", "50")),
+    )
+
+    # Logs de diagnóstico
+    app.logger.info("GP_API_V1_BASE=%s", app.config["GP_API_V1_BASE"])
+    app.logger.info("GP_PUB_KEY set? %s", "yes" if gp_pub_key else "no")
+    app.logger.info("GP_TOKEN set? %s", "yes" if gp_token else "no")
+    app.logger.info("GP_MERCHANT_CODE set? %s", "yes" if gp_merchant else "no")
+    app.logger.info(
+        "GP_PAYMENT_LINK_ENDPOINT=%s",
+        app.config["GP_PAYMENT_LINK_ENDPOINT"] or "<auto>",
+    )
+
+    # ------------------------------------------------------------------
+    # Extensões
+    # ------------------------------------------------------------------
+    db.init_app(app)
+    migrate.init_app(app, db)
+    login_manager.init_app(app)
+    login_manager.login_view = "auth.login"
+    login_manager.login_message_category = "warning"
+
+    # ------------------------------------------------------------------
+    # CSP mínima: liberar JS inline + eval somente nas telas do editor
+    # ------------------------------------------------------------------
+    @app.after_request
+    def apply_csp(resp):
+        # Afrouxar APENAS onde há TinyMCE/JS inline:
+        # - /<tenant>/admin/settings
+        # - endpoints de preview/validate do contrato
+        if request.endpoint in (
+            "admin.settings",
+            "admin.contract_preview",
+            "admin.contract_validate",
+        ) or "/admin/settings" in (request.path or ""):
+            # Permite scripts do próprio site, inline e eval (TinyMCE usa),
+            # e bibliotecas https se necessário; web workers/iframe locais também.
+            resp.headers[
+                "Content-Security-Policy"
+            ] = (
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "
+                "worker-src 'self' blob:; "
+                "child-src 'self' blob:;"
+            )
+        return resp
+
+    # Variáveis úteis nos templates (ex.: {{ env("VAR") }})
+    @app.context_processor
+    def inject_common():
+        def env(name, default=""):
+            return os.getenv(name, default)
+        return {
+            "config": app.config,
+            "env": env,
+            "tenant": getattr(g, "tenant", None),  # <= seguro para /signup
+        }
+
+    # Facilidade no flask shell (db + models)
+    @app.shell_context_processor
+    def _ctx():
+        from . import models as m
+        return {"db": db, "m": m}
+
+    # ------------------------------------------------------------------
+    # Blueprints (registre todos AQUI dentro)
+    # ------------------------------------------------------------------
+    from .public import public_bp   # rotas públicas por tenant: /<tenant_slug>/
+    from .auth import auth_bp       # auth por tenant:            /<tenant_slug>/auth
+    from .admin import admin_bp     # admin por tenant:           /<tenant_slug>/admin
+    from .site import site_bp       # site público (ex.: /signup)
+
+    app.register_blueprint(public_bp, url_prefix="/<tenant_slug>")
+    app.register_blueprint(auth_bp,   url_prefix="/<tenant_slug>/auth")
+    app.register_blueprint(admin_bp,  url_prefix="/<tenant_slug>/admin")
+    app.register_blueprint(site_bp)   # sem prefixo de tenant (ex.: /signup)
+
+    # ------------------------------------------------------------------
+    # Rota raiz — você pode trocar por um redirect padrão para um tenant
+    # ------------------------------------------------------------------
+    @app.get("/")
+    def index():
+        return redirect("/locadora1/")  # ajuste se quiser outra home
+
+    return app

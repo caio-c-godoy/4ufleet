@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Contrato de Locação de Carro</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .assinaturas {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .assinaturas div {
+            width: 45%;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Contrato de Locação de Carro</h2>
+
+    <p><strong>Locador:</strong> JMC Rent a Car</p>
+    <p><strong>Locatário:</strong> {{ cliente_nome }} (Doc: {{ cliente_doc }})</p>
+    <p><strong>País:</strong> {{ cliente_pais }}</p>
+
+    <h3>Identificação do Veículo</h3>
+    <p>Marca: {{ carro_marca }}</p>
+    <p>Modelo: {{ carro_modelo }}</p>
+    <p>Ano: {{ carro_ano }}</p>
+    <p>Cor: {{ carro_cor }}</p>
+
+    <h3>Prazo de Locação</h3>
+    <p>
+        Período: {{ data_inicio }} a {{ data_fim }}<br>
+        Valor do Contrato: US$ {{ valor_total }}
+    </p>
+
+    <h3>Extensão de Uso</h3>
+    <p>
+        O Locatário usará o veículo apenas para uso pessoal ou de negócios,
+        respeitando as leis da Flórida. Não poderá sair do estado.
+        Idade mínima: 24 anos.
+    </p>
+
+    <h3>Milhagem</h3>
+    <p>Quilometragem livre dentro da Flórida. Proibido fumar no carro.</p>
+
+    <h3>Taxas de Locação</h3>
+    <ul>
+        <li>Veículo deve retornar com tanque cheio. Multa: US$15 por ¼ faltante.</li>
+        <li>Taxa de limpeza interna: US$30 (se muito sujo).</li>
+        <li>Taxa de viagem fora da Flórida: US$30 por diária.</li>
+    </ul>
+
+    <h3>Depósito de Segurança</h3>
+    <p>Cartão de crédito em garantia. Usado apenas para multas, pedágios e danos.</p>
+
+    <h3>Seguro</h3>
+    <p>
+        Cobertura total incluída. Franquia de US$1.000 em caso de danos.
+        Pequenos danos abaixo da franquia serão cobrados diretamente.
+    </p>
+
+    <h3>Indenização</h3>
+    <p>Locatário indeniza o Locador por mau uso, multas ou ações judiciais.</p>
+
+    <h3>Representações e Garantias</h3>
+    <p>
+        O veículo está em boas condições. O Locatário confirma estar apto a dirigir
+        e inspecionou o veículo antes da retirada.
+    </p>
+
+    <h3>Jurisdição</h3>
+    <p>Qualquer disputa será regida pelas leis da Flórida, em Miami-Dade.</p>
+
+    <h3>Acordo Completo</h3>
+    <p>
+        Este contrato constitui o acordo completo. Alterações somente por escrito.
+    </p>
+
+    <p><em>Data: {{ data_contrato }}</em></p>
+
+    <div class="assinaturas">
+        <div>
+            ___________________________<br>
+            JMC Rent a Car
+        </div>
+        <div>
+            ___________________________<br>
+            {{ cliente_nome }}
+        </div>
+    </div>
+
+</body>
+</html>

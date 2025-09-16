@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Calendário{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Calendário</h3>
+  <form class="row g-2 align-items-center" method="get">
+    <div class="col-auto">
+      <input type="date" name="start" value="{{ start.isoformat() }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-auto">
+      <select name="days" class="form-select form-select-sm">
+        {% for n in [14, 30, 45, 60] %}
+          <option value="{{ n }}" {{ 'selected' if (end - start).days == n else '' }}>{{ n }} dias</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-sm btn-primary">Atualizar</button>
+    </div>
+  </form>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered calendar-table">
+        <thead>
+          <tr>
+            <th style="min-width:220px">Veículo</th>
+            {% for d in days %}
+              <th class="text-center small">{{ d.strftime('%d/%m') }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in vehicles %}
+          <tr>
+            <td class="fw-semibold">
+              {{ v.brand or '' }} {{ v.model or '' }}
+              {% if v.plate %}<div class="small text-muted">{{ v.plate }}</div>{% endif %}
+            </td>
+            {% for d in days %}
+              {% set busy = booked.get((v.id, d)) %}
+              <td class="cal-cell {% if busy %}busy{% endif %}" title="{{ 'Ocupado' if busy else 'Livre' }}"></td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-2 small">
+      <span class="badge bg-success-subtle border text-success align-middle" style="width:1.2rem;height:1.2rem;">&nbsp;</span>
+      <span class="align-middle ms-1">ocupado</span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .calendar-table thead th { position: sticky; top: 0; background: var(--bs-body-bg); z-index: 1; }
+  .calendar-table td.cal-cell { min-width: 30px; height: 28px; padding: .25rem; }
+  .calendar-table td.cal-cell.busy { background: var(--bs-success-bg-subtle); }
+</style>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Suporte • Chat{% endblock %}
+
+{% block extra_head %}
+<style>
+  .chat-card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 12px 30px rgba(2,6,23,.06); }
+  .msg-list{ height:56vh; overflow:auto; padding:16px; }
+  .msg{ margin-bottom:10px; max-width:72%; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#f8fafc; }
+  .msg.me{ margin-left:auto; background:#dcfce7; border-color:#bbf7d0; }
+  .msg .meta{ font-size:.74rem; color:#64748b; margin-top:4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <h5 class="mb-3">Suporte — Fale com a 4uFleet</h5>
+  <div class="chat-card">
+    <div id="msgs" class="msg-list"></div>
+    <form id="chatForm" class="p-3 border-top d-flex gap-2">
+      <input id="chatInput" class="form-control" placeholder="Escreva sua mensagem..." autocomplete="off">
+      <button class="btn btn-primary">Enviar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Ajuste os endpoints conforme suas rotas de tenant:
+  const API_LIST_URL = "{{ url_for('admin.chat_list', tenant_slug=tenant.slug) }}";
+  const API_POST_URL = "{{ url_for('admin.chat_send', tenant_slug=tenant.slug) }}";
+
+  const box   = document.getElementById('msgs');
+  const form  = document.getElementById('chatForm');
+  const input = document.getElementById('chatInput');
+
+  function render(items){
+    box.innerHTML = '';
+    for(const m of items){
+      const mine = (m.sender === 'tenant');
+      const el = document.createElement('div');
+      el.className = 'msg' + (mine ? ' me' : '');
+      el.innerHTML = `
+        <div>${m.body.replace(/</g,'&lt;')}</div>
+        <div class="meta">${mine ? 'Você' : 'Suporte'} • ${new Date(m.created_at).toLocaleString()}</div>
+      `;
+      box.appendChild(el);
+    }
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function refresh(){
+    const res = await fetch(API_LIST_URL);
+    if(!res.ok) return;
+    const msgs = await res.json();
+    render(msgs);
+  }
+
+  setInterval(refresh, 5000);
+  refresh();
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const body = (input.value || '').trim();
+    if(!body) return;
+    await fetch(API_POST_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ body })
+    });
+    input.value = '';
+    refresh();
+  });
+</script>
+{% endblock %}

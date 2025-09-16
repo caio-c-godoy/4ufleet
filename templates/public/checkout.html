@@ -1,0 +1,417 @@
+{% extends "base_public.html" %}
+{% block title %}Checkout — {{ g.tenant.name if g.tenant else "" }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- ESQUERDA -->
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex gap-3 align-items-start">
+          {% if vehicle.image_url %}
+            <img
+              src="{{ url_for('static', filename=vehicle.image_url) }}"
+              alt="Veículo" class="rounded"
+              style="width:120px;height:80px;object-fit:cover">
+          {% else %}
+            <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                 style="width:120px;height:80px;">
+              <i class="bi bi-car-front" style="font-size:1.6rem;"></i>
+            </div>
+          {% endif %}
+          <div class="flex-grow-1">
+            <h5 class="mb-1">
+              {{ vehicle.brand }} {{ vehicle.model }}{% if vehicle.year %} {{ vehicle.year }}{% endif %}
+            </h5>
+            <div class="text-muted small d-flex flex-wrap gap-3">
+              <span>Luxury car</span>
+              <span><i class="bi bi-people me-1"></i>{{ seats }} seats</span>
+              <span><i class="bi bi-gear me-1"></i>{{ transmission }}</span>
+              <span><i class="bi bi-infinity me-1"></i>{{ mileage_text }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3 p-3 border rounded">
+          <div class="d-flex align-items-center mb-2">
+            <i class="bi bi-arrow-right-circle text-primary me-2"></i>
+            <div>
+              <div class="fw-semibold">Retirada</div>
+              <div class="text-muted small">
+                {{ pickup_airport }} — {{ pickup_dt.strftime('%Y-%m-%d %H:%M') if pickup_dt else '-' }}
+              </div>
+            </div>
+          </div>
+          <div class="d-flex align-items-center">
+            <i class="bi bi-arrow-left-circle text-primary me-2"></i>
+            <div>
+              <div class="fw-semibold">Devolução</div>
+              <div class="text-muted small">
+                {{ dropoff_airport }} — {{ dropoff_dt.strftime('%Y-%m-%d %H:%M') if dropoff_dt else '-' }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- DIREITA: resumo e pagamento -->
+  <div class="col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="mb-3">Resumo</h6>
+
+        <div class="d-flex justify-content-between text-muted">
+          <span>{{ days }} dias × {{ currency }} {{ '%.2f'|format(daily) }}</span>
+          <span class="text-end" style="font-variant-numeric:tabular-nums">{{ currency }} {{ '%.2f'|format(total) }}</span>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-1">
+          <span class="text-muted d-inline-flex align-items-center" style="font-size:.72rem; line-height:1.1">
+            ServiceCharge
+            <i class="bi bi-info-circle ms-1"
+               role="button" tabindex="0"
+               data-bs-toggle="popover" data-bs-trigger="click focus"
+               data-bs-placement="top" data-bs-container="body"
+               data-bs-title="Sobre o ServiceCharge"
+               data-bs-content="Taxa de serviço destinada à operação segura do pagamento (antifraude, processamento financeiro e integração da plataforma)."
+               style="font-size:.85rem"></i>
+          </span>
+          <span class="text-muted" style="font-size:.72rem; line-height:1.1; font-variant-numeric:tabular-nums">
+            {{ currency }} {{ '%.2f'|format(service_charge) }}
+          </span>
+        </div>
+
+        <hr class="my-3">
+
+        <div class="d-flex justify-content-between fw-semibold">
+          <span>Total</span>
+          <span style="font-variant-numeric:tabular-nums">{{ currency }} {{ '%.2f'|format(grand_total) }}</span>
+        </div>
+
+        <div class="mt-2 small text-muted">
+          <div>Sinal mínimo: <strong>{{ currency }} {{ '%.2f'|format(deposit_min) }}</strong> <span class="text-muted">(sem taxa)</span></div>
+          <div>Saldo após sinal: <strong>{{ currency }} {{ '%.2f'|format(amounts.balance) }}</strong> <span class="text-muted">(inclui ServiceCharge)</span></div>
+        </div>
+
+        <!-- ====== CONTRATO ====== -->
+        {% set is_signed = reservation.contract and reservation.contract.signature_type == 'drawn' and reservation.contract.signature_hash %}
+        <div class="mt-4 p-3 border rounded bg-light">
+          <h6>Contrato de Locação</h6>
+          <p class="small text-muted mb-2">Para prosseguir, visualize e assine o contrato.</p>
+
+          <div class="d-flex gap-2">
+            <!-- Ver contrato (se assinado, a rota já serve o assinado) -->
+            <a href="{{ url_for('public.view_contract', reserva_id=reservation.id, tenant_slug=g.tenant.slug) }}"
+               target="_blank"
+               class="btn btn-outline-secondary btn-sm flex-fill">
+              📄 Ver contrato
+            </a>
+
+            <!-- Baixar assinado (aparece somente quando assinado) -->
+            {% if is_signed %}
+            <a href="{{ url_for('public.download_signed_contract', reserva_id=reservation.id, tenant_slug=g.tenant.slug) }}"
+               class="btn btn-outline-secondary btn-sm flex-fill">
+              ⬇️ Baixar assinado
+            </a>
+            {% endif %}
+
+            <!-- Assinar: abre modal para coletar dados -->
+            <button type="button"
+                    class="btn btn-success btn-sm flex-fill {{ 'disabled' if is_signed else '' }}"
+                    data-bs-toggle="modal" data-bs-target="#customerInfoModal"
+                    {% if is_signed %}disabled{% endif %}>
+              ✍️ Assinar contrato
+            </button>
+          </div>
+
+          <div id="status-assinatura"
+               class="mt-2 small text-center {{ 'text-success' if is_signed else 'text-muted' }}">
+            {% if is_signed %}
+              ✅ Contrato assinado
+            {% else %}
+              Ainda não assinado
+            {% endif %}
+          </div>
+        </div>
+
+        {% if not pl_ready %}
+          <div class="alert alert-warning mt-3">
+            Configure <code>GP_PUB_KEY</code> ou <code>GP_TOKEN</code> no .env para habilitar o Payment Link.
+          </div>
+        {% else %}
+          <!-- Pagar total -->
+          <form class="mt-3" method="post"
+                action="{{ url_for('public.checkout_pay_link', tenant_slug=g.tenant.slug, reservation_id=reservation.id) }}?mode=full">
+            <button class="btn btn-primary w-100 btn-pagamento" type="submit"
+                    {% if not is_signed %}disabled{% endif %}>
+              <i class="bi bi-credit-card me-2"></i>
+              Pagar total — {{ currency }} {{ '%.2f'|format(grand_total) }}
+            </button>
+          </form>
+
+          <!-- Pagar sinal -->
+          <form class="mt-2" method="post"
+                action="{{ url_for('public.checkout_pay_link', tenant_slug=g.tenant.slug, reservation_id=reservation.id) }}?mode=deposit">
+            <button class="btn btn-outline-primary w-100 btn-pagamento" type="submit"
+                    {% if not is_signed %}disabled{% endif %}>
+              <i class="bi bi-piggy-bank me-2"></i>
+              Pagar sinal — {{ currency }} {{ '%.2f'|format(deposit_min) }}
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>  {# /row #}
+
+<!-- ===== Modal: dados para o contrato ===== -->
+<div class="modal fade" id="customerInfoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Dados para o contrato</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <form id="customerInfoForm" class="modal-body">
+        <div class="mb-2">
+          <label class="form-label">Nome completo</label>
+          <input type="text" class="form-control" name="customer_name" required
+                 value="{{ reservation.customer_name or '' }}">
+        </div>
+
+        <!-- Nº do documento (Drive/CNH) -->
+        <div class="mb-2">
+          <label class="form-label">Nº do documento (Drive/CNH)</label>
+          <input type="text"
+                 class="form-control"
+                 name="driver_id"
+                 required
+                 value="{{ reservation.customer_doc or '' }}"
+                 placeholder="Informe o nº do documento">
+          <div class="form-text">
+            Este número preencherá o campo dinâmico <b>“Nº do documento (CNH/passaporte)”</b> no contrato.
+          </div>
+        </div>
+
+        <!-- País -->
+        <div class="mb-2">
+          <label class="form-label">País</label>
+          <select class="form-select" id="selCountry" name="customer_country" required></select>
+        </div>
+
+        <!-- UF (só aparece para BR) -->
+        <div class="mb-2" id="wrapState" style="display:none">
+          <label class="form-label">Estado (UF)</label>
+          <select class="form-select" id="selState" name="customer_state"></select>
+        </div>
+
+        <!-- Cidade (só aparece para BR) -->
+        <div class="mb-2" id="wrapCity" style="display:none">
+          <label class="form-label">Cidade</label>
+          <select class="form-select" id="selCity" name="customer_city"></select>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Nº do voo</label>
+          <input type="text" class="form-control" name="flight_no"
+                 value="{{ reservation.flight_no or '' }}">
+        </div>
+
+        <div class="form-text">
+          Essas informações serão inseridas no contrato antes da assinatura.
+        </div>
+      </form>
+      <div class="modal-footer">
+        <button class="btn btn-primary" form="customerInfoForm">Continuar para assinatura</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}  {# /content #}
+
+{% block extra_js %}
+<script>
+  // Popover (tooltip ServiceCharge)
+  document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => {
+    new bootstrap.Popover(el);
+  });
+
+  // ======= Refs do modal/inputs =======
+  const selCountry = document.getElementById('selCountry');
+  const selState   = document.getElementById('selState');
+  const selCity    = document.getElementById('selCity');
+  const wrapState  = document.getElementById('wrapState');
+  const wrapCity   = document.getElementById('wrapCity');
+  const form       = document.getElementById('customerInfoForm');
+  const modalEl    = document.getElementById('customerInfoModal');
+
+  // ======= Valores salvos (vindos da rota; sem usar |split no Jinja) =======
+  const SAVED_COUNTRY = "{{ reservation.customer_country or '' }}";
+  const SAVED_STATE   = "{{ saved_state|e }}";
+  const SAVED_CITY    = "{{ saved_city|e }}";
+
+  // ======= Helpers =======
+  function opt(html, value, selected=false, disabled=false) {
+    const o = document.createElement('option');
+    o.textContent = html;
+    o.value = value ?? '';
+    if (selected) o.selected = true;
+    if (disabled) o.disabled = true;
+    return o;
+  }
+  function resetSelect(s, placeholder) {
+    s.innerHTML = '';
+    if (placeholder) s.appendChild(opt(placeholder, '', true, true));
+  }
+
+  // Lista embutida (elimina problemas de fetch/CORS)
+  const EMBEDDED_COUNTRIES = [
+    {"code":"BR","name":"Brasil"},
+    {"code":"US","name":"Estados Unidos"},
+    {"code":"PT","name":"Portugal"},
+    {"code":"AR","name":"Argentina"},
+    {"code":"CL","name":"Chile"},
+    {"code":"PY","name":"Paraguai"},
+    {"code":"UY","name":"Uruguai"},
+    {"code":"MX","name":"México"},
+    {"code":"ES","name":"Espanha"},
+    {"code":"FR","name":"França"},
+    {"code":"IT","name":"Itália"},
+    {"code":"DE","name":"Alemanha"},
+    {"code":"GB","name":"Reino Unido"},
+    {"code":"CA","name":"Canadá"},
+    {"code":"JP","name":"Japão"}
+  ];
+  let countriesLoaded = false;
+
+  async function loadCountries() {
+    if (!selCountry) return;
+    resetSelect(selCountry, 'Selecione o país');
+    // 1) tenta arquivo estático (opcional); 2) cai para EMBEDDED_COUNTRIES
+    let list = [];
+    try {
+      const url = "{{ url_for('static', filename='data/countries.json') }}";
+      const r = await fetch(url, { cache: 'no-store' });
+      if (r.ok) {
+        list = await r.json();
+      }
+    } catch (e) { /* ignora */ }
+    if (!Array.isArray(list) || list.length === 0) {
+      list = EMBEDDED_COUNTRIES;
+    }
+
+    list.forEach(c => selCountry.appendChild(opt(c.name, c.code)));
+    countriesLoaded = true;
+
+    // Seleciona salvo, ou BR por padrão
+    if (SAVED_COUNTRY && list.some(c => c.code === SAVED_COUNTRY)) {
+      selCountry.value = SAVED_COUNTRY;
+    } else if (list.some(c => c.code === 'BR')) {
+      selCountry.value = 'BR';
+    }
+    onCountryChange();
+  }
+
+  async function loadStatesBR() {
+    resetSelect(selState, 'Selecione o estado');
+    try {
+      const r = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
+      const data = await r.json();
+      data.forEach(st => selState.appendChild(opt(`${st.nome} (${st.sigla})`, st.sigla)));
+    } catch {
+      // fallback mínimo
+      ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
+        .forEach(uf => selState.appendChild(opt(uf, uf)));
+    }
+  }
+
+  async function loadCitiesBR(uf) {
+    resetSelect(selCity, 'Selecione a cidade');
+    if (!uf) return;
+    try {
+      const r = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`);
+      const data = await r.json();
+      data.forEach(c => selCity.appendChild(opt(c.nome, c.nome)));
+    } catch {
+      // fallback simples
+      const capitals = {
+        SP:['São Paulo'], RJ:['Rio de Janeiro'], MG:['Belo Horizonte'], BA:['Salvador'],
+        PR:['Curitiba'], SC:['Florianópolis'], RS:['Porto Alegre'], DF:['Brasília']
+      };
+      (capitals[uf] || []).forEach(c => selCity.appendChild(opt(c, c)));
+    }
+  }
+
+  function onCountryChange() {
+    const code = selCountry.value;
+    if (code === 'BR') {
+      wrapState.style.display = '';
+      wrapCity.style.display  = '';
+      loadStatesBR().then(() => {
+        // repõe valores já salvos, se houver
+        if (SAVED_STATE) {
+          selState.value = SAVED_STATE;
+          loadCitiesBR(selState.value).then(() => {
+            if (SAVED_CITY) selCity.value = SAVED_CITY;
+          });
+        }
+      });
+    } else {
+      wrapState.style.display = 'none';
+      wrapCity.style.display  = 'none';
+      resetSelect(selState);
+      resetSelect(selCity);
+    }
+  }
+
+  selCountry?.addEventListener('change', onCountryChange);
+  selState  ?.addEventListener('change', () => loadCitiesBR(selState.value));
+
+  // Garante execução mesmo se DOMContentLoaded já ocorreu
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => loadCountries());
+  } else {
+    loadCountries();
+  }
+
+  // Se abrir o modal e ainda não tiver carregado, carrega agora
+  modalEl?.addEventListener('shown.bs.modal', async () => {
+    if (!countriesLoaded) await loadCountries();
+  });
+
+  // Envio: salva e vai para a assinatura
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const payload = Object.fromEntries(fd.entries());
+
+    // driver_id -> customer_doc (o backend espera customer_doc)
+    payload.customer_doc = payload.driver_id || payload.customer_doc || '';
+
+    // Se BR, junta cidade/UF no formato "Cidade/UF"
+    if (payload.customer_country === 'BR') {
+      const city = (payload.customer_city || '').trim();
+      const uf   = (payload.customer_state || '').trim();
+      payload.customer_city_uf = city && uf ? `${city}/${uf}` : '';
+    }
+
+    try {
+      const resp = await fetch("{{ url_for('public.checkout_capture_customer', tenant_slug=g.tenant.slug, reservation_id=reservation.id) }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) throw new Error('Falha ao salvar');
+      // Vai para a tela de assinatura
+      window.location.href = "{{ url_for('public.sign_contract', tenant_slug=g.tenant.slug, reserva_id=reservation.id) }}";
+    } catch (err) {
+      console.error(err);
+      alert('Não foi possível salvar os dados do contrato agora.');
+    }
+  });
+</script>
+{% endblock %}

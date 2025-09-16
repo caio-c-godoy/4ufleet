@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Frota</h3>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.dashboard') }}">Voltar</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Novo veículo</h5>
+        <form method="post" action="{{ url_for('admin.vehicles') }}" enctype="multipart/form-data" autocomplete="off">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label">Marca</label>
+              <input type="text" class="form-control" name="brand">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Modelo *</label>
+              <input type="text" class="form-control" name="model" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Ano</label>
+              <input type="number" class="form-control" name="year" min="1900" max="2100">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Placa</label>
+              <input type="text" class="form-control" name="plate">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Cor</label>
+              <input type="text" class="form-control" name="color" placeholder="Ex.: Prata, Preto, Vermelho">
+            </div>
+          
+            <div class="col-12">
+              <label class="form-label">Categoria</label>
+            <select name="category_id" class="form-select" required>
+              <option value="" selected disabled>Selecione uma categoria...</option>
+              {% for c in categories %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+
+            </div>
+            <div class="col-12">
+              <label class="form-label">Status</label>
+              <select name="status" class="form-select">
+                <option value="available" selected>available</option>
+                <option value="unavailable">unavailable</option>
+                <option value="maintenance">maintenance</option>
+              </select>
+              <div class="form-text">Se escolher “maintenance”, cadastre o motivo depois pelo menu.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Foto</label>
+              <input type="file" name="photo" class="form-control" accept="image/*">
+              <div class="form-text">Opcional. JPG/PNG recomendados.</div>
+            </div>
+          </div>
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-primary">Salvar</button>
+            <button type="reset" class="btn btn-light">Limpar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th style="width:80px">Foto</th>
+                <th>Veículo</th>
+                <th>Categoria</th>
+                <th>Placa</th>
+                <th>Foto</th>
+                <th style="width:90px">Ano</th>
+                <th style="width:120px">Status</th>
+                <th class="text-end" style="width:200px">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for v in vehicles %}
+              {% set st = v.status or 'available' %}
+              <tr>
+                <td>
+                  {% if v.image_url %}
+                    <img src="{{ url_for('static', filename=v.image_url) }}" alt="" class="rounded" style="width:56px;height:56px;object-fit:cover;">
+                  {% else %}
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                      <i class="bi bi-car-front"></i>
+                    </div>
+                  {% endif %}
+                </td>
+                <td class="fw-semibold">{{ (v.brand ~ ' ') if v.brand else '' }}{{ v.model }}</td>
+                <td class="text-muted">{{ v.category.name if v.category else '-' }}</td>
+                <td class="text-muted">{{ v.plate or '-' }}</td>
+                <td class="text-muted">{{ v.year or '-' }}</td>
+                <td class="text-muted">{{ v.color or '-' }}</td>
+                <td>
+                  <span class="badge text-bg-{% if st=='available' %}success{% elif st=='maintenance' %}warning{% else %}secondary{% endif %}">
+                    {{ st }}
+                  </span>
+                </td>
+                <td class="text-end">
+                  <!-- Editar -->
+                  <button type="button"
+                          class="btn btn-sm btn-outline-primary me-1"
+                          title="Editar"
+                          data-modal-url="{{ url_for('admin.vehicle_edit_modal', vehicle_id=v.id) }}">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+
+                  <!-- Dropdown de Status -->
+                  <div class="btn-group me-1">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Alterar status">
+                      <i class="bi bi-arrow-left-right"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                      <li>
+                        <form method="post" action="{{ url_for('admin.vehicle_set_status', vehicle_id=v.id) }}">
+                          <input type="hidden" name="target" value="available">
+                          <button class="dropdown-item {% if st=='available' %}active{% endif %}">Disponível</button>
+                        </form>
+                      </li>
+                      <li>
+                        <form method="post" action="{{ url_for('admin.vehicle_set_status', vehicle_id=v.id) }}">
+                          <input type="hidden" name="target" value="unavailable">
+                          <button class="dropdown-item {% if st=='unavailable' %}active{% endif %}">Indisponível</button>
+                        </form>
+                      </li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li>
+                        <a class="dropdown-item" data-modal-url="{{ url_for('admin.vehicle_maintenance_modal', vehicle_id=v.id) }}">
+                          <i class="bi bi-wrench me-2"></i>Manutenção…
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <!-- Excluir -->
+                  <form class="d-inline" method="post" action="{{ url_for('admin.vehicle_delete', vehicle_id=v.id) }}" onsubmit="return confirm('Excluir este veículo?')">
+                    <button class="btn btn-sm btn-outline-danger" title="Excluir">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if pagination.pages > 1 %}
+        <nav class="mt-3">
+          <ul class="pagination pagination-sm justify-content-end mb-0">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('admin.vehicles', page=pagination.prev_num) if pagination.has_prev else '#' }}">Anterior</a>
+            </li>
+            {% for p in pagination.iter_pages(left_edge=1, left_current=1, right_current=1, right_edge=1) %}
+              {% if p %}
+                <li class="page-item {% if p==pagination.page %}active{% endif %}">
+                  <a class="page-link" href="{{ url_for('admin.vehicles', page=p) }}">{{ p }}</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('admin.vehicles', page=pagination.next_num) if pagination.has_next else '#' }}">Próxima</a>
+            </li>
+          </ul>
+        </nav>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<div class="modal fade" id="ajaxModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body p-0"><!-- conteúdo via AJAX --></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,145 @@
+
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <h3 class="mb-3">Buscar carros</h3>
+        <form method="get" action="{{ url_for('public.booking_form') }}">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Retirada (aeroporto)</label>
+              <input id="pickup_airport" name="pickup_airport" class="form-control" list="airports" autocomplete="off"
+                     placeholder="Ex: Orlando Intl (MCO)" value="{{ q.get('pickup_airport','') }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Data de Retirada</label>
+              <input type="date" name="pickup_date" class="form-control" required value="{{ q.get('pickup_date','') }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Hora de Retirada</label>
+              <input type="time" name="pickup_time" class="form-control" value="{{ q.get('pickup_time','10:00') }}" required>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Devolução (aeroporto)</label>
+              <input id="dropoff_airport" name="dropoff_airport" class="form-control" list="airports" autocomplete="off"
+                     placeholder="Ex: Orlando Intl (MCO)" value="{{ q.get('dropoff_airport','') }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Data de Devolução</label>
+              <input type="date" name="dropoff_date" class="form-control" required value="{{ q.get('dropoff_date','') }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Hora de Devolução</label>
+              <input type="time" name="dropoff_time" class="form-control" value="{{ q.get('dropoff_time','10:00') }}" required>
+            </div>
+
+            <div class="col-12">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Nome (opcional)</label>
+                  <input type="text" name="name" class="form-control" value="{{ q.get('name','') }}">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Telefone (opcional)</label>
+                  <input type="text" name="phone" class="form-control" value="{{ q.get('phone','') }}">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">E-mail (opcional)</label>
+                  <input type="email" name="email" class="form-control" value="{{ q.get('email','') }}">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-primary">Buscar</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('public.booking_form') }}">Limpar</a>
+          </div>
+        </form>
+        <datalist id="airports"></datalist>
+      </div>
+    </div>
+
+    {% if results %}
+    <div class="mb-2 d-flex align-items-end justify-content-between">
+      <h5 class="mb-0">Resultados</h5>
+      <small class="text-muted">Mostrando {{ results|length }} categoria(s)</small>
+    </div>
+    <div class="row g-3">
+      {% for item in results %}
+        <div class="col-md-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="h5 mb-1">{{ item.category.name }}</div>
+                  <div class="text-muted small">{{ item.category.description or '' }}</div>
+                </div>
+                {% if item.available > 0 %}
+                  <span class="badge text-bg-success">Disponível</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Esgotado</span>
+                {% endif %}
+              </div>
+
+              <div class="mt-3">
+                <div class="fs-5 fw-semibold">
+                  {{ item.rate.currency }} {{ '%.2f'|format(item.total_price) }}
+                  <span class="text-muted fs-6 fw-normal">({{ item.days }} dia{{ '' if item.days == 1 else 's' }})</span>
+                </div>
+                <small class="text-muted">Diária: {{ item.rate.currency }} {{ '%.2f'|format(item.rate.daily_rate) }} &middot; Idade mín. {{ item.rate.min_age }} &middot; Caução {{ item.rate.currency }} {{ '%.0f'|format(item.rate.deposit_amount) }}</small>
+              </div>
+
+              <div class="mt-auto pt-3">
+                <form method="post" action="{{ url_for('public.create_quote') }}">
+                  <!-- carry search params forward -->
+                  <input type="hidden" name="category_id" value="{{ item.category.id }}">
+                  <input type="hidden" name="name" value="{{ q.get('name','') }}">
+                  <input type="hidden" name="phone" value="{{ q.get('phone','') }}">
+                  <input type="hidden" name="email" value="{{ q.get('email','') }}">
+                  <input type="hidden" name="pickup_airport" value="{{ q.get('pickup_airport','') }}">
+                  <input type="hidden" name="dropoff_airport" value="{{ q.get('dropoff_airport','') }}">
+                  <input type="hidden" name="pickup_date" value="{{ q.get('pickup_date','') }}">
+                  <input type="hidden" name="pickup_time" value="{{ q.get('pickup_time','10:00') }}">
+                  <input type="hidden" name="dropoff_date" value="{{ q.get('dropoff_date','') }}">
+                  <input type="hidden" name="dropoff_time" value="{{ q.get('dropoff_time','10:00') }}">
+
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-primary" {% if item.available == 0 %}disabled{% endif %}>Gerar orçamento</button>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('public.booking_form') }}">Alterar busca</a>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    {% elif q and (q.get('pickup_date') or q.get('dropoff_date')) %}
+      <div class="alert alert-warning">Preencha as datas e horas de retirada e devolução para ver os resultados.</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+// Lightweight typeahead via datalist + API
+async function loadAirports(el) {
+  const q = el.value.trim();
+  if (!q || q.length < 2) return;
+  const res = await fetch('{{ url_for("public.api_airports") }}?q=' + encodeURIComponent(q));
+  if (!res.ok) return;
+  const data = await res.json();
+  const dl = document.getElementById('airports');
+  dl.innerHTML = '';
+  data.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = `${a.name} (${a.code}) - ${a.city}, ${a.state}`;
+    dl.appendChild(opt);
+  });
+}
+document.getElementById('pickup_airport').addEventListener('input', (e)=>loadAirports(e.target));
+document.getElementById('dropoff_airport').addEventListener('input', (e)=>loadAirports(e.target));
+</script>
+{% endblock %}

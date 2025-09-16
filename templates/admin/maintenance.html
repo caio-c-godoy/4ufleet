@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Carros em manutenção{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Carros em manutenção</h3>
+  <a class="btn btn-outline-secondary" href="{{ url_for('admin.vehicles', tenant_slug=g.tenant.slug) }}">Voltar para Frota</a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th style="width:58px">Foto</th>
+            <th>Veículo</th>
+            <th>Placa</th>
+            <th>Início</th>
+            <th>Motivo</th>
+            <th>Status</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in vehicles %}
+            {% set log = logs.get(v.id) if logs else None %}
+            {% set plate = v.plate or v.license_plate or '-' %}
+
+            {# início da manutenção (forma segura, passo a passo) #}
+            {% set started = None %}
+            {% if log and (log.started_at is defined) and log.started_at %}{% set started = log.started_at %}{% endif %}
+            {% if not started and log and (log.created_at is defined) and log.created_at %}{% set started = log.created_at %}{% endif %}
+            {% if not started and (v.maintenance_started_at is defined) and v.maintenance_started_at %}{% set started = v.maintenance_started_at %}{% endif %}
+            {% if not started and (v.manutencao_inicio is defined) and v.manutencao_inicio %}{% set started = v.manutencao_inicio %}{% endif %}
+            {% if not started and (v.updated_at is defined) and v.updated_at %}{% set started = v.updated_at %}{% endif %}
+            {% if not started and (v.created_at is defined) and v.created_at %}{% set started = v.created_at %}{% endif %}
+
+            {# motivo (com fallback padrão) #}
+            {% set reason = 'Preparo e limpeza' %}
+            {% if log and (log.reason is defined) and log.reason %}{% set reason = log.reason %}{% endif %}
+            {% if reason == 'Preparo e limpeza' and (v.maintenance_reason is defined) and v.maintenance_reason %}{% set reason = v.maintenance_reason %}{% endif %}
+            {% if reason == 'Preparo e limpeza' and (v.manutencao_motivo is defined) and v.manutencao_motivo %}{% set reason = v.manutencao_motivo %}{% endif %}
+            {% if reason == 'Preparo e limpeza' and (v.work_note is defined) and v.work_note %}{% set reason = v.work_note %}{% endif %}
+            {% if reason == 'Preparo e limpeza' and (v.obs_manutencao is defined) and v.obs_manutencao %}{% set reason = v.obs_manutencao %}{% endif %}
+
+            <tr>
+              <td>
+                {% if v.image_url %}
+                  <img src="{{ v.image_url }}" alt="" class="rounded"
+                       style="width:48px;height:48px;object-fit:cover;">
+                {% else %}
+                  <div class="rounded bg-light d-flex align-items-center justify-content-center"
+                       style="width:48px;height:48px;">
+                    <i class="bi bi-car-front text-secondary"></i>
+                  </div>
+                {% endif %}
+              </td>
+              <td class="fw-semibold">
+                {{ v.brand or '' }} {{ v.model or '' }}
+                <div class="small text-muted">
+                  {{ v.category.name if v.category else '-' }}
+                </div>
+              </td>
+              <td class="text-muted">{{ plate }}</td>
+              <td class="text-muted">
+                {{ started.strftime('%Y-%m-%d %H:%M') if started else '-' }}
+              </td>
+              <td class="text-muted">
+                {{ reason }}
+              </td>
+              <td>
+                <span class="badge bg-warning text-dark">{{ v.status or 'maintenance' }}</span>
+              </td>
+              <td class="text-end">
+                <form class="d-inline"
+                      method="post"
+                      action="{{ url_for('admin.maintenance_finish', tenant_slug=g.tenant.slug, vehicle_id=v.id) }}"
+                      onsubmit="return confirm('Encerrar manutenção e marcar como disponível?')">
+                  {% if csrf_token is defined %}{{ csrf_token() }}{% endif %}
+                  <button class="btn btn-sm btn-success">
+                    <i class="bi bi-check2-circle me-1"></i> Encerrar
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-center text-muted py-5">
+                Nenhum veículo em manutenção.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

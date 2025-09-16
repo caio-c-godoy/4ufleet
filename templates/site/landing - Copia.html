@@ -1,0 +1,543 @@
+{% extends "base.html" %}
+{% block title %}4uFleet — Car rental software, 100% FREE{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root{
+    --ff-primary:#0d6efd;
+    --ff-ink:#1f2937;
+    --ff-muted:#6b7280;
+    --ff-card:#ffffff;
+    --ff-glass:rgba(255,255,255,.65);
+  }
+
+  /* ---------- HERO ---------- */
+  .ff-hero{
+    position:relative;
+    padding:96px 0 56px;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(13,110,253,.25), transparent 60%),
+      linear-gradient(180deg, #0d6efd10, transparent 45%),
+      linear-gradient(180deg, #f8fafc, #ffffff 30%);
+    overflow:hidden;
+  }
+  .ff-blob{
+    position:absolute; inset:auto -200px -180px auto;
+    width:520px; height:520px; background:radial-gradient(closest-side, rgba(13,110,253,.12), transparent 70%);
+    filter: blur(10px);
+  }
+  .ff-logo-wrap{ display:flex; justify-content:center; }
+  .ff-logo{
+    height: clamp(140px, 20vw, 320px);
+    width:auto; display:block;
+    filter: drop-shadow(0 6px 22px rgba(13,110,253,.18));
+  }
+  .ff-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 12px; border-radius:999px; background:#e7f1ff; color:#0a58ca; font-weight:600; font-size:12px;
+    border:1px solid #cfe2ff;
+  }
+  .ff-hero h1{
+    font-size:clamp(28px,4.1vw,48px); line-height:1.08; letter-spacing:.2px; color:var(--ff-ink);
+  }
+  .ff-lead{ color:var(--ff-muted); }
+
+  /* ---------- CARDS / GLASS ---------- */
+  .ff-card{
+    border:1px solid #e5e7eb; border-radius:18px; background:var(--ff-card);
+    box-shadow:0 10px 30px rgba(0,0,0,.05);
+  }
+  .ff-glass{
+    border:1px solid rgba(255,255,255,.35);
+    background:var(--ff-glass);
+    backdrop-filter: blur(10px);
+  }
+
+  /* ---------- SECTIONS ---------- */
+  .ff-section{ padding:72px 0; }
+  .ff-section-light{ background:#f8fafc; }
+  .ff-muted{ color:var(--ff-muted); }
+
+  /* ---------- ICON LIST ---------- */
+  .ff-icon{
+    width:42px; height:42px; display:grid; place-items:center; border-radius:12px;
+    background:#eef4ff; color:#2f63ff; font-size:20px;
+  }
+
+  /* ---------- PRICE ---------- */
+  .ff-price{ font-size:48px; font-weight:800; letter-spacing:-.5px; }
+
+  /* ---------- TIMELINE ---------- */
+  .ff-step{
+    display:flex; gap:14px; align-items:flex-start;
+  }
+  .ff-step .dot{
+    width:22px; height:22px; border-radius:999px; background:#0d6efd; color:#fff; display:grid; place-items:center; font-size:12px;
+    box-shadow:0 6px 16px rgba(13,110,253,.35);
+  }
+  .ff-step + .ff-step{ margin-top:14px; }
+
+  /* ---------- CAROUSEL ---------- */
+  .ff-carousel img{ object-fit:cover; height:380px; border-radius:16px; }
+
+  /* ---------- TESTIMONIAL ---------- */
+  .quote{ font-size:18px; color:#111827; }
+  .quote small{ color:var(--ff-muted); }
+
+  /* ---------- FAQ ---------- */
+  .accordion-button:not(.collapsed){ background:#eef4ff; color:#0b5ed7; }
+
+  /* ---------- FOOTER ---------- */
+  .ff-footer{ padding:48px 0; background:#0b5ed7; color:#dbeafe; }
+
+  .topbar{ background:#0b5ed7 !important; } /* topo mais escuro na landing */
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% set BRAND = config.get('PUBLIC_BRAND', '4uFleet') %}
+{% set WEEKLY_MIN = config.get('PUBLIC_WEEKLY_MIN', 3) %}
+{% set UNLOCK_PRICE = (config.get('PUBLIC_UNLOCK_PRICE', 89.90) | float) %}
+
+<!-- HERO -->
+<section class="ff-hero">
+  <div class="ff-blob"></div>
+  <div class="container">
+    <div class="row align-items-center g-4">
+      <div class="col-lg-7 order-2 order-lg-1">
+
+        <div class="ff-logo-wrap mb-3">
+          <img class="ff-logo"
+               src="{{ url_for('static', filename='img/4ufleet-logo.png') }}"
+               srcset="{{ url_for('static', filename='img/4ufleet-logo.png') }} 1x, {{ url_for('static', filename='img/4ufleet-logo@2x.png') }} 2x"
+               alt="{{ BRAND }}" decoding="async" fetchpriority="high">
+        </div>
+
+        <span class="ff-badge"><i class="bi bi-lightning-charge-fill"></i> 100% GRÁTIS</span>
+        <h1 class="mt-3">
+          O sistema de locação que corta papelada e acelera sua operação — sem mensalidade.
+        </h1>
+        <p class="lead ff-lead mt-2">
+          Reservas, checklist com fotos e assinatura, contrato PDF, repasses e régua de cobrança — tudo em uma plataforma simples e moderna.
+        </p>
+
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+          <span class="badge rounded-pill text-bg-light border"><i class="bi bi-check2-circle text-success me-1"></i> Contrato assinado em PDF</span>
+          <span class="badge rounded-pill text-bg-light border"><i class="bi bi-check2-circle text-success me-1"></i> Checklists com mapa do carro</span>
+          <span class="badge rounded-pill text-bg-light border"><i class="bi bi-check2-circle text-success me-1"></i> E-mails transacionais</span>
+        </div>
+
+        <div class="d-flex flex-wrap gap-3 mt-4">
+          <a href="{{ url_for('site.signup_form') }}" class="btn btn-primary btn-lg">
+            Começar agora — grátis
+          </a>
+          <button class="btn btn-outline-secondary btn-lg" data-bs-toggle="modal" data-bs-target="#termsModal">
+            Ver termos
+          </button>
+          <button class="btn btn-outline-primary btn-lg" data-bs-toggle="modal" data-bs-target="#videoModal">
+            <i class="bi bi-play-circle me-1"></i> Ver vídeo (1:10)
+          </button>
+        </div>
+
+        <div class="text-muted small mt-2">Sem cartão de crédito • Ativação imediata</div>
+      </div>
+
+      <!-- Price Card -->
+      <div class="col-lg-5 order-1 order-lg-2">
+        <div class="ff-card p-4 p-lg-4">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="bi bi-gift-fill text-primary"></i>
+            <strong>Plano grátis para sempre</strong>
+          </div>
+          <div class="ff-price">US$ 0<span class="fs-6 fw-normal"> /mês</span></div>
+          <div class="text-muted small">Uso gratuito condicionado a volume mínimo — <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">veja Termos</a>.</div>
+          <hr>
+          <div class="vstack gap-2">
+            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-people"></i></span> Usuários ilimitados</div>
+            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-car-front"></i></span> Frota e categorias sem limite</div>
+            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-filetype-pdf"></i></span> Templates de contrato editáveis</div>
+            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-envelope-paper"></i></span> Notificações por e-mail</div>
+          </div>
+
+          <!-- ALTERAÇÃO: abre o modal em vez de ir para /signup -->
+          <a class="btn btn-primary w-100 mt-3"
+             href="#"
+             data-bs-toggle="modal"
+             data-bs-target="#preSignupModal">
+            Criar minha locadora grátis
+          </a>
+
+          <div class="small text-muted mt-2">
+            Não atingiu o mínimo? Desbloqueie por apenas <strong>US$ {{ '%.2f' % UNLOCK_PRICE }}</strong>. <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Ver Termos</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Social proof -->
+    <div class="text-center mt-5">
+      <div class="text-uppercase small text-muted mb-2">Confiado por locadoras independentes</div>
+      <div class="d-flex justify-content-center flex-wrap gap-4 opacity-75">
+        <img src="{{ url_for('static', filename='img/brand1.png') }}" alt="" height="26">
+        <img src="{{ url_for('static', filename='img/brand2.png') }}" alt="" height="26">
+        <img src="{{ url_for('static', filename='img/brand3.png') }}" alt="" height="26">
+        <img src="{{ url_for('static', filename='img/brand4.png') }}" alt="" height="26">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES GRID -->
+<section class="ff-section">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>Tudo que você precisa para operar bem</h2>
+      <p class="ff-muted">Foco em velocidade, segurança e simplicidade.</p>
+    </div>
+
+    <div class="row g-4">
+      {% set features = [
+        ('bi-clipboard2-check','Checklists com fotos','Registre danos com evidências fotográficas, mapa do carro e assinatura.'),
+        ('bi-filetype-pdf','Contrato em PDF','Modelo editável, geração instantânea e assinatura no balcão.'),
+        ('bi-calendar3','Calendário de reservas','Visão clara de entregas, devoluções e manutenções.'),
+        ('bi-cash-coin','Tarifas e repasses','Controle de preços, adicionais e repasses.'),
+        ('bi-mailbox','E-mails transacionais','Envio por SMTP do seu tenant, com identidade própria.'),
+        ('bi-shield-check','Auditoria e logs','Rastreabilidade de ações críticas no sistema.')
+      ] %}
+      {% for icon, title, desc in features %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="ff-card h-100 p-4">
+          <div class="d-flex align-items-center gap-3 mb-2">
+            <div class="ff-icon"><i class="bi {{ icon }}"></i></div>
+            <h5 class="mb-0">{{ title }}</h5>
+          </div>
+          <p class="ff-muted mb-3">{{ desc }}</p>
+          <img class="img-fluid rounded border"
+               src="{{ url_for('static', filename='img/feature-' ~ loop.index|string ~ '.jpg') }}"
+               alt="{{ title }}"
+               onerror="this.style.display='none'">
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- VIDEO + HIGHLIGHTS -->
+<section class="ff-section ff-section-light">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-6">
+        <div class="position-relative ff-card overflow-hidden">
+          <img class="img-fluid" src="{{ url_for('static', filename='img/video-cover.jpg') }}" alt="Demo"
+               onerror="this.src='{{ url_for('static', filename='img/placeholder-wide.jpg') }}'">
+          <button class="btn btn-primary position-absolute top-50 start-50 translate-middle rounded-pill px-4 py-2"
+                  data-bs-toggle="modal" data-bs-target="#videoModal">
+            <i class="bi bi-play-circle me-1"></i> Assistir demo
+          </button>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <h3>Visão rápida em 60 segundos</h3>
+        <p class="ff-muted">Conheça o fluxo de ponta a ponta: da reserva ao contrato assinado — com checagem e fotos.</p>
+        <div class="vstack gap-3">
+          <div class="d-flex align-items-start gap-3">
+            <div class="ff-icon"><i class="bi bi-speedometer2"></i></div>
+            <div><strong>Onboarding em minutos</strong><br><span class="ff-muted">Crie sua conta e publique a frota em 15 minutos.</span></div>
+          </div>
+          <div class="d-flex align-items-start gap-3">
+            <div class="ff-icon"><i class="bi bi-cloud-check"></i></div>
+            <div><strong>Nuvem segura</strong><br><span class="ff-muted">Backups, SSL e atualizações contínuas.</span></div>
+          </div>
+          <div class="d-flex align-items-start gap-3">
+            <div class="ff-icon"><i class="bi bi-wrench-adjustable"></i></div>
+            <div><strong>Sem mensalidade</strong><br><span class="ff-muted">Mantenha o uso mínimo ou desbloqueie por taxa única.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY / CAROUSEL -->
+<section class="ff-section">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>Interface moderna e clara</h2>
+      <p class="ff-muted">Alguns prints da aplicação.</p>
+    </div>
+    <div id="screensCarousel" class="carousel slide ff-carousel" data-bs-ride="carousel">
+      <div class="carousel-inner rounded">
+        {% for i in range(1,5) %}
+        <div class="carousel-item {% if loop.index==1 %}active{% endif %}">
+          <img class="d-block w-100"
+               src="{{ url_for('static', filename='img/screen-'~i|string~'.jpg') }}"
+               onerror="this.src='{{ url_for('static', filename='img/placeholder-wide.jpg') }}'"
+               alt="Tela {{ i }}">
+        </div>
+        {% endfor %}
+      </div>
+      <button class="carousel-control-prev" type="button" data-bs-target="#screensCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon"></span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#screensCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon"></span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS (TIMELINE) -->
+<section class="ff-section ff-section-light">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-6">
+        <h2>Como o plano gratuito funciona</h2>
+        <p class="ff-muted">
+          O <strong>{{ BRAND }}</strong> é gratuito para sempre <em>desde que</em> você mantenha um uso mínimo na plataforma.
+        </p>
+        <ul class="list-unstyled">
+          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>
+            Feche e finalize <strong>pelo menos {{ WEEKLY_MIN }} locações por semana</strong> (janela móvel de 7 dias).
+          </li>
+          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>
+            Se o mínimo não for atingido, sua conta entra em <strong>modo bloqueado</strong> (sem criar novas reservas).
+          </li>
+          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>
+            Para desbloquear, pague uma taxa única de <strong>US$ {{ '%.2f' % UNLOCK_PRICE }}</strong>.
+          </li>
+        </ul>
+        <div class="small text-muted">*Regras completas nos <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Termos</a>.</div>
+        <div class="mt-3 d-flex gap-2">
+          <a href="{{ url_for('site.signup_form') }}" class="btn btn-primary">Quero usar grátis</a>
+          <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#termsModal">Ler Termos</button>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="ff-card p-4">
+          <h5 class="mb-3"><i class="bi bi-magic me-1"></i> Em 3 passos</h5>
+          <div class="ff-step">
+            <div class="dot">1</div>
+            <div><strong>Crie sua conta</strong><br><span class="ff-muted">Acesse <a href="{{ url_for('site.signup_form') }}">/signup</a> e ative sua locadora.</span></div>
+          </div>
+          <div class="ff-step">
+            <div class="dot">2</div>
+            <div><strong>Cadastre frota e tarifas</strong><br><span class="ff-muted">Defina preços, adicionais e posicione sua assinatura no contrato.</span></div>
+          </div>
+          <div class="ff-step">
+            <div class="dot">3</div>
+            <div><strong>Finalize os aluguéis no sistema</strong><br><span class="ff-muted">Checklist com fotos, contrato PDF e comunicação por e-mail.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="ff-section">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>Quem usa, recomenda</h2>
+      <p class="ff-muted">Feedback de locadoras que simplificaram a operação.</p>
+    </div>
+    <div class="row g-4">
+      {% for name, role in [('Marcos S.','Owner, DriveNow'), ('Letícia R.','Gerente, CityCar'), ('Daniel P.','Diretor, Move+')] %}
+      <div class="col-md-4">
+        <div class="ff-card h-100 p-4">
+          <p class="quote">“Reduzi o tempo no balcão, ganhei controle e parei com papelada. O {{ BRAND }} foi divisor de águas.”</p>
+          <small>{{ name }} — <span class="text-muted">{{ role }}</span></small>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="ff-section ff-section-light">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>Perguntas frequentes</h2>
+    </div>
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="accordion" id="faqAcc">
+          <div class="accordion-item">
+            <h2 class="accordion-header"><button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#q1">É realmente grátis?</button></h2>
+            <div id="q1" class="accordion-collapse collapse show" data-bs-parent="#faqAcc">
+              <div class="accordion-body">Sim. Grátis enquanto mantiver o uso mínimo semanal. Abaixo disso, pode desbloquear com taxa única de <strong>US$ {{ '%.2f' % UNLOCK_PRICE }}</strong>.</div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#q2">Consigo usar meu próprio e-mail?</button></h2>
+            <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faqAcc">
+              <div class="accordion-body">Sim, cada tenant configura seu SMTP para que os e-mails saiam com o seu domínio.</div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#q3">Tem limite de frota ou usuários?</button></h2>
+            <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faqAcc">
+              <div class="accordion-body">Não. O plano gratuito não limita quantidade de veículos nem usuários.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="ff-section text-center">
+  <div class="container">
+    <h2>Pronto para rodar sua locadora sem mensalidade?</h2>
+    <p class="ff-muted">Leva poucos minutos para começar. Se crescer, continuamos juntos — de graça.</p>
+    <a href="{{ url_for('site.signup_form') }}" class="btn btn-primary btn-lg">
+      Criar minha conta gratuita
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="ff-footer">
+  <div class="container d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>© {{ BRAND }} — {{ config.get('APP_NAME', 'Car Rental SaaS') }}</div>
+    <div class="d-flex gap-3 small">
+      <a class="link-light" href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Termos</a>
+      <a class="link-light" href="{{ url_for('site.signup_form') }}">Criar conta</a>
+    </div>
+  </div>
+</footer>
+
+<!-- MODAL: PRÉ-SIGNUP (NOVO) -->
+<div class="modal fade" id="preSignupModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="preSignupForm">
+        <div class="modal-header">
+          <h5 class="modal-title">Comece grátis em minutos</h5>
+          <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Seu nome</label>
+            <input type="text" name="name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Telefone (opcional)</label>
+            <input type="tel" name="phone" class="form-control" placeholder="+55 11 99999-9999">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">E-mail</label>
+            <input type="email" name="email" class="form-control" required>
+          </div>
+          <div class="small text-muted">
+            Enviaremos um e-mail com o link para você criar sua locadora.
+          </div>
+          <div id="preSignupAlert" class="alert d-none mt-3" role="alert"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary" id="preSignupSubmitBtn" type="submit">Enviar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: TERMOS -->
+<div class="modal fade" id="termsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Termos de uso — Plano Gratuito {{ BRAND }}</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="ff-muted">
+          Ao usar o {{ BRAND }}, você concorda com as condições abaixo. Podemos atualizar estes termos a qualquer momento.
+        </p>
+        <ul>
+          <li><strong>Gratuito condicionado:</strong> exige a conclusão (status finalizada) de ao menos
+            <strong>{{ WEEKLY_MIN }} locações</strong> por semana, dentro do sistema (janela móvel de 7 dias).</li>
+          <li><strong>Bloqueio por inatividade:</strong> se o mínimo não for atingido, novas reservas/contratos ficam bloqueados.
+            Dados e relatórios permanecem acessíveis (modo leitura).</li>
+          <li><strong>Desbloqueio:</strong> reative o uso pagando <strong>US$ {{ '%.2f' % UNLOCK_PRICE }}</strong> (pagamento único). Liberação imediata.</li>
+          <li><strong>Validação de contagem:</strong> reservas sem checklist/contrato válido ou com cancelamento rápido podem não contar.</li>
+          <li><strong>Limites técnicos:</strong> poderemos aplicar limites de uso justo (armazenamento de fotos, e-mails, etc.).</li>
+          <li><strong>Privacidade:</strong> seguimos boas práticas de proteção de dados; consulte a Política de Privacidade.</li>
+          <li><strong>Suporte:</strong> atendimento por e-mail; prazos podem variar conforme demanda.</li>
+        </ul>
+        <p class="small text-muted mb-0">Dúvidas? Fale com o e-mail da plataforma configurado no .env.</p>
+      </div>
+      <div class="modal-footer">
+        <a href="{{ url_for('site.signup_form') }}" class="btn btn-primary">Criar minha conta grátis</a>
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: VÍDEO -->
+<div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-black">
+      <div class="ratio ratio-16x9">
+        <iframe id="demoVideo" src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0"
+                title="4uFleet Demo" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Pausar vídeo ao fechar
+  const videoModal = document.getElementById('videoModal');
+  videoModal?.addEventListener('hidden.bs.modal', () => {
+    const iframe = document.getElementById('demoVideo');
+    if(iframe){ iframe.src = iframe.src; }
+  });
+
+  // --- Pré-signup (modal) ---
+  (function(){
+    const form   = document.getElementById('preSignupForm');
+    const alertB = document.getElementById('preSignupAlert');
+    const btn    = document.getElementById('preSignupSubmitBtn');
+
+    function showAlert(kind, msg){
+      alertB.className = 'alert alert-' + kind;
+      alertB.textContent = msg;
+      alertB.classList.remove('d-none');
+    }
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertB.classList.add('d-none');
+      btn.disabled = true; btn.textContent = 'Enviando...';
+      try {
+        const fd = new FormData(form);
+        const resp = await fetch('{{ url_for("site.pre_signup") }}', { method:'POST', body: fd });
+        const data = await resp.json().catch(()=>({}));
+        if (resp.ok && data.ok){
+          showAlert('success', 'Pronto! Enviamos um e-mail com o link para você criar sua locadora.');
+          form.reset();
+          setTimeout(() => {
+            const m = bootstrap.Modal.getInstance(document.getElementById('preSignupModal'));
+            m && m.hide();
+          }, 1600);
+        } else {
+          showAlert('warning', (data && data.error) || 'Não foi possível enviar agora.');
+        }
+      } catch (err) {
+        showAlert('danger', 'Falha de rede. Tente novamente.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Enviar';
+      }
+    });
+  })();
+</script>
+{% endblock %}

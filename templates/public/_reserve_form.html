@@ -1,0 +1,119 @@
+<div class="modal-header">
+  <h5 class="modal-title">Finalizar solicitação</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<form id="reserveForm" action="{{ url_for('public.reserve') }}" method="post">
+  <div class="modal-body">
+    <!-- Cabeçalho do veículo -->
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <img
+        src="{{ vehicle.image_url or url_for('static', filename='img/placeholder_car.svg') }}"
+        alt="Veículo"
+        class="rounded"
+        style="width:110px;height:70px;object-fit:cover"
+      >
+      <div>
+        <div class="fw-semibold">{{ vehicle.brand or '' }} {{ vehicle.model }} {{ vehicle.year or '' }}</div>
+        <div class="text-muted small d-flex flex-wrap gap-3">
+          <span> {{ (vehicle.category and vehicle.category.name) or '—' }} </span>
+          <span><i class="bi bi-people me-1"></i>{{ (vehicle.category and vehicle.category.seats) or 5 }} seats</span>
+          <span><i class="bi bi-gear-wide-connected me-1"></i>{{ (vehicle.category and vehicle.category.transmission) or 'Automatic' }}</span>
+          <span><i class="bi bi-infinity me-1"></i>{{ (vehicle.category and vehicle.category.mileage_text) or 'Unlimited mileage' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Itinerário -->
+    <div class="border rounded p-3 mb-3 bg-light">
+      <div class="d-flex align-items-start gap-2 mb-2">
+        <i class="bi bi-arrow-right-circle text-primary fs-5"></i>
+        <div>
+          <div class="fw-semibold">Retirada</div>
+          <div class="small text-muted">
+            {{ q.pickup_airport }} — {{ q.pickup_date }} {{ q.pickup_time }}
+          </div>
+        </div>
+      </div>
+      <div class="d-flex align-items-start gap-2">
+        <i class="bi bi-arrow-left-circle text-primary fs-5"></i>
+        <div>
+          <div class="fw-semibold">Devolução</div>
+          <div class="small text-muted">
+            {{ q.dropoff_airport }} — {{ q.dropoff_date }} {{ q.dropoff_time }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumo de preço -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="text-muted">
+        {{ days }} {{ 'dia' if days == 1 else 'dias' }} × {{ currency }} {{ '%.2f'|format(daily) }}
+        {% if discount %}<span class="badge bg-success ms-2">-{{ discount }}%</span>{% endif %}
+      </div>
+      <div class="fw-bold">Total: {{ currency }} {{ '%.2f'|format(total) }}</div>
+    </div>
+
+    <!-- Contato -->
+    <div class="row g-2">
+      <div class="col-12 col-lg-4">
+        <label class="form-label">Nome</label>
+        <input class="form-control" name="name" value="{{ q.name or '' }}" placeholder="Seu nome">
+      </div>
+      <div class="col-12 col-lg-4">
+        <label class="form-label">Telefone</label>
+        <input class="form-control" name="phone" value="{{ q.phone or '' }}" placeholder="+1 407 ...">
+      </div>
+      <div class="col-12 col-lg-4">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" name="email" value="{{ q.email or '' }}" placeholder="voce@exemplo.com">
+      </div>
+    </div>
+
+    <!-- Hidden fields obrigatórios para /reserve -->
+    <input type="hidden" name="vehicle_id" value="{{ vehicle.id }}">
+    <input type="hidden" name="pickup_airport"  value="{{ q.pickup_airport }}">
+    <input type="hidden" name="dropoff_airport" value="{{ q.dropoff_airport }}">
+    <input type="hidden" name="pickup_date"  value="{{ q.pickup_date }}">
+    <input type="hidden" name="pickup_time"  value="{{ q.pickup_time }}">
+    <input type="hidden" name="dropoff_date" value="{{ q.dropoff_date }}">
+    <input type="hidden" name="dropoff_time" value="{{ q.dropoff_time }}">
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Voltar</button>
+    <button class="btn btn-primary" id="reserveSubmit">Ir para checkout</button>
+  </div>
+</form>
+
+<script>
+(() => {
+  const form = document.getElementById('reserveForm');
+  const btn  = document.getElementById('reserveSubmit');
+  const modalEl = document.getElementById('reserveModal');
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    try {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
+
+      const fd = new FormData(form);
+      const res = await fetch(form.action, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('Falha ao criar reserva.');
+      const data = await res.json();
+      if (data && data.redirect) {
+        window.location.href = data.redirect;
+      } else {
+        throw new Error('Resposta inesperada do servidor.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Não foi possível prosseguir para o checkout.');
+      btn.disabled = false;
+      btn.innerHTML = 'Ir para checkout';
+    }
+  }, { once: true });
+})();
+</script>

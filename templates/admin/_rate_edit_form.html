@@ -1,0 +1,56 @@
+<div class="modal-header">
+  <h5 class="modal-title">Editar tarifa</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form id="rateEditForm" action="{{ url_for('admin.update_rate_modal', rate_id=rate.id) }}" method="post">
+  <div class="modal-body">
+    <div class="mb-2">
+      <label class="form-label">Categoria</label>
+      <input class="form-control" value="{{ rate.category.name if rate.category else '-' }}" disabled>
+    </div>
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="form-label">Moeda</label>
+        <input name="currency" class="form-control" value="{{ rate.currency or 'USD' }}" maxlength="8">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Tarifa diária</label>
+        <input name="daily_rate" type="number" step="0.01" class="form-control" value="{{ rate.daily_rate or 0 }}">
+      </div>
+    </div>
+    <div class="row g-2 mt-2">
+      <div class="col-6">
+        <label class="form-label">Idade mínima</label>
+        <input name="min_age" type="number" min="18" class="form-control" value="{{ rate.min_age or 21 }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Caução</label>
+        <input name="deposit_amount" type="number" step="0.01" class="form-control" value="{{ rate.deposit_amount or 0 }}">
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+    <button class="btn btn-primary">Salvar</button>
+  </div>
+</form>
+
+<script>
+(function(){
+  const form = document.getElementById('rateEditForm');
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const res = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+    if (res.ok) {
+      const modalEl = document.getElementById('ajaxModal') || document.getElementById('globalModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+      location.reload();
+    } else {
+      const data = await res.json().catch(()=>({}));
+      alert(data.error || 'Erro ao salvar');
+    }
+  });
+})();
+</script>

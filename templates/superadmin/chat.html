@@ -1,0 +1,44 @@
+{% extends "superadmin/base.html" %}
+{% block title %}Chat — {{ tenant.name }}{% endblock %}
+{% block content %}
+<h2 style="margin:.25rem 0 1rem 0;">Chat com {{ tenant.name }}</h2>
+
+<div class="sa-card" style="height:420px; overflow:auto; margin-bottom:.75rem" id="log"></div>
+
+<form class="sa-card" id="sendForm" style="display:flex; gap:.5rem; align-items:center;">
+  <input id="body" type="text" placeholder="Escreva sua mensagem…" style="flex:1; padding:.55rem .7rem; border:1px solid #e5e7eb; border-radius:.5rem">
+  <button class="btn" type="submit">Enviar</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function load(){
+  const r = await fetch("{{ url_for('superadmin.api_chat_list', tenant_id=tenant.id) }}");
+  const data = await r.json();
+  const el = document.getElementById('log');
+  el.innerHTML = '';
+  for(const m of data){
+    const div = document.createElement('div');
+    div.style.marginBottom = '.5rem';
+    div.innerHTML = `<div class="muted" style="font-size:.8rem">${m.sender} — ${new Date(m.created_at).toLocaleString()}</div>
+                     <div>${m.body}</div>`;
+    el.appendChild(div);
+  }
+  el.scrollTop = el.scrollHeight;
+}
+load();
+setInterval(load, 5000);
+
+document.getElementById('sendForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const body = document.getElementById('body').value.trim();
+  if(!body) return;
+  await fetch("{{ url_for('superadmin.api_chat_send', tenant_id=tenant.id) }}", {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({body})
+  });
+  document.getElementById('body').value = '';
+  load();
+});
+</script>
+{% endblock %}

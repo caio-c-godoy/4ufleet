@@ -1,0 +1,109 @@
+{% extends "superadmin/base.html" %}
+{% block page_title %}Superadmin{% endblock %}
+
+{% block extra_head %}
+  {{ super() }}
+  <style>
+    .metric-card{ padding:18px; }
+    .chart-card{ padding:16px; }
+  </style>
+{% endblock %}
+
+{% block page_actions %}
+ <a class="ff-chip ff-link me-2" href="{{ url_for('superadmin.crm_index') }}">
+  <i class="bi bi-people me-1"></i> CRM (Pré-cadastros)
+</a>
+  <a class="ff-chip ff-link me-2" href="{{ url_for('superadmin.tenants') }}"><i class="bi bi-people"></i> Tenants</a>
+  <form method="post" action="{{ url_for('superadmin.logout') }}" class="d-inline">
+    <button class="btn btn-outline-secondary btn-sm">Sair</button>
+  </form>
+{% endblock %}
+
+{% block page_content %}
+<div class="row g-3">
+  <!-- KPIs -->
+  <div class="col-12 col-lg-3">
+    <div class="ff-card metric-card">
+      <div class="ff-muted small">Tenants</div>
+      <div class="ff-metric" id="mTenants">—</div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-3">
+    <div class="ff-card metric-card">
+      <div class="ff-muted small">Ativos</div>
+      <div class="ff-metric" id="mActive">—</div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-3">
+    <div class="ff-card metric-card">
+      <div class="ff-muted small">Bloqueados</div>
+      <div class="ff-metric" id="mBlocked">—</div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-3">
+    <div class="ff-card metric-card">
+      <div class="ff-muted small">Meta (7d) atingida</div>
+      <div class="ff-metric" id="mReached">—</div>
+      <div class="small ff-muted">Meta atual: <span id="mTarget">2</span> reservas/tenant</div>
+    </div>
+  </div>
+
+  <!-- Receita total -->
+  <div class="col-12 col-lg-6">
+    <div class="ff-card chart-card">
+      <div class="ff-muted small">Faturamento total</div>
+      <div class="h3 mb-1"><span id="mGross">$0.00</span></div>
+      <div class="small ff-muted">Sua taxa (5%): <span id="mFee">$0.00</span></div>
+      <hr>
+      <canvas id="revChart" height="120"></canvas>
+    </div>
+  </div>
+
+  <!-- Novos tenants -->
+  <div class="col-12 col-lg-6">
+    <div class="ff-card chart-card">
+      <div class="ff-muted small">Novos tenants por mês</div>
+      <canvas id="tenantsChart" height="160"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(async function(){
+  const k = await fetch('{{ url_for("superadmin.api_kpis") }}').then(r=>r.json());
+  document.getElementById('mTenants').textContent  = k.tenants_total;
+  document.getElementById('mActive').textContent   = k.tenants_active;
+  document.getElementById('mBlocked').textContent  = k.tenants_blocked;
+  document.getElementById('mReached').textContent  = k.tenants_reached_7d;
+  document.getElementById('mTarget').textContent   = k.weekly_min_target;
+  document.getElementById('mGross').textContent    = `$${Number(k.gross_total||0).toFixed(2)}`;
+  document.getElementById('mFee').textContent      = `$${Number(k.fee_total||0).toFixed(2)}`;
+
+  const rev = await fetch('{{ url_for("superadmin.api_revenue_series") }}').then(r=>r.json());
+  const revCtx = document.getElementById('revChart');
+  new Chart(revCtx, {
+    type: 'line',
+    data: {
+      labels: rev.map(x=>x.period_label),
+      datasets: [
+        { label:'Receita (gross)', data: rev.map(x=>x.gross), tension:.25 },
+        { label:'Sua taxa (5%)',   data: rev.map(x=>x.fee),   tension:.25 }
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom' } } }
+  });
+
+  const ts = await fetch('{{ url_for("superadmin.api_tenants_series") }}').then(r=>r.json());
+  const tCtx = document.getElementById('tenantsChart');
+  new Chart(tCtx, {
+    type: 'bar',
+    data: { labels: ts.map(x=>x.period_label), datasets:[{ label:'Novos tenants', data: ts.map(x=>x.count) }] },
+    options: { responsive:true, plugins:{ legend:{ display:false } } }
+  });
+})();
+</script>
+{% endblock %}

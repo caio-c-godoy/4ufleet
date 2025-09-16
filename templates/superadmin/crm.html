@@ -1,0 +1,225 @@
+{% extends "superadmin/base.html" %}
+{% block page_title %}CRM — Pré-cadastros{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('superadmin.dashboard') }}" class="btn btn-outline-secondary">
+  <i class="bi bi-speedometer2"></i> Dashboard
+</a>
+{% endblock %}
+
+{% block page_content %}
+<div class="ff-card p-3 mb-3">
+  <form class="row g-2 align-items-end" method="get">
+    <div class="col-md-5">
+      <label class="form-label">Buscar</label>
+      <input type="text" class="form-control" name="q" value="{{ q }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Status</label>
+      <select class="form-select" name="status">
+        <option value="">Todos</option>
+        {% for s in ["new","contacted","qualified","converted","dropped"] %}
+          <option value="{{ s }}" {% if status==s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-primary w-100">Filtrar</button>
+    </div>
+    <div class="col-md-2 text-md-end">
+      <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#bulkEmailModal">
+        <i class="bi bi-send"></i> E-mail mkt
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="ff-card p-0">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr>
+          <th style="width:34px"><input class="form-check-input" type="checkbox" id="chkAll"></th>
+          <th>Nome / E-mail</th>
+          <th>Telefone</th>
+          <th>Criado em</th>
+          <th>Status</th>
+          <th>Último contato</th>
+          <th style="width:200px">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="prospectsTbody">
+        {% for p in rows %}
+        <tr data-id="{{ p.id }}">
+          <td><input class="form-check-input rowChk" type="checkbox" value="{{ p.id }}"></td>
+          <td>
+            <div class="fw-600">{{ p.name }}</div>
+            <a href="mailto:{{ p.email }}" class="ff-link">{{ p.email }}</a>
+          </td>
+          <td>
+            {% if p.phone %}<a href="tel:{{ p.phone }}" class="ff-link">{{ p.phone }}</a>{% else %}-{% endif %}
+          </td>
+          <td>{{ p.created_at.strftime("%d/%m/%Y %H:%M") if p.created_at else "" }}</td>
+          <td>
+            <span class="badge text-bg-{{ p.status_badge() }}">{{ p.status }}</span>
+          </td>
+          <td>
+            {{ p.last_contact_at.strftime("%d/%m/%Y %H:%M") if p.last_contact_at else "-" }}
+            {% if p.last_channel %}<small class="text-muted d-block">{{ p.last_channel }}</small>{% endif %}
+          </td>
+          <td class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary btn-status" data-status="contacted" title="Marcar contatado">
+              <i class="bi bi-telephone-outbound"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-success btn-status" data-status="qualified" title="Qualificado">
+              <i class="bi bi-patch-check"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-dark btn-status" data-status="dropped" title="Descartar">
+              <i class="bi bi-x-circle"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#noteModal" data-id="{{ p.id }}" data-notes="{{ (p.notes or '') | e }}">
+              <i class="bi bi-journal-text"></i>
+            </button>
+            <a class="btn btn-sm btn-primary" href="mailto:{{ p.email }}?subject=Bem-vindo%20ao%204uFleet" title="E-mail rápido">
+              <i class="bi bi-envelope"></i>
+            </a>
+            {% if p.phone %}
+            <a class="btn btn-sm btn-success" href="https://wa.me/{{ p.phone|replace('+','')|replace(' ','') }}" target="_blank" title="WhatsApp">
+              <i class="bi bi-whatsapp"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">Nenhum prospect encontrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: E-mail MKT -->
+<div class="modal fade" id="bulkEmailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form class="modal-content" id="bulkEmailForm">
+      <div class="modal-header">
+        <h5 class="modal-title">Enviar e-mail marketing</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info small">
+          Serão usados os e-mails dos prospects selecionados na tabela.
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Assunto</label>
+          <input type="text" name="subject" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Mensagem (HTML permitido)</label>
+          <textarea name="body" class="form-control" rows="6" placeholder="Escreva sua mensagem..." required></textarea>
+        </div>
+        <div id="bulkEmailAlert" class="alert d-none" role="alert"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Enviar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Notas -->
+<div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" id="noteForm">
+      <div class="modal-header">
+        <h5 class="modal-title">Notas do prospect</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <textarea name="notes" id="noteText" class="form-control" rows="6" placeholder="Resumo da ligação, objeções, próximos passos..."></textarea>
+        <input type="hidden" id="noteProspectId">
+        <div id="noteAlert" class="alert d-none mt-3"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Selecionar todos
+  document.getElementById('chkAll')?.addEventListener('change', (e)=>{
+    document.querySelectorAll('.rowChk').forEach(ch => ch.checked = e.target.checked);
+  });
+
+  // Atualização de status (inline)
+  document.querySelectorAll('.btn-status').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const tr = btn.closest('tr');
+      const id = tr?.dataset.id;
+      const status = btn.dataset.status;
+      if(!id || !status) return;
+      const fd = new FormData();
+      fd.append('status', status);
+      if (status === 'contacted') fd.append('channel', 'phone');
+      const resp = await fetch(`/superadmin/crm/${id}/status`, { method:'POST', body: fd });
+      if (resp.ok){ location.reload(); }
+    });
+  });
+
+  // Bulk e-mail
+  (function(){
+    const form = document.getElementById('bulkEmailForm');
+    const alertB = document.getElementById('bulkEmailAlert');
+    form?.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const ids = [...document.querySelectorAll('.rowChk:checked')].map(ch => ch.value);
+      if(!ids.length){
+        alertB.className = 'alert alert-warning'; alertB.textContent = 'Selecione ao menos 1 prospect.'; alertB.classList.remove('d-none');
+        return;
+      }
+      const fd = new FormData(form);
+      ids.forEach(id => fd.append('ids[]', id));
+      const resp = await fetch('/superadmin/crm/email', { method:'POST', body: fd });
+      const data = await resp.json().catch(()=>({}));
+      if(resp.ok && data.ok){
+        alertB.className = 'alert alert-success'; alertB.textContent = `Enviado para ${data.sent} prospect(s).`; alertB.classList.remove('d-none');
+        setTimeout(()=>location.reload(), 900);
+      } else {
+        alertB.className = 'alert alert-danger'; alertB.textContent = data.error || 'Falha ao enviar.'; alertB.classList.remove('d-none');
+      }
+    });
+  })();
+
+  // Notas
+  const noteModal = document.getElementById('noteModal');
+  noteModal?.addEventListener('show.bs.modal', (ev)=>{
+    const btn = ev.relatedTarget;
+    const id = btn?.getAttribute('data-id');
+    const notes = btn?.getAttribute('data-notes') || '';
+    document.getElementById('noteProspectId').value = id || '';
+    document.getElementById('noteText').value = notes;
+    document.getElementById('noteAlert').classList.add('d-none');
+  });
+  document.getElementById('noteForm')?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const id = document.getElementById('noteProspectId').value;
+    const notes = document.getElementById('noteText').value;
+    const fd = new FormData(); fd.append('notes', notes);
+    const resp = await fetch(`/superadmin/crm/${id}/note`, { method:'POST', body: fd });
+    const alertB = document.getElementById('noteAlert');
+    if(resp.ok){
+      alertB.className = 'alert alert-success'; alertB.textContent = 'Notas salvas.'; alertB.classList.remove('d-none');
+      setTimeout(()=>location.reload(), 700);
+    } else {
+      alertB.className = 'alert alert-danger'; alertB.textContent = 'Erro ao salvar.'; alertB.classList.remove('d-none');
+    }
+  });
+</script>
+{% endblock %}

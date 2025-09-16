@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Car Rental{% endblock %}</title>
+
+  <!-- Libs -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+
+  {% block extra_head %}{% endblock %}
+
+  {# Paleta do tenant (ou padrão) #}
+  {% if tenant %}
+  <style>
+    :root{
+      --brand-primary: {{ tenant.brand_primary   or '#0d6efd' }};
+      --brand-navbar:  {{ tenant.brand_navbar_bg or '#0d6efd' }};
+      --brand-sidebar: {{ tenant.brand_sidebar_bg or '#0b5ed7' }};
+    }
+  </style>
+  {% else %}
+  <style>
+    :root{
+      --brand-primary: #0d6efd;
+      --brand-navbar:  #0d6efd;
+      --brand-sidebar: #0b5ed7;
+    }
+  </style>
+  {% endif %}
+
+  <style>
+    .navbar { background-color: var(--brand-navbar) !important; }
+    .sidebar { background-color: var(--brand-sidebar) !important; }
+    .btn-primary, .bg-primary { background-color: var(--brand-primary) !important; border-color: var(--brand-primary) !important; }
+    a { color: var(--brand-primary); }
+    .brand-logo { height: 22px; width:auto; object-fit:contain; }
+
+    /* Quando esconder chrome (landing etc.), o conteúdo ocupa a largura toda */
+    body.no-chrome .app-main { margin-left: 0; }
+    body.no-chrome .topbar,
+    body.no-chrome .sidebar { display: none !important; }
+  </style>
+</head>
+
+{# aplica classe condicional ao body #}
+{% set nochrome = hide_chrome|default(false) %}
+<body class="app-body{% if nochrome %} no-chrome{% endif %}">
+
+  {# TOPBAR — exibida apenas quando NÃO está em modo no-chrome #}
+  {% if not nochrome %}
+  <nav class="navbar navbar-dark topbar px-3">
+    <div class="d-flex align-items-center gap-2">
+      {% if tenant %}
+      <button class="btn btn-sm btn-outline-light d-lg-none" id="btnSidebarToggle" title="Menu">
+        <i class="bi bi-list"></i>
+      </button>
+      {% endif %}
+
+      <a class="navbar-brand fw-bold letter-wide d-flex align-items-center gap-2"
+         href="{{ url_for('admin.dashboard', tenant_slug=tenant.slug) if tenant else url_for('site.landing') }}">
+        {% if tenant and tenant.logo_url %}
+          <img class="brand-logo" src="{{ tenant.logo_url }}" alt="{{ tenant.name or 'Logo' }}">
+        {% endif %}
+        <span>{{ tenant.name if tenant else 'CAR RENTAL' }}</span>
+      </a>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+      {% if tenant %}
+        <span class="text-white-50 small d-none d-sm-inline">Tenant: {{ tenant.name or '-' }}</span>
+      {% endif %}
+      {% if current_user.is_authenticated and tenant %}
+        <a class="btn btn-sm btn-outline-light" href="{{ url_for('auth.logout', tenant_slug=tenant.slug) }}">Sair</a>
+      {% endif %}
+    </div>
+  </nav>
+  {% endif %}
+
+  <div class="app-wrapper">
+
+    {# SIDEBAR — só aparece com chrome e quando há tenant #}
+    {% if not nochrome and tenant %}
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+        <div class="sidebar-section">CORE</div>
+        <a class="nav-link {% if request.endpoint=='admin.dashboard' %}active{% endif %}"
+           href="{{ url_for('admin.dashboard', tenant_slug=tenant.slug) }}">
+          <i class="bi bi-speedometer2 me-2"></i> <span>Dashboard</span>
+        </a>
+
+        <div class="sidebar-section mt-3">RESERVAS</div>
+        <a class="nav-link {% if request.endpoint=='admin.reservations' %}active{% endif %}"
+           href="{{ url_for('admin.reservations', tenant_slug=tenant.slug) }}">
+          <i class="bi bi-list-check me-2"></i> <span>Reservas</span>
+        </a>
+        <a class="nav-link {% if request.endpoint=='admin.calendar' %}active{% endif %}"
+           href="{{ url_for('admin.calendar', tenant_slug=tenant.slug) }}">
+          <i class="bi bi-calendar4-week me-2"></i> <span>Calendário</span>
+        </a>
+
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.operator_checklists') %}active{% endif %}"
+           href="{{ url_for('admin.operator_checklists_index', tenant_slug=tenant.slug, stage='entrega') }}">
+          <i class="bi bi-clipboard2-check me-2"></i> <span>Checklist do Operador</span>
+        </a>
+        <a class="nav-link"
+           href="{{ url_for('admin.operator_checklists_index', tenant_slug=tenant.slug, stage='finalizadas') }}">
+          <i class="bi bi-archive-check me-2"></i> <span>Reservas finalizadas</span>
+        </a>
+
+        <a class="nav-link {% if request.endpoint=='admin.maintenance_list' %}active{% endif %}"
+           href="{{ url_for('admin.maintenance_list', tenant_slug=tenant.slug) }}">
+          <i class="bi bi-wrench-adjustable me-2"></i> <span>Em manutenção</span>
+        </a>
+
+        <div class="sidebar-section mt-3">VENDAS</div>
+        <a class="nav-link {% if request.endpoint=='admin.leads' %}active{% endif %}"
+           href="{{ url_for('admin.leads', tenant_slug=tenant.slug) }}">
+          <i class="bi bi-people me-2"></i> <span>CRM / Leads</span>
+        </a>
+
+        <div class="sidebar-section mt-3">CADASTRO</div>
+        <a class="nav-link {% if request.endpoint=='admin.categories' %}active{% endif %}"
+           href="{{ url_for('admin.categories', tenant_slug=tenant.slug) }}">
+          <i class="bi bi-tags me-2"></i> <span>Categorias</span>
+        </a>
+        <a class="nav-link {% if request.endpoint=='admin.rates' %}active{% endif %}"
+           href="{{ url_for('admin.rates', tenant_slug=tenant.slug) }}">
+          <i class="bi bi-cash-coin me-2"></i> <span>Tarifas</span>
+        </a>
+        <a class="nav-link {% if request.endpoint=='admin.vehicles' %}active{% endif %}"
+           href="{{ url_for('admin.vehicles', tenant_slug=tenant.slug) }}">
+          <i class="bi bi-car-front me-2"></i> <span>Frota</span>
+        </a>
+
+        <div class="sidebar-section mt-3">CONFIGURAÇÕES</div>
+        <a class="nav-link {% if request.endpoint=='admin.settings' %}active{% endif %}"
+           href="{{ url_for('admin.settings', tenant_slug=tenant.slug) }}">
+          <i class="bi bi-gear me-2"></i> <span>Configurações</span>
+        </a>
+      </div>
+      <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    </aside>
+    {% endif %}
+
+    <main class="app-main">
+      <div class="container-fluid py-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+            {{ msg }}<button class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+
+  <!-- Modais globais (opcionais) -->
+  <div class="modal fade" id="globalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="globalModalTitle">Editar</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="globalModalBody"></div>
+    </div></div>
+  </div>
+
+  <div class="modal fade" id="ajaxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-body p-0"><!-- conteúdo ajax --></div>
+    </div></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

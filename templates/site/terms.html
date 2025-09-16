@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Termos de Uso{% endblock %}
+{% block content %}
+<div class="container py-3">
+  <h3>Termos de Uso</h3>
+  <p class="text-muted">Última atualização: {{ (caller or None) and "" }}</p>
+  <p>Estes termos descrevem as condições de uso da plataforma de locação multitenant...</p>
+  <ul>
+    <li>Conta e segurança</li>
+    <li>Responsabilidades do locatário e da plataforma</li>
+    <li>Pagamentos e reembolsos</li>
+    <li>Privacidade e dados</li>
+  </ul>
+  <p>Ao prosseguir com o cadastro você concorda com estes termos.</p>
+</div>
+{% endblock %}

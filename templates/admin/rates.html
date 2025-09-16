@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="m-0">Tarifas</h3>
+  <button class="btn btn-primary btn-sm"
+          data-modal-url="{{ url_for('admin.rate_new_modal') }}"
+          data-modal-title="Nova tarifa"
+          title="Nova tarifa"
+          data-bs-toggle="tooltip">
+    <i class="bi bi-plus-lg"></i>
+    <span class="visually-hidden">Nova tarifa</span>
+  </button>
+</div>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle m-0">
+      <thead class="table-light">
+        <tr>
+          <th style="width:38%">Categoria</th>
+          <th style="width:22%">Tarifa</th>
+          <th style="width:28%">Regras</th>
+          <th class="text-end" style="width:12%">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% if rates %}
+        {% for r in rates %}
+          <tr>
+            <td>{{ r.category.name if r.category else '—' }}</td>
+            <td>{{ (r.currency or 'USD') }} {{ '%.2f'|format(r.daily_rate or 0) }}</td>
+            <td class="text-muted">
+              Mín. {{ r.min_age or 0 }} anos
+              {% if r.deposit_amount is not none %}
+                · Depósito {{ (r.currency or 'USD') }} {{ '%.2f'|format(r.deposit_amount) }}
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <!-- Editar (ícone) -->
+              <button class="btn btn-sm btn-outline-primary me-1"
+                      data-modal-url="{{ url_for('admin.edit_rate_modal', rate_id=r.id) }}"
+                      data-modal-title="Editar tarifa"
+                      title="Editar"
+                      data-bs-toggle="tooltip">
+                <i class="bi bi-pencil-square"></i>
+                <span class="visually-hidden">Editar</span>
+              </button>
+
+              <!-- Excluir (ícone) -->
+              <form class="d-inline" method="post"
+                    action="{{ url_for('admin.rate_delete', rate_id=r.id) }}"
+                    onsubmit="return confirm('Excluir esta tarifa?');">
+                <button class="btn btn-sm btn-outline-danger"
+                        title="Excluir"
+                        data-bs-toggle="tooltip">
+                  <i class="bi bi-trash"></i>
+                  <span class="visually-hidden">Excluir</span>
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="4" class="text-center py-5 text-muted">
+            Nenhuma tarifa cadastrada ainda.
+            <button class="btn btn-sm btn-primary ms-2"
+                    data-modal-url="{{ url_for('admin.rate_new_modal') }}"
+                    data-modal-title="Nova tarifa"
+                    title="Nova tarifa"
+                    data-bs-toggle="tooltip">
+              <i class="bi bi-plus-lg"></i>
+              <span class="visually-hidden">Nova tarifa</span>
+            </button>
+          </td>
+        </tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

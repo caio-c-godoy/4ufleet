@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Superadmin — {{ config.get('APP_NAME', '4uFleet') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root{
+    --ff-primary:#0d6efd;
+    --ff-ink:#1f2937;
+    --ff-muted:#6b7280;
+    --ff-card:#ffffff;
+    --ff-glass:rgba(255,255,255,.65);
+    --ff-bg:#f8fafc;
+  }
+  /* Esconde chrome global se o base.html não tratar hide_chrome */
+  {% if hide_chrome %}.navbar, header.navbar, .topbar { display:none !important; }{% endif %}
+
+  body{ background:linear-gradient(180deg,#f8fafc,#ffffff 30%); }
+
+  .ff-wrap{ padding:28px 0 40px; }
+  .ff-head{
+    display:flex; gap:18px; align-items:center; margin-bottom:18px;
+    flex-wrap: wrap; /* evita quebra feia com logo grande */
+  }
+  /* logo agora maior e responsivo em TODAS as páginas do superadmin */
+  .ff-logo{
+    height: clamp(56px, 7vw, 104px);
+    width:auto; display:block;
+    filter: drop-shadow(0 4px 16px rgba(13,110,253,.15));
+  }
+  .ff-title{ font-size:28px; font-weight:800; letter-spacing:-.2px; color:var(--ff-ink); }
+
+  .ff-card{
+    border:1px solid #e5e7eb; border-radius:18px; background:var(--ff-card);
+    box-shadow:0 10px 30px rgba(0,0,0,.05);
+  }
+  .ff-metric{ font-size:26px; font-weight:800; color:#0b5ed7; }
+  .ff-muted{ color:var(--ff-muted); }
+
+  .ff-chip{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 10px; border:1px solid #e5e7eb; border-radius:999px; background:#fff; font-size:12px;
+  }
+
+  .ff-link{ text-decoration:none; }
+  .ff-link:hover{ text-decoration:underline; }
+
+  .table > :not(caption) > * > *{ background:transparent; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container ff-wrap">
+  <!-- Cabeçalho simples com logo grande (sem barra) -->
+  <div class="ff-head">
+    <img class="ff-logo"
+         src="{{ url_for('static', filename='img/4ufleet-logo.png') }}"
+         srcset="{{ url_for('static', filename='img/4ufleet-logo.png') }} 1x, {{ url_for('static', filename='img/4ufleet-logo@2x.png') }} 2x"
+         alt="4uFleet">
+    <div class="ff-title">{% block page_title %}{% endblock %}</div>
+    <div class="ms-auto">{% block page_actions %}{% endblock %}</div>
+  </div>
+
+  {% block page_content %}{% endblock %}
+</div>
+{% endblock %}

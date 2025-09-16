@@ -1,0 +1,158 @@
+{% extends "base_public.html" %}
+{% block title %}Buscar carro — {{ g.tenant.name if g.tenant else "" }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-10">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="h4 mb-3">Encontre o carro ideal</h1>
+        <form method="get" action="{{ url_for('public.results', tenant_slug=g.tenant.slug) }}">
+          <div class="row g-3">
+            <!-- Retirada -->
+            <div class="col-12 col-lg-6">
+              <label class="form-label">Retirada (aeroporto)</label>
+              <input class="form-control"
+                     id="pickup-airport"
+                     name="pickup_airport"
+                     placeholder="Ex: Orlando International (MCO)"
+                     list="us-airports"
+                     autocomplete="off"
+                     required>
+            </div>
+
+            <!-- Devolução -->
+            <div class="col-12 col-lg-6">
+              <label class="form-label">Devolução (aeroporto)</label>
+              <input class="form-control"
+                     id="dropoff-airport"
+                     name="dropoff_airport"
+                     placeholder="Ex: Orlando International (MCO)"
+                     list="us-airports"
+                     autocomplete="off"
+                     required>
+            </div>
+
+            <!-- Datas / Horas -->
+            <div class="col-6 col-lg-3">
+              <label class="form-label">Data de retirada</label>
+              <input type="date" name="pickup_date" class="form-control" required>
+            </div>
+            <div class="col-6 col-lg-3">
+              <label class="form-label">Hora de retirada</label>
+              <input type="time" name="pickup_time" class="form-control" value="10:00" required>
+            </div>
+            <div class="col-6 col-lg-3">
+              <label class="form-label">Data de devolução</label>
+              <input type="date" name="dropoff_date" class="form-control" required>
+            </div>
+            <div class="col-6 col-lg-3">
+              <label class="form-label">Hora de devolução</label>
+              <input type="time" name="dropoff_time" class="form-control" value="10:00" required>
+            </div>
+
+            <!-- Contato opcional -->
+            <div class="col-12 col-lg-4">
+              <label class="form-label">Nome completo</label>
+              <input name="name" class="form-control" placeholder="Seu nome">
+            </div>
+            <div class="col-12 col-lg-4">
+              <label class="form-label">Telefone</label>
+              <input name="phone" class="form-control" placeholder="+1 407 ...">
+            </div>
+            <div class="col-12 col-lg-4">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" placeholder="voce@exemplo.com">
+            </div>
+
+            <div class="col-12 d-flex justify-content-end">
+              <button class="btn btn-primary px-4">
+                <i class="bi bi-search me-2"></i>Ver ofertas
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Ajuda -->
+    <p class="text-muted small mt-3 mb-0">
+      Dica: digite o nome do aeroporto ou o código IATA (ex.: <strong>MCO</strong>, <strong>LAX</strong>, <strong>JFK</strong>).
+    </p>
+  </div>
+</div>
+
+<!-- datalist vazio: só será preenchido via JS quando houver 2+ letras -->
+<datalist id="us-airports"></datalist>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const DL_ID = 'us-airports';
+  const dl = document.getElementById(DL_ID);
+  const inputs = document.querySelectorAll('input[list="us-airports"]');
+
+  // helper: monta URL do endpoint com ?q=
+  function buildUrl(q) {
+    const url = new URL(window.location.origin + "{{ url_for('public.airports_json', tenant_slug=g.tenant.slug) }}");
+    url.searchParams.set('q', q);
+    return url.toString();
+  }
+
+  async function fetchAirports(q) {
+    try {
+      const res = await fetch(buildUrl(q), { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data.items) ? data.items : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function clearDatalist() {
+    dl.innerHTML = '';
+  }
+
+  async function handleChange(inp) {
+    const q = (inp.value || '').trim();
+    if (q.length < 2) {
+      // desliga o datalist para evitar a lista inteira no foco
+      inp.removeAttribute('list');
+      clearDatalist();
+      return;
+    }
+    // liga o datalist e popula
+    inp.setAttribute('list', DL_ID);
+    const items = await fetchAirports(q);
+    dl.innerHTML = items.map(txt => `<option value="${txt.replace(/"/g, '&quot;')}"></option>`).join('');
+  }
+
+  inputs.forEach(inp => {
+    // no load, já garante estado correto
+    handleChange(inp);
+
+    // digitação
+    inp.addEventListener('input', () => handleChange(inp));
+
+    // ao focar, se tiver < 2 letras, não mostra nada
+    inp.addEventListener('focus', () => {
+      if ((inp.value || '').trim().length < 2) {
+        inp.removeAttribute('list');
+        clearDatalist();
+      } else {
+        // tem 2+ letras? reforça preenchimento
+        handleChange(inp);
+      }
+    });
+
+    // opcional: ao perder o foco, não precisa manter opções
+    inp.addEventListener('blur', () => {
+      // se quiser manter vazia sempre após uso, descomente:
+      // clearDatalist();
+    });
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Reservas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Reservas</h3>
+  <form class="d-flex gap-2" method="get">
+    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="all" {{ 'selected' if status=='all' else '' }}>Todas</option>
+      <option value="pending" {{ 'selected' if status=='pending' else '' }}>Pendentes</option>
+      <option value="confirmed" {{ 'selected' if status=='confirmed' else '' }}>Confirmadas</option>
+      <option value="cancelled" {{ 'selected' if status=='cancelled' else '' }}>Canceladas</option>
+    </select>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.calendar', tenant_slug=g.tenant.slug) }}">
+      Ver calendário
+    </a>
+  </form>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Cliente</th>
+            <th>Contato</th>
+            <th>Retirada</th>
+            <th>Devolução</th>
+            <th>Veículo</th>
+            <th>Status</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in reservations %}
+          {% set rid = r.id %}
+          {% set status_key = (r.status or '').lower() %}
+          {% set contract = r.contract if r.contract is not none else None %}
+          {% set signed = contract and contract.signature_type == 'drawn' and contract.signature_hash %}
+          <tr>
+            <td class="text-muted small">{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '' }}</td>
+            <td>{{ r.customer_name or '-' }}</td>
+            <td class="small">
+              {% if r.email %}<div><i class="bi bi-envelope me-1"></i>{{ r.email }}</div>{% endif %}
+              {% if r.phone %}<div><i class="bi bi-telephone me-1"></i>{{ r.phone }}</div>{% endif %}
+            </td>
+            <td class="small">
+              <div>{{ r.pickup_airport or '-' }}</div>
+              <div class="text-muted">{{ r.pickup_dt.strftime('%Y-%m-%d %H:%M') if r.pickup_dt else '' }}</div>
+            </td>
+            <td class="small">
+              <div>{{ r.dropoff_airport or '-' }}</div>
+              <div class="text-muted">{{ r.dropoff_dt.strftime('%Y-%m-%d %H:%M') if r.dropoff_dt else '' }}</div>
+            </td>
+            <td>
+              {% if r.vehicle %}
+                {{ r.vehicle.brand or '' }} {{ r.vehicle.model or '' }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge
+                  {% if status_key=='confirmed' %} bg-success
+                  {% elif status_key in ['pending','pending_payment'] %} bg-warning text-dark
+                  {% elif status_key in ['cancelled','canceled'] %} bg-secondary
+                  {% elif status_key in ['under_review','analysis','review'] %} bg-info text-dark
+                  {% else %} bg-light text-dark {% endif %}">
+                {{ r.status }}
+              </span>
+            </td>
+            <td class="text-end">
+
+              {# ===== Contrato: ver / (sem botão de download) / assinar ===== #}
+              <a class="btn btn-sm btn-outline-secondary me-2"
+                 href="{{ url_for('public.view_contract', tenant_slug=g.tenant.slug, reserva_id=rid) }}"
+                 target="_blank"
+                 data-bs-toggle="tooltip" title="Ver contrato">
+                <i class="bi bi-file-earmark-pdf"></i>
+              </a>
+
+              {# REMOVIDO: botão de baixar contrato assinado #}
+              {% if not signed %}
+                <a class="btn btn-sm btn-outline-success me-2"
+                   href="{{ url_for('public.sign_contract', tenant_slug=g.tenant.slug, reserva_id=rid) }}"
+                   target="_blank"
+                   data-bs-toggle="tooltip" title="Assinar contrato">
+                  <i class="bi bi-pencil"></i>
+                </a>
+              {% endif %}
+
+              {# ===== Ações de cobrança de saldo (WhatsApp / copiar) — oculto quando confirmado ===== #}
+              {% if status_key != 'confirmed' %}
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-success me-1"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Enviar saldo (WhatsApp)"
+                  data-action="balance-link"
+                  data-kind="whatsapp"
+                  data-rid="{{ rid }}"
+                  data-phone="{{ r.phone or '' }}">
+                  <i class="bi bi-whatsapp"></i>
+                </button>
+
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary me-2"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Copiar link do saldo"
+                  data-action="balance-link"
+                  data-kind="copy"
+                  data-rid="{{ rid }}"
+                  data-phone="{{ r.phone or '' }}">
+                  <i class="bi bi-link-45deg"></i>
+                </button>
+              {% endif %}
+
+              {# ===== Outras ações padrão ===== #}
+              {% if status_key == 'pending' %}
+              <form class="d-inline" method="post" action="{{ url_for('admin.reservation_confirm', tenant_slug=g.tenant.slug, reservation_id=rid) }}">
+                <button class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Confirmar">
+                  <i class="bi bi-check2-circle"></i>
+                </button>
+              </form>
+              {% endif %}
+              {% if status_key not in ['cancelled','canceled'] %}
+              <form class="d-inline" method="post" action="{{ url_for('admin.reservation_cancel', tenant_slug=g.tenant.slug, reservation_id=rid) }}">
+                <button class="btn btn-sm btn-outline-warning" data-bs-toggle="tooltip" title="Cancelar">
+                  <i class="bi bi-x-circle"></i>
+                </button>
+              </form>
+              {% endif %}
+              <form class="d-inline" method="post" action="{{ url_for('admin.reservation_delete', tenant_slug=g.tenant.slug, reservation_id=rid) }}" onsubmit="return confirm('Excluir esta reserva?')">
+                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Excluir">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8" class="text-center text-muted py-4">Nenhuma reserva encontrada.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# --- JS: gera o link de SALDO via JSON e copia / abre WhatsApp --- #}
+<script>
+try {
+  (function () {
+    // --- tooltips (não deixa quebrar se bootstrap não existir) ---
+    try {
+      const tts = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      tts.forEach(el => window.bootstrap && new bootstrap.Tooltip(el));
+    } catch (_) {}
+
+    // --- utils ---
+    function digits(s) { return (s || '').replace(/\D+/g, ''); }
+
+    async function fetchBalanceLink(rid) {
+      // Precisa responder JSON: { ok: true, link: "https://..." }
+      const urlBase = "{{ url_for('public.checkout_pay_link', tenant_slug=g.tenant.slug, reservation_id=0) }}";
+      const url = urlBase.replace('/0/', `/${rid}/`) + "?mode=balance&return=1";
+      console.debug("[reservations] POST", url);
+      const res = await fetch(url, { method: "POST" });
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      if (!res.ok || !data.ok || !data.link) {
+        console.error("Falha ao gerar link do saldo:", res.status, data);
+        throw new Error(data.error || "Não foi possível gerar o link de pagamento.");
+      }
+      return data.link;
+    }
+
+    async function copyToClipboard(text) {
+      try {
+        // navigator.clipboard só funciona em contexto seguro (https ou localhost)
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch (_) {}
+      // fallback
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch (_) { return false; }
+    }
+
+    // --- handlers dos botões ---
+    document.querySelectorAll('[data-action="balance-link"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const rid   = btn.dataset.rid;
+        const kind  = btn.dataset.kind;    // "copy" | "whatsapp"
+        const phone = digits(btn.dataset.phone);
+        console.debug("[reservations] click", { rid, kind, phone });
+
+        btn.disabled = true;
+
+        // Pré-abre janela para evitar bloqueio de popup
+        let prewin = null;
+        if (kind === 'whatsapp') {
+  // sem noopener/noreferrer para podermos controlar a janela
+        prewin = window.open('', '_blank');
+        if (prewin && !prewin.closed) {
+          prewin.document.write('<!doctype html><title>Abrindo WhatsApp…</title><p style="font:14px sans-serif">Aguarde, abrindo WhatsApp…</p>');
+          prewin.document.close();
+        }
+      }
+
+        try {
+          const link = await fetchBalanceLink(rid);
+          console.debug("[reservations] link recebido:", link);
+
+          if (kind === 'copy') {
+            const ok = await copyToClipboard(link);
+            if (!ok) throw new Error("Não consegui copiar para a área de transferência.");
+            // feedback rápido
+            btn.classList.remove('btn-outline-secondary'); btn.classList.add('btn-secondary');
+            setTimeout(() => {
+              btn.classList.add('btn-outline-secondary'); btn.classList.remove('btn-secondary');
+            }, 900);
+          } else {
+            const msg = encodeURIComponent(`Olá! Para concluir sua reserva #${rid}, pague o saldo neste link:\n${link}`);
+            const wa  = phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
+            console.debug("[reservations] abrindo WhatsApp:", wa);
+            if (prewin && !prewin.closed) {
+              prewin.location = wa;
+            } else {
+              window.location.href = wa;
+            }
+          }
+        } catch (err) {
+          console.error("[reservations] erro:", err);
+          if (prewin && !prewin.closed) prewin.close();
+          alert(err.message || "Falha ao processar ação.");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    console.log("[reservations] ações de saldo prontas");
+  })();
+} catch (e) {
+  console.error("Erro no script de reservas:", e);
+}
+</script>
+
+
+{% endblock %}

@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      @page { size: A4; margin: 16mm 14mm; }
+      body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; font-size: 12px; color:#111; }
+      h1 { font-size: 18px; margin: 0 0 8px; }
+      h2 { font-size: 14px; margin: 14px 0 6px; }
+      .box { border:1px solid #ddd; border-radius:6px; padding:10px 12px; }
+      .muted { color:#666; font-size: 11px; }
+      .row { display:flex; gap:12px; }
+      .col { flex:1; }
+      img { max-width:100%; height:auto; }
+      .kv td { padding:4px 6px; border-bottom:1px solid #eee; vertical-align: top; }
+      .kv td.k { width:140px; color:#555; }
+    </style>
+  </head>
+  <body>
+    <h1>Checklist de {{ checklist.stage|capitalize }} – Reserva #{{ reservation.id }}</h1>
+    <div class="muted">{{ g.tenant.name }} — emitido em {{ (checklist.signed_at or checklist.created_at).strftime('%d/%m/%Y %H:%M') if (checklist.signed_at or checklist.created_at) else '' }}</div>
+
+    <h2>Dados principais</h2>
+    <table class="kv" width="100%" cellspacing="0" cellpadding="0">
+      <tr><td class="k">Cliente</td><td>{{ checklist.customer_name }}</td></tr>
+      <tr><td class="k">E-mail</td><td>{{ checklist.customer_email or '—' }}</td></tr>
+      <tr><td class="k">Operador</td><td>{{ checklist.operator_name or '—' }}</td></tr>
+      <tr><td class="k">Veículo</td><td>{{ reservation.vehicle.plate if reservation.vehicle else (reservation.vehicle_plate or reservation.placa or '—') }}</td></tr>
+      <tr><td class="k">Combustível</td><td>{{ checklist.fuel_level }}%</td></tr>
+      <tr><td class="k">Hodômetro</td><td>{{ checklist.odometer }}</td></tr>
+    </table>
+
+    <h2>Zonas marcadas</h2>
+    {% if car_map_path %}
+      <div class="box"><img src="{{ absolute_url(car_map_path) }}"></div>
+    {% else %}
+      <div class="muted">Nenhuma marcação.</div>
+    {% endif %}
+
+    {% if checklist.signature_path %}
+      <h2>Assinatura do Cliente</h2>
+      <div class="box"><img src="{{ absolute_url(checklist.signature_path) }}" style="max-width:420px"></div>
+    {% endif %}
+
+    {% if checklist.notes_ext %}
+      <h2>Observações Externas</h2>
+      <div class="box">{{ checklist.notes_ext|e }}</div>
+    {% endif %}
+    {% if checklist.notes_int %}
+      <h2>Observações Internas</h2>
+      <div class="box">{{ checklist.notes_int|e }}</div>
+    {% endif %}
+  </body>
+</html>

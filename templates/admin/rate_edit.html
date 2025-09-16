@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Editar Tarifa</h3>
+  <a href="{{ url_for('admin.rates') }}" class="btn btn-outline-secondary">Voltar</a>
+</div>
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label">Categoria</label>
+        <select name="category_id" class="form-select" required>
+          {% for c in categories %}
+            <option value="{{ c.id }}" {% if c.id == rate.category_id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Diária</label>
+        <input type="number" step="0.01" name="daily_rate" class="form-control" value="{{ rate.daily_rate }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Moeda</label>
+        <input type="text" name="currency" class="form-control" value="{{ rate.currency }}">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Idade Mínima</label>
+        <input type="number" name="min_age" class="form-control" value="{{ rate.min_age }}">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Caução</label>
+        <input type="number" step="0.01" name="deposit_amount" class="form-control" value="{{ rate.deposit_amount }}">
+      </div>
+      <button class="btn btn-primary">Salvar alterações</button>
+      <a href="{{ url_for('admin.rates') }}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

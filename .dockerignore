@@ -1,0 +1,13 @@
+﻿.git
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.antenv
+antenv
+node_modules
+*.log
+
+
+

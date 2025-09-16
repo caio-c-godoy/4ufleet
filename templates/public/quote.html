@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h3 class="mb-3">Orçamento Gerado</h3>
+        <p>Obrigado, <strong>{{ reservation.customer_name }}</strong>! Recebemos sua solicitação.</p>
+        <ul class="list-group mb-3">
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Categoria</span><strong>{{ reservation.category.name }}</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Período</span><strong>{{ reservation.pickup_dt.strftime('%Y-%m-%d %H:%M') }} → {{ reservation.dropoff_dt.strftime('%Y-%m-%d %H:%M') }} ({{ days }} dia(s))</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Tarifa diária</span><strong>{{ rate.currency }} {{ '%.2f'|format(rate.daily_rate) }}</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Total estimado</span><strong>{{ rate.currency }} {{ '%.2f'|format(reservation.total_price) }}</strong>
+          </li>
+        </ul>
+        <div class="alert alert-info">
+          Status: <strong>{{ reservation.status }}</strong>. Entraremos em contato em breve para confirmar a reserva.
+        </div>
+        <a class="btn btn-outline-primary" href="{{ url_for('public.booking_form') }}">Nova cotação</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

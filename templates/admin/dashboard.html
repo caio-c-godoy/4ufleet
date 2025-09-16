@@ -1,0 +1,100 @@
+
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-4">Dashboard</h3>
+
+<div class="row g-3">
+  <div class="col-12 col-md-4">
+    <div class="card card-kpi shadow-sm"><div class="text-center p-4">
+      <div class="fs-1">{{ totals.vehicles }}</div>
+      <div class="text-muted">Veículos</div>
+    </div></div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card card-kpi shadow-sm"><div class="text-center p-4">
+      <div class="fs-1">{{ totals.categories }}</div>
+      <div class="text-muted">Categorias</div>
+    </div></div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card card-kpi shadow-sm"><div class="text-center p-4">
+      <div class="fs-1">{{ totals.reservations }}</div>
+      <div class="text-muted">Reservas</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Faturamento semanal</h6>
+        <div class="chart-block"><canvas id="chartRevenue"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Locações por dia (semana)</h6>
+        <div class="chart-block"><canvas id="chartRentals"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Carros mais locados</h6>
+        <div class="chart-block"><canvas id="chartTopCars"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Categorias mais locadas</h6>
+        <div class="chart-block"><canvas id="chartTopCats"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(async function(){
+  const baseUrl = "{{ url_for('admin.dashboard_data', tenant_slug=tenant.slug) }}";
+  const data = await fetch(baseUrl + "?_=" + Date.now(), { cache: "no-store" })
+                    .then(r => r.json());
+
+  const currency = data.currency || 'USD';
+  const fmtMoney = v => new Intl.NumberFormat('en-US',{style:'currency',currency}).format(v);
+
+  new Chart(document.getElementById('chartRevenue').getContext('2d'), {
+    type:'line',
+    data:{ labels:data.revenue_week.labels, datasets:[{ label:'Faturamento', data:data.revenue_week.data, tension:.3 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:(ctx)=> fmtMoney(ctx.parsed.y)} }}, scales:{ y:{ beginAtZero:true, ticks:{ callback:(v)=> fmtMoney(v)} } } }
+  });
+
+  new Chart(document.getElementById('chartRentals').getContext('2d'), {
+    type:'bar',
+    data:{ labels:data.rentals_week.labels, datasets:[{ label:'Locações', data:data.rentals_week.data }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false }}, scales:{ y:{ beginAtZero:true, precision:0 } } }
+  });
+
+  new Chart(document.getElementById('chartTopCars').getContext('2d'), {
+    type:'bar',
+    data:{ labels:data.top_cars.labels, datasets:[{ label:'Locações', data:data.top_cars.data }]},
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{ display:false }}, scales:{ x:{ beginAtZero:true, precision:0 } } }
+  });
+
+  new Chart(document.getElementById('chartTopCats').getContext('2d'), {
+    type:'doughnut',
+    data:{ labels:data.top_categories.labels, datasets:[{ label:'Locações', data:data.top_categories.data }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+  });
+})();
+</script>
+
+{% endblock %}

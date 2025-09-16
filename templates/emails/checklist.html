@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+  <body style="font-family: Arial, sans-serif; color:#111;">
+    <h2>Checklist de {{ checklist.stage|capitalize }} — Reserva #{{ reservation.id }}</h2>
+    <p>Olá {{ checklist.customer_name }},</p>
+    <p>Segue o resumo do checklist de <strong>{{ checklist.stage }}</strong> do veículo {{ reservation.vehicle.plate if reservation.vehicle else '' }}.</p>
+
+    <h3>Resumo</h3>
+    <ul>
+      <li>Combustível: {{ checklist.fuel_level }}%</li>
+      <li>Hodômetro: {{ checklist.odometer }}</li>
+      <li>Operador: {{ checklist.operator_name }}</li>
+      <li>Data: {{ checklist.signed_at.strftime('%d/%m/%Y %H:%M') if checklist.signed_at else '' }}</li>
+    </ul>
+
+    <h3>Zonas marcadas</h3>
+    {% if car_map_path %}
+      <p><img src="{{ request.url_root.rstrip('/') }}{{ car_map_path }}" alt="Mapa de danos" style="max-width:100%;height:auto;border:1px solid #ddd"></p>
+    {% endif %}
+
+    {% if checklist.signature_path %}
+      <h3>Assinatura</h3>
+      <p><img src="{{ request.url_root.rstrip('/') }}{{ checklist.signature_path }}" alt="Assinatura" style="max-width:400px;height:auto;border:1px solid #ddd"></p>
+    {% endif %}
+
+    {% if checklist.notes_ext %}
+      <h3>Observações Externas</h3>
+      <p>{{ checklist.notes_ext|e }}</p>
+    {% endif %}
+    {% if checklist.notes_int %}
+      <h3>Observações Internas</h3>
+      <p>{{ checklist.notes_int|e }}</p>
+    {% endif %}
+
+    <p style="margin-top:24px; font-size:12px; color:#666;">Este e-mail foi enviado automaticamente por {{ g.tenant.name }}.</p>
+  </body>
+</html>

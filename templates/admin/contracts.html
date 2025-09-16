@@ -1,0 +1,56 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<h2>Contratos</h2>
+
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>ID</th>
+        <th>Reserva</th>
+        <th>Cliente</th>
+        <th>Email</th>
+        <th>Veículo</th>
+        <th>Data</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in contratos %}
+      <tr>
+        <td>{{ c.id }}</td>
+        <td>#{{ c.reserva_id }}</td>
+        <td>{{ c.cliente }}</td>
+        <td>{{ c.email }}</td>
+        <td>{{ c.veiculo }}</td>
+        <td>{{ c.signed_at }}</td>
+        <td>
+          {% if c.signature_type and c.signature_type != "generated" %}
+            <span class="badge bg-success">Assinado</span>
+          {% else %}
+            <span class="badge bg-secondary">Pendente</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="btn-group btn-group-sm" role="group">
+            <a href="{{ url_for('admin.view_contract', contrato_id=c.id, tenant_slug=g.tenant.slug) }}"
+               target="_blank" class="btn btn-outline-secondary">
+              📄 Contrato
+            </a>
+            <a href="{{ url_for('admin.view_contract_signature', contrato_id=c.id, tenant_slug=g.tenant.slug) }}"
+               target="_blank" class="btn btn-outline-success">
+              ✍️ Assinatura
+            </a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" class="text-center text-muted">Nenhum contrato encontrado.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

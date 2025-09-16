@@ -1,0 +1,39 @@
+{% extends "superadmin/base.html" %}
+
+{# opcional: esconde topo global sem mudar a rota #}
+{% set hide_chrome = true %}
+
+{% block page_title %}Entrar como Superadmin{% endblock %}
+
+{% block extra_head %}
+  {{ super() }}
+  <style>
+    /* no login, o logo fica AINDA maior */
+    .ff-logo{
+      height: clamp(72px, 10vw, 140px);
+      filter: drop-shadow(0 6px 20px rgba(13,110,253,.18));
+    }
+  </style>
+{% endblock %}
+
+{% block page_actions %}{% endblock %}
+
+{% block page_content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="ff-card p-4">
+      <form method="post" action="{{ url_for('superadmin.login_post') }}">
+        <div class="mb-3">
+          <label class="form-label">E-mail</label>
+          <input type="email" class="form-control" name="email" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Senha</label>
+          <input type="password" class="form-control" name="password" required>
+        </div>
+        <button class="btn btn-primary w-100">Entrar</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

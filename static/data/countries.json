@@ -1,0 +1,17 @@
+[
+  {"code":"BR","name":"Brasil"},
+  {"code":"US","name":"Estados Unidos"},
+  {"code":"PT","name":"Portugal"},
+  {"code":"AR","name":"Argentina"},
+  {"code":"CL","name":"Chile"},
+  {"code":"PY","name":"Paraguai"},
+  {"code":"UY","name":"Uruguai"},
+  {"code":"MX","name":"México"},
+  {"code":"ES","name":"Espanha"},
+  {"code":"FR","name":"França"},
+  {"code":"IT","name":"Itália"},
+  {"code":"DE","name":"Alemanha"},
+  {"code":"GB","name":"Reino Unido"},
+  {"code":"CA","name":"Canadá"},
+  {"code":"JP","name":"Japão"}
+]

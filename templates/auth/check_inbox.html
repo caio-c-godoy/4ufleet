@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Verifique seu e-mail{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-start" style="min-height:60vh">
+  <div class="col-12" style="max-width:640px">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          {% if tenant and tenant.logo_url %}
+            <img src="{{ tenant.logo_url }}" alt="" style="height:28px">
+          {% endif %}
+          <h4 class="mb-0">Quase lá! ✉️</h4>
+        </div>
+        <p class="text-muted">Enviamos um e-mail de <b>boas-vindas</b> para <code>{{ email }}</code> com um link de confirmação.</p>
+        <ol class="text-muted mb-3">
+          <li>Abra sua caixa de entrada (e a pasta de spam, se necessário).</li>
+          <li>Clique em <b>Confirmar e-mail</b>.</li>
+          <li>Depois, volte aqui e faça login normalmente.</li>
+        </ol>
+
+        <div class="d-flex gap-2">
+          <a class="btn btn-primary" href="{{ url_for('auth.login', tenant_slug=tenant.slug) }}">Ir para o login</a>
+          <button class="btn btn-outline-secondary" id="btnResend">Reenviar confirmação</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('btnResend')?.addEventListener('click', async () => {
+  try {
+    const res = await fetch("{{ url_for('auth.resend_confirmation', tenant_slug=tenant.slug) }}", {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({email: "{{ email }}"})
+    });
+    const data = await res.json();
+    if (data.ok) alert('Reenviamos o link de confirmação.');
+    else alert(data.error || 'Não foi possível reenviar agora.');
+  } catch(e) {
+    alert('Não foi possível reenviar agora.');
+  }
+});
+</script>
+{% endblock %}

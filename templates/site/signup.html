@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Criar ambiente da sua locadora — 4uFleet{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root{
+    --ff-primary:#0d6efd;
+    --ff-ink:#1f2937;
+    --ff-muted:#6b7280;
+  }
+
+  /* --- HERO, mesma vibe da landing --- */
+  .su-hero{
+    padding:72px 0 24px;
+    background:
+      radial-gradient(1100px 520px at 20% -10%, rgba(13,110,253,.22), transparent 60%),
+      linear-gradient(180deg, #0d6efd10, transparent 60%),
+      linear-gradient(180deg, #f8fafc, #ffffff 30%);
+  }
+  .su-logo{ height: clamp(72px, 11vw, 120px); filter: drop-shadow(0 6px 22px rgba(13,110,253,.18)); }
+  .su-sub{ color:var(--ff-muted); }
+  .su-kicker{
+    display:inline-flex; gap:8px; align-items:center;
+    padding:6px 12px; border:1px solid #cfe2ff; border-radius:999px;
+    background:#e7f1ff; color:#0a58ca; font-weight:600; font-size:12px;
+  }
+
+  /* --- Card “glass” --- */
+  .su-card{
+    border:1px solid rgba(229,231,235,.9);
+    background:rgba(255,255,255,.86);
+    backdrop-filter: blur(10px);
+    border-radius:18px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.06);
+  }
+
+  .form-text{ color:var(--ff-muted); }
+  .form-label.text-nowrap{ white-space: nowrap; }
+
+  /* Botão mostrar/ocultar sob o input */
+  .toggle-pwd-bottom{
+    display:inline-block;
+    margin-top:.25rem;
+    padding:0;
+    font-size:.85rem;
+  }
+  .toggle-pwd-bottom.btn-link{
+    color:var(--ff-primary);
+    text-decoration:underline;
+  }
+  .toggle-pwd-bottom:focus{ box-shadow:none; }
+
+  /* Prévia do logo */
+  #logoPreview{ max-height:56px; display:none; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% set BRAND = config.get('PUBLIC_BRAND', '4uFleet') %}
+
+<section class="su-hero">
+  <div class="container">
+    <div class="text-center">
+      <img class="su-logo" src="{{ url_for('static', filename='img/4ufleet-logo.png') }}"
+           srcset="{{ url_for('static', filename='img/4ufleet-logo.png') }} 1x, {{ url_for('static', filename='img/4ufleet-logo@2x.png') }} 2x"
+           alt="{{ BRAND }}">
+      <div class="mt-2 su-sub">Crie seu ambiente em minutos — sem mensalidade.</div>
+      <div class="mt-3 su-kicker"><i class="bi bi-lightning-charge-fill"></i> Ativação imediata</div>
+    </div>
+
+    <div class="row justify-content-center mt-4">
+      <div class="col-lg-7 col-xl-6">
+        <div class="su-card p-4 p-lg-5">
+          <h1 class="h4 mb-3 text-center">Criar conta da locadora</h1>
+
+          <form method="post"
+                action="{{ url_for('site.signup_submit') }}"
+                enctype="multipart/form-data"
+                class="row g-3">
+
+            <!-- Nome -->
+            <div class="col-12">
+              <label class="form-label">Nome da locadora</label>
+              <input type="text"
+                     name="company_name"
+                     class="form-control"
+                     required
+                     placeholder="Ex.: Locadora XPTO"
+                     value="{{ request.args.get('name','') }}">
+              <div class="form-text">
+                Usaremos este nome no topo e para gerar o endereço do seu ambiente.
+                <span id="slugPreview" class="ms-1"></span>
+              </div>
+            </div>
+
+            <!-- Logo -->
+            <div class="col-12">
+              <label class="form-label">Logotipo (opcional)</label>
+              <input type="file" name="logo_file" class="form-control" accept=".png,.jpg,.jpeg,.webp,.svg">
+              <div class="d-flex align-items-center gap-3 mt-2">
+                <img id="logoPreview" class="rounded border p-1" alt="Prévia do logotipo">
+                <div class="form-text">PNG/JPG/WebP/SVG — exibido no topo do painel.</div>
+              </div>
+            </div>
+
+            <!-- E-mail + Senhas -->
+<div class="row g-3 align-items-start">
+  <div class="col-md-6 d-flex flex-column">
+    <label class="form-label">E-mail do administrador</label>
+
+    <!-- anti-autofill (opcional) -->
+    <input type="text" style="display:none" autocomplete="username">
+    <input type="password" style="display:none" autocomplete="new-password">
+
+    <input type="email" name="email" class="form-control" required
+           placeholder="seu@dominio.com"
+           value="{{ request.args.get('email') or '' }}"
+           autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="email">
+  </div>
+
+  <div class="col-md-3 d-flex flex-column">
+    <label class="form-label text-nowrap">Senha</label>
+    <input type="password" name="password" id="pwd" class="form-control"
+           minlength="6" required autocomplete="new-password">
+    <button type="button" class="btn btn-link toggle-pwd-bottom mt-1" data-target="#pwd">mostrar</button>
+  </div>
+
+  <div class="col-md-3 d-flex flex-column">
+    <label class="form-label text-nowrap">Confirmar senha</label>
+    <input type="password" name="password2" id="pwd2" class="form-control"
+           minlength="6" required autocomplete="new-password">
+    <button type="button" class="btn btn-link toggle-pwd-bottom mt-1" data-target="#pwd2">mostrar</button>
+  </div>
+</div>
+
+
+            <!-- Termos -->
+            <div class="col-12 form-check mt-2">
+              <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
+              <label class="form-check-label" for="terms">
+                Li e aceito os <a href="{{ url_for('site.terms') }}" target="_blank">Termos de Uso</a> e a
+                <a href="{{ url_for('site.privacy') }}" target="_blank">Política de Privacidade</a>.
+              </label>
+            </div>
+
+            <!-- CTA -->
+            <div class="col-12 mt-1">
+              <button class="btn btn-primary w-100 btn-lg">
+                <i class="bi bi-rocket-takeoff me-1"></i> Criar meu ambiente
+              </button>
+              <div class="text-center form-text mt-2">Sem cartão de crédito • Configuração guiada</div>
+            </div>
+          </form>
+
+          <!-- Social proof -->
+          <div class="text-center mt-4">
+            <span class="text-muted small">Confiado por locadoras independentes</span>
+            <div class="d-flex justify-content-center flex-wrap gap-4 mt-2 opacity-75">
+              <img src="{{ url_for('static', filename='img/brand1.png') }}" alt="" height="22">
+              <img src="{{ url_for('static', filename='img/brand2.png') }}" alt="" height="22">
+              <img src="{{ url_for('static', filename='img/brand3.png') }}" alt="" height="22">
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Pré-visualização do logotipo
+  (function(){
+    const input = document.querySelector('input[name="logo_file"]');
+    const img   = document.getElementById('logoPreview');
+    input?.addEventListener('change', (e)=>{
+      const f = e.target.files?.[0];
+      if(!f){ img.style.display='none'; return; }
+      const ok = ['image/png','image/jpeg','image/webp','image/svg+xml'].includes(f.type);
+      if(!ok) { img.style.display='none'; return; }
+      img.src = URL.createObjectURL(f);
+      img.style.display = 'block';
+    });
+  })();
+
+  // Slug preview do nome
+  (function(){
+    const nameInput = document.querySelector('input[name="company_name"]');
+    const out = document.getElementById('slugPreview');
+    const slugify = s => (s||'')
+      .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'')
+      .replace(/-{2,}/g,'-').toLowerCase();
+    const render = () => {
+      const slug = slugify(nameInput.value);
+      out.textContent = slug ? `endereço sugerido: /${slug}` : '';
+    };
+    nameInput?.addEventListener('input', render);
+    render();
+  })();
+
+  // Mostrar/ocultar senha (genérico)
+  document.querySelectorAll('.toggle-pwd-bottom').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.querySelector(btn.dataset.target);
+      if(!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'ocultar' : 'mostrar';
+      input.focus();
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Entrar{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 520px">
+  <div class="card shadow-sm">
+    <div class="card-body p-4">
+
+      <h4 class="mb-3">Entrar</h4>
+
+      {% if pending_confirmation %}
+        <div class="alert alert-warning d-flex justify-content-between align-items-center">
+          <div>Seu e-mail ainda não foi confirmado.</div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnResendConfirm">
+            Reenviar link
+          </button>
+        </div>
+      {% endif %}
+
+      <form method="post" id="loginForm" novalidate>
+        <div class="mb-3">
+          <label class="form-label" for="emailInput">E-mail</label>
+          <input id="emailInput" type="email" class="form-control"
+                 name="email" value="{{ email or '' }}" autocomplete="email" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="passwordInput">Senha</label>
+          <input id="passwordInput" type="password" class="form-control"
+                 name="password" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Entrar</button>
+      </form>
+
+      <div class="small text-muted mt-3 text-center">
+        Ambiente: <b>{{ tenant.name if tenant else '-' }}</b>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if pending_confirmation %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('btnResendConfirm');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    const email = document.querySelector('input[name="email"]')?.value?.trim();
+    if (!email) { alert('Informe seu e-mail no campo acima para reenviar o link.'); return; }
+
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Enviando...';
+
+    try {
+      const res = await fetch("{{ url_for('auth.resend_confirmation', tenant_slug=tenant.slug) }}", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'email=' + encodeURIComponent(email)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        alert(data.already ? 'Seu e-mail já está confirmado.' : 'Reenviamos o link de confirmação.');
+      } else {
+        alert((data && data.error) || 'Não foi possível reenviar agora.');
+      }
+    } catch {
+      alert('Falha de rede ao reenviar.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  });
+});
+</script>
+
+{% endif %}
+{% endblock %}

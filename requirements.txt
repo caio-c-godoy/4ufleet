@@ -1,0 +1,29 @@
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+Flask-Login==0.6.3
+SQLAlchemy>=2.0.36,<3.0
+psycopg[binary]>=3.2,<4
+python-dotenv==1.0.1
+requests==2.32.3
+gunicorn==23.0.0
+
+# PDF / Contratos
+WeasyPrint==61.2
+
+# Dependências que o WeasyPrint usa
+cffi>=1.15.1
+pycparser
+tinycss2>=1.2.1
+cssselect2>=0.7.0
+pillow>=10.0.0
+pydyf>=0.11.0
+pyphen>=0.14.0
+fonttools>=4.50.0
+reportlab
+PyPDF2
+azure-identity
+azure-keyvault-secrets
+python-dotenv
+Pillow>=10.4.0
+WeasyPrint>=61.0

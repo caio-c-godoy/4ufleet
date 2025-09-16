@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}CRM / Leads{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">CRM / Leads</h3>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.dashboard') }}">Voltar</a>
+</div>
+
+<form class="row g-2 mb-3" method="get" action="{{ url_for('admin.leads') }}">
+  <div class="col-12 col-md-6">
+    <input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por nome, e-mail, telefone ou aeroporto">
+  </div>
+  <div class="col-6 col-md-3">
+    <select class="form-select" name="stage">
+      <option value="">Todos os estágios</option>
+      {% for st in ['new','contacted','converted','closed'] %}
+        <option value="{{ st }}" {{ 'selected' if stage==st else '' }}>
+          {{ {'new':'Novo','contacted':'Contactado','converted':'Convertido','closed':'Fechado'}[st] }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-3 d-grid">
+    <button class="btn btn-primary">Filtrar</button>
+  </div>
+</form>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="table-responsive-md">
+        <table class="table align-middle crm-table">
+        <thead>
+        <tr>
+            <th class="col-when">Quando</th>
+            <th class="col-contact">Contato</th>
+            <th class="col-itin">Itinerário</th>
+            <th class="col-stage">Estágio</th>
+            <th class="col-actions text-end">Ações</th>
+        </tr>
+        </thead>
+
+        <tbody>
+          {% for lead in pager.items %}
+          <tr id="lead-{{ lead.id }}">
+            <td class="text-muted small">
+              {{ lead.created_at.strftime('%Y-%m-%d %H:%M') if lead.created_at else '-' }}
+            </td>
+            <td>
+              <div class="fw-semibold">{{ lead.name or '—' }}</div>
+              <div class="small text-muted">
+                {% if lead.email %}<i class="bi bi-envelope me-1"></i>{{ lead.email }}{% endif %}
+                {% if lead.phone %}<span class="ms-3"><i class="bi bi-telephone me-1"></i>{{ lead.phone }}</span>{% endif %}
+              </div>
+            </td>
+            <td class="small">
+              <div>
+                <i class="bi bi-airplane me-1"></i>{{ lead.pickup_airport or '—' }}
+                <i class="bi bi-arrow-right mx-2"></i>
+                {{ lead.dropoff_airport or '—' }}
+              </div>
+              <div class="text-muted">
+                {% if lead.pickup_dt %}{{ lead.pickup_dt.strftime('%d/%m %H:%M') }}{% else %}—{% endif %}
+                &nbsp;→&nbsp;
+                {% if lead.dropoff_dt %}{{ lead.dropoff_dt.strftime('%d/%m %H:%M') }}{% else %}—{% endif %}
+              </div>
+            </td>
+            <td>
+              <div class="dropdown">
+                <button class="btn btn-sm btn-outline-{{ lead.stage_badge() }} dropdown-toggle" data-bs-toggle="dropdown">
+                  {{ {'new':'Novo','contacted':'Contactado','converted':'Convertido','closed':'Fechado'}[lead.stage or 'new'] }}
+                </button>
+                <ul class="dropdown-menu">
+                  {% for st in ['new','contacted','converted','closed'] %}
+                    <li>
+                      <a href="#" class="dropdown-item lead-stage"
+                         data-id="{{ lead.id }}" data-stage="{{ st }}">
+                        {{ {'new':'Novo','contactado':'Contactado','contacted':'Contactado','converted':'Convertido','closed':'Fechado'}[st] }}
+                      </a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-danger lead-del" data-id="{{ lead.id }}" title="Excluir">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not pager.items %}
+          <tr><td colspan="5" class="text-center text-muted py-4">Sem leads ainda.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- paginação -->
+    {% if pager.pages > 1 %}
+    <nav aria-label="Leads pagination">
+      <ul class="pagination mb-0">
+        <li class="page-item {% if not pager.has_prev %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('admin.leads', page=pager.prev_num, q=q, stage=stage) }}">Anterior</a>
+        </li>
+        {% for p in pager.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if p %}
+            <li class="page-item {% if p==pager.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('admin.leads', page=p, q=q, stage=stage) }}">{{ p }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+        <li class="page-item {% if not pager.has_next %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('admin.leads', page=pager.next_num, q=q, stage=stage) }}">Próxima</a>
+        </li>
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('click', async (ev) => {
+  const stageBtn = ev.target.closest('.lead-stage');
+  if (stageBtn) {
+    ev.preventDefault();
+    const id = stageBtn.dataset.id;
+    const stage = stageBtn.dataset.stage;
+    const form = new FormData();
+    form.append('stage', stage);
+    const res = await fetch(`{{ url_for('admin.lead_change_stage', lead_id=0) }}`.replace('/0/','/'+id+'/'), {
+      method: 'POST',
+      body: form
+    });
+    if (res.ok) location.reload();
+    return;
+  }
+
+  const delBtn = ev.target.closest('.lead-del');
+  if (delBtn) {
+    ev.preventDefault();
+    if (!confirm('Excluir este lead?')) return;
+    const id = delBtn.dataset.id;
+    const res = await fetch(`{{ url_for('admin.lead_delete', lead_id=0) }}`.replace('/0','/'+id), { method: 'POST' });
+    if (res.ok) document.getElementById('lead-'+id)?.remove();
+  }
+});
+</script>
+{% endblock %}

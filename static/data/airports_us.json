@@ -1,0 +1,374 @@
+[
+  {
+    "code": "ATL",
+    "name": "Hartsfield–Jackson Atlanta Intl",
+    "city": "Atlanta",
+    "state": "GA"
+  },
+  {
+    "code": "DFW",
+    "name": "Dallas/Fort Worth Intl",
+    "city": "Dallas-Fort Worth",
+    "state": "TX"
+  },
+  {
+    "code": "DEN",
+    "name": "Denver Intl",
+    "city": "Denver",
+    "state": "CO"
+  },
+  {
+    "code": "ORD",
+    "name": "O'Hare Intl",
+    "city": "Chicago",
+    "state": "IL"
+  },
+  {
+    "code": "LAX",
+    "name": "Los Angeles Intl",
+    "city": "Los Angeles",
+    "state": "CA"
+  },
+  {
+    "code": "MCO",
+    "name": "Orlando Intl",
+    "city": "Orlando",
+    "state": "FL"
+  },
+  {
+    "code": "LAS",
+    "name": "Harry Reid Intl",
+    "city": "Las Vegas",
+    "state": "NV"
+  },
+  {
+    "code": "CLT",
+    "name": "Charlotte Douglas Intl",
+    "city": "Charlotte",
+    "state": "NC"
+  },
+  {
+    "code": "MIA",
+    "name": "Miami Intl",
+    "city": "Miami",
+    "state": "FL"
+  },
+  {
+    "code": "SEA",
+    "name": "Seattle–Tacoma Intl",
+    "city": "Seattle",
+    "state": "WA"
+  },
+  {
+    "code": "PHX",
+    "name": "Phoenix Sky Harbor Intl",
+    "city": "Phoenix",
+    "state": "AZ"
+  },
+  {
+    "code": "IAH",
+    "name": "George Bush Intercontinental",
+    "city": "Houston",
+    "state": "TX"
+  },
+  {
+    "code": "EWR",
+    "name": "Newark Liberty Intl",
+    "city": "Newark",
+    "state": "NJ"
+  },
+  {
+    "code": "SFO",
+    "name": "San Francisco Intl",
+    "city": "San Francisco",
+    "state": "CA"
+  },
+  {
+    "code": "MSP",
+    "name": "Minneapolis–Saint Paul Intl",
+    "city": "Minneapolis",
+    "state": "MN"
+  },
+  {
+    "code": "DTW",
+    "name": "Detroit Metro Wayne County",
+    "city": "Detroit",
+    "state": "MI"
+  },
+  {
+    "code": "BOS",
+    "name": "Logan Intl",
+    "city": "Boston",
+    "state": "MA"
+  },
+  {
+    "code": "PHL",
+    "name": "Philadelphia Intl",
+    "city": "Philadelphia",
+    "state": "PA"
+  },
+  {
+    "code": "LGA",
+    "name": "LaGuardia",
+    "city": "New York",
+    "state": "NY"
+  },
+  {
+    "code": "JFK",
+    "name": "John F. Kennedy Intl",
+    "city": "New York",
+    "state": "NY"
+  },
+  {
+    "code": "BWI",
+    "name": "Baltimore/Washington Intl",
+    "city": "Baltimore",
+    "state": "MD"
+  },
+  {
+    "code": "SLC",
+    "name": "Salt Lake City Intl",
+    "city": "Salt Lake City",
+    "state": "UT"
+  },
+  {
+    "code": "DCA",
+    "name": "Ronald Reagan Washington National",
+    "city": "Arlington",
+    "state": "VA"
+  },
+  {
+    "code": "IAD",
+    "name": "Dulles Intl",
+    "city": "Dulles",
+    "state": "VA"
+  },
+  {
+    "code": "SAN",
+    "name": "San Diego Intl",
+    "city": "San Diego",
+    "state": "CA"
+  },
+  {
+    "code": "TPA",
+    "name": "Tampa Intl",
+    "city": "Tampa",
+    "state": "FL"
+  },
+  {
+    "code": "FLL",
+    "name": "Fort Lauderdale–Hollywood Intl",
+    "city": "Fort Lauderdale",
+    "state": "FL"
+  },
+  {
+    "code": "AUS",
+    "name": "Austin–Bergstrom Intl",
+    "city": "Austin",
+    "state": "TX"
+  },
+  {
+    "code": "HNL",
+    "name": "Daniel K. Inouye Intl",
+    "city": "Honolulu",
+    "state": "HI"
+  },
+  {
+    "code": "MDW",
+    "name": "Midway Intl",
+    "city": "Chicago",
+    "state": "IL"
+  },
+  {
+    "code": "MKE",
+    "name": "Milwaukee Mitchell Intl",
+    "city": "Milwaukee",
+    "state": "WI"
+  },
+  {
+    "code": "PIT",
+    "name": "Pittsburgh Intl",
+    "city": "Pittsburgh",
+    "state": "PA"
+  },
+  {
+    "code": "RDU",
+    "name": "Raleigh–Durham Intl",
+    "city": "Morrisville",
+    "state": "NC"
+  },
+  {
+    "code": "CMH",
+    "name": "John Glenn Columbus Intl",
+    "city": "Columbus",
+    "state": "OH"
+  },
+  {
+    "code": "STL",
+    "name": "St. Louis Lambert Intl",
+    "city": "St. Louis",
+    "state": "MO"
+  },
+  {
+    "code": "MSY",
+    "name": "Louis Armstrong New Orleans Intl",
+    "city": "New Orleans",
+    "state": "LA"
+  },
+  {
+    "code": "SJC",
+    "name": "Norman Y. Mineta San Jose Intl",
+    "city": "San Jose",
+    "state": "CA"
+  },
+  {
+    "code": "SMF",
+    "name": "Sacramento Intl",
+    "city": "Sacramento",
+    "state": "CA"
+  },
+  {
+    "code": "PDX",
+    "name": "Portland Intl",
+    "city": "Portland",
+    "state": "OR"
+  },
+  {
+    "code": "CLE",
+    "name": "Cleveland Hopkins Intl",
+    "city": "Cleveland",
+    "state": "OH"
+  },
+  {
+    "code": "IND",
+    "name": "Indianapolis Intl",
+    "city": "Indianapolis",
+    "state": "IN"
+  },
+  {
+    "code": "MCI",
+    "name": "Kansas City Intl",
+    "city": "Kansas City",
+    "state": "MO"
+  },
+  {
+    "code": "SNA",
+    "name": "John Wayne",
+    "city": "Santa Ana",
+    "state": "CA"
+  },
+  {
+    "code": "HOU",
+    "name": "William P. Hobby",
+    "city": "Houston",
+    "state": "TX"
+  },
+  {
+    "code": "DAL",
+    "name": "Dallas Love Field",
+    "city": "Dallas",
+    "state": "TX"
+  },
+  {
+    "code": "JAX",
+    "name": "Jacksonville Intl",
+    "city": "Jacksonville",
+    "state": "FL"
+  },
+  {
+    "code": "RSW",
+    "name": "Southwest Florida Intl",
+    "city": "Fort Myers",
+    "state": "FL"
+  },
+  {
+    "code": "OMA",
+    "name": "Eppley Airfield",
+    "city": "Omaha",
+    "state": "NE"
+  },
+  {
+    "code": "PBI",
+    "name": "Palm Beach Intl",
+    "city": "West Palm Beach",
+    "state": "FL"
+  },
+  {
+    "code": "SJU",
+    "name": "Luis Muñoz Marín Intl",
+    "city": "San Juan",
+    "state": "PR"
+  },
+  {
+    "code": "BUF",
+    "name": "Buffalo Niagara Intl",
+    "city": "Buffalo",
+    "state": "NY"
+  },
+  {
+    "code": "ALB",
+    "name": "Albany Intl",
+    "city": "Albany",
+    "state": "NY"
+  },
+  {
+    "code": "BHM",
+    "name": "Birmingham-Shuttlesworth Intl",
+    "city": "Birmingham",
+    "state": "AL"
+  },
+  {
+    "code": "CHS",
+    "name": "Charleston Intl",
+    "city": "Charleston",
+    "state": "SC"
+  },
+  {
+    "code": "OKC",
+    "name": "Will Rogers World",
+    "city": "Oklahoma City",
+    "state": "OK"
+  },
+  {
+    "code": "TUL",
+    "name": "Tulsa Intl",
+    "city": "Tulsa",
+    "state": "OK"
+  },
+  {
+    "code": "PVD",
+    "name": "T. F. Green Intl",
+    "city": "Providence",
+    "state": "RI"
+  },
+  {
+    "code": "BDL",
+    "name": "Bradley Intl",
+    "city": "Hartford",
+    "state": "CT"
+  },
+  {
+    "code": "RNO",
+    "name": "Reno–Tahoe Intl",
+    "city": "Reno",
+    "state": "NV"
+  },
+  {
+    "code": "ELP",
+    "name": "El Paso Intl",
+    "city": "El Paso",
+    "state": "TX"
+  },
+  {
+    "code": "TUS",
+    "name": "Tucson Intl",
+    "city": "Tucson",
+    "state": "AZ"
+  },
+  {
+    "code": "ANC",
+    "name": "Ted Stevens Anchorage Intl",
+    "city": "Anchorage",
+    "state": "AK"
+  }
+]

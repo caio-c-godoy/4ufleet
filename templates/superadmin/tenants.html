@@ -1,0 +1,67 @@
+{% extends "superadmin/base.html" %}
+{% block page_title %}Tenants{% endblock %}
+
+{% block page_actions %}
+  <a class="ff-chip ff-link" href="{{ url_for('superadmin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+{% endblock %}
+
+{% block page_content %}
+<div class="ff-card p-3">
+  <form class="row g-2 align-items-center mb-2" method="get">
+    <div class="col-auto"><input class="form-control" name="q" placeholder="Buscar por nome/slug" value="{{ q or '' }}"></div>
+    <div class="col-auto"><button class="btn btn-primary">Buscar</button></div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr class="text-muted">
+          <th>ID</th>
+          <th>Nome</th>
+          <th>Slug</th>
+          <th>Criado em</th>
+          <th>Últ. atividade</th>
+          <th>Status</th>
+          <th class="text-end">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in rows %}
+        <tr>
+          <td>{{ t.id }}</td>
+          <td>{{ t.name }}</td>
+          <td><code>{{ t.slug }}</code></td>
+          <td>{{ t.created_at.strftime('%d/%m/%Y %H:%M') if t.created_at else '' }}</td>
+          <td>{{ t.last_activity_at.strftime('%d/%m/%Y %H:%M') if t.last_activity_at else '—' }}</td>
+          <td>
+            {% if t.is_blocked %}
+              <span class="badge text-bg-warning">Bloqueado</span>
+            {% else %}
+              <span class="badge text-bg-success">Ativo</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('superadmin.tenant_detail', tenant_id=t.id) }}">Detalhes</a>
+            {% if t.is_blocked %}
+            <form method="post" action="{{ url_for('superadmin.tenant_unblock', tenant_id=t.id) }}" class="d-inline">
+              <button class="btn btn-sm btn-success">Desbloquear</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('superadmin.tenant_block', tenant_id=t.id) }}" class="d-inline">
+              <button class="btn btn-sm btn-warning">Bloquear</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('superadmin.tenant_delete', tenant_id=t.id) }}" class="d-inline"
+                  onsubmit="return confirm('Tem certeza? Isso apaga tudo do tenant.');">
+              <button class="btn btn-sm btn-outline-danger">Excluir</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted">Nenhum tenant encontrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

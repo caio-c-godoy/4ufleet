@@ -1,0 +1,51 @@
+<div class="modal-header">
+  <h5 class="modal-title">Colocar em manutenção</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form id="vehMaintForm" action="{{ url_for('admin.vehicle_maintenance_modal', vehicle_id=vehicle.id) }}" method="post">
+  <div class="modal-body">
+    <div class="mb-2">
+      <div class="text-muted small mb-1">
+        Veículo: <strong>{{ (vehicle.brand ~ ' ') if vehicle.brand else '' }}{{ vehicle.model }}</strong>
+      </div>
+      <label class="form-label">Motivo da manutenção</label>
+      <textarea class="form-control" name="reason" rows="3" placeholder="Ex.: Troca de pastilha de freio" required></textarea>
+    </div>
+    <div class="text-muted small">Ao confirmar, o veículo ficará com status <strong>maintenance</strong>.</div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+    <button class="btn btn-primary">Confirmar</button>
+  </div>
+</form>
+
+<script>
+(() => {
+  const form = document.getElementById('vehMaintForm');
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const btn = form.querySelector('.btn-primary');
+    const label = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = 'Salvando...';
+    try {
+      const res = await fetch(form.action, { method:'POST', body:new FormData(form) });
+      if (!res.ok) {
+        const t = await res.text();
+        alert('Erro: ' + t); return;
+      }
+      const data = await res.json().catch(()=>({}));
+      if (data && data.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('ajaxModal')).hide();
+        location.reload();
+      } else {
+        alert('Falha ao salvar.');
+      }
+    } catch(e) {
+      alert('Falha de rede.');
+    } finally {
+      btn.disabled = false; btn.innerHTML = label;
+    }
+  }, { once:true });
+})();
+</script>

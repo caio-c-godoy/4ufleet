@@ -1,0 +1,91 @@
+<div class="modal-header">
+  <h5 class="modal-title">Editar veículo</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form id="vehicleEditForm"
+      action="{{ url_for('admin.vehicle_edit_modal', vehicle_id=vehicle.id) }}"
+      method="post" enctype="multipart/form-data">
+  <div class="modal-body">
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="form-label">Marca</label>
+        <input name="brand" class="form-control" value="{{ vehicle.brand or '' }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Modelo</label>
+        <input name="model" class="form-control" value="{{ vehicle.model }}" required>
+      </div>
+      <div class="col-6">
+        <label class="form-label">Ano</label>
+        <input type="number" name="year" class="form-control" min="1900" max="2100" value="{{ vehicle.year or '' }}">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Placa</label>
+        <input name="plate" class="form-control" value="{{ vehicle.plate or '' }}">
+      </div>
+      <div class="mb-3">
+      <label class="form-label">Cor</label>
+      <input type="text" class="form-control" name="color" value="{{ vehicle.color or '' }}" placeholder="Ex.: Branco Pérola">
+    </div>
+      <div class="col-12">
+        <label class="form-label">Categoria</label>
+        <select name="category_id" class="form-select">
+          {% for c in categories %}
+          <option value="{{ c.id }}" {{ 'selected' if vehicle.category_id==c.id else '' }}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+          {% set st = vehicle.status or 'available' %}
+          <option value="available" {{ 'selected' if st=='available' else '' }}>available</option>
+          <option value="maintenance" {{ 'selected' if st=='maintenance' else '' }}>maintenance</option>
+          <option value="booked" {{ 'selected' if st=='booked' else '' }}>booked</option>
+        </select>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Nova foto (opcional)</label>
+        <input type="file" name="photo" class="form-control" accept="image/*">
+        {% if vehicle.image_url %}
+        <div class="form-text">Atual: <a href="{{ url_for('static', filename=vehicle.image_url) }}" target="_blank">visualizar</a></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+    <button class="btn btn-primary">Salvar</button>
+  </div>
+</form>
+
+<script>
+(() => {
+  const form = document.getElementById('vehicleEditForm');
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const btn = form.querySelector('button.btn-primary');
+    const label = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = 'Salvando...';
+    try {
+      const res = await fetch(form.action, { method:'POST', body: new FormData(form) });
+      if (!res.ok) {
+        alert('Erro ao salvar.'); return;
+      }
+      const data = await res.json().catch(()=>({}));
+      if (data && data.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('ajaxModal')).hide();
+        location.reload();
+      } else {
+        alert('Falha ao salvar.');
+      }
+    } catch(e) {
+      alert('Falha de rede.');
+    } finally {
+      btn.disabled = false; btn.innerHTML = label;
+    }
+  }, { once:true });
+})();
+</script>

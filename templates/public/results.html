@@ -1,0 +1,171 @@
+{% extends "base_public.html" %}
+{% block title %}Resultados — {{ g.tenant.name if g.tenant else "" }}{% endblock %}
+
+{% macro page_url(n) -%}
+  {{ url_for('public.results',
+             tenant_slug=g.tenant.slug,
+             page=n,
+             per_page=pagination.per_page,
+             pickup_airport=q.pickup_airport,
+             dropoff_airport=q.dropoff_airport,
+             pickup_date=q.pickup_date,
+             pickup_time=q.pickup_time,
+             dropoff_date=q.dropoff_date,
+             dropoff_time=q.dropoff_time,
+             name=q.name, phone=q.phone, email=q.email,
+             min_price=q.min_price, max_price=q.max_price,
+             seats_min=q.seats_min, sort=q.sort,
+             cat=q.cat_ids) }}
+{%- endmacro %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- SIDEBAR DE FILTROS -->
+  <div class="col-12 col-lg-4 col-xl-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Filtros</h5>
+
+        <form id="filtersForm" method="get" action="{{ url_for('public.results', tenant_slug=g.tenant.slug) }}">
+          <!-- mantém a pesquisa original -->
+          <input type="hidden" name="pickup_airport"  value="{{ q.pickup_airport }}">
+          <input type="hidden" name="dropoff_airport" value="{{ q.dropoff_airport }}">
+          <input type="hidden" name="pickup_date"     value="{{ q.pickup_date }}">
+          <input type="hidden" name="pickup_time"     value="{{ q.pickup_time }}">
+          <input type="hidden" name="dropoff_date"    value="{{ q.dropoff_date }}">
+          <input type="hidden" name="dropoff_time"    value="{{ q.dropoff_time }}">
+          <input type="hidden" name="name"            value="{{ q.name }}">
+          <input type="hidden" name="phone"           value="{{ q.phone }}">
+          <input type="hidden" name="email"           value="{{ q.email }}">
+          <input type="hidden" name="page"            value="1">
+          <input type="hidden" name="per_page"        value="{{ pagination.per_page }}">
+
+          <div class="mb-3">
+            <label class="form-label">Preço (mín.)</label>
+            <input class="form-control" name="min_price" value="{{ q.min_price or '' }}" inputmode="decimal">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Preço (máx.)</label>
+            <input class="form-control" name="max_price" value="{{ q.max_price or '' }}" inputmode="decimal">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Assentos (mín.)</label>
+            <input class="form-control" name="seats_min" type="number" min="1" step="1" value="{{ q.seats_min or '' }}" placeholder="ex.: 5">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label d-block">Categorias</label>
+            <div class="vstack gap-2">
+              {% for c in categories %}
+              <label class="form-check">
+                <input class="form-check-input" type="checkbox" name="cat" value="{{ c.id }}"
+                       {% if c.id in q.cat_ids %}checked{% endif %}>
+                <span class="form-check-label">{{ c.name }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Ordenar</label>
+            <select class="form-select" name="sort">
+              <option value="recommended" {% if q.sort=='recommended' %}selected{% endif %}>Recomendados</option>
+              <option value="price_asc"   {% if q.sort=='price_asc' %}selected{% endif %}>Preço (menor → maior)</option>
+              <option value="price_desc"  {% if q.sort=='price_desc' %}selected{% endif %}>Preço (maior → menor)</option>
+            </select>
+          </div>
+
+          <div class="d-grid">
+            <button class="btn btn-primary">Aplicar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- LISTA DE CARROS -->
+  <div class="col-12 col-lg-8 col-xl-9">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="text-muted small">
+        {{ pagination.total }} carros •
+        Retirada: <strong>{{ q.pickup_airport }}</strong> •
+        Devolução: <strong>{{ q.dropoff_airport }}</strong>
+      </div>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('public.search', tenant_slug=g.tenant.slug) }}">Nova busca</a>
+    </div>
+
+    {% if results %}
+      {% for v in results %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-body d-flex gap-3">
+          <div style="width:120px;">
+            <img src="{{ v.image_url or url_for('static', filename='img/placeholder_car.svg') }}"
+                 alt="{{ v.brand }} {{ v.model }}" class="img-fluid rounded">
+          </div>
+
+          <div class="flex-grow-1">
+            <h5 class="mb-1">{{ v.brand }} {{ v.model }} {{ v.year }}</h5>
+            <div class="text-muted small mb-2">{{ v.category_name }}</div>
+            <div class="small text-secondary">
+              <i class="bi bi-people me-1"></i>{{ v.seats }} seats
+              <i class="bi bi-diagram-3 ms-3 me-1"></i>{{ v.transmission }}
+              <i class="bi bi-suitcase ms-3 me-1"></i>{{ v.large_bags }} large bag
+              <i class="bi bi-bag ms-3 me-1"></i>{{ v.small_bags }} small bag
+              <i class="bi bi-infinity ms-3 me-1"></i>{{ v.mileage_text }}
+            </div>
+          </div>
+
+          <div class="text-end ms-auto" style="min-width: 180px;">
+            <div class="fw-semibold">USD {{ '%.2f'|format(v.daily) }} <span class="text-muted">/ dia</span></div>
+            <div class="text-muted small">Total USD {{ '%.2f'|format(v.total) }}</div>
+            <div class="mt-2">
+              <a class="btn btn-success btn-sm"
+                 data-reserve-url="{{ url_for('public.reserve_modal', tenant_slug=g.tenant.slug, vehicle_id=v.id,
+                                              pickup_airport=q.pickup_airport, dropoff_airport=q.dropoff_airport,
+                                              pickup_date=q.pickup_date, pickup_time=q.pickup_time,
+                                              dropoff_date=q.dropoff_date, dropoff_time=q.dropoff_time,
+                                              name=q.name, phone=q.phone, email=q.email) }}">
+                Reservar
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- PAGINAÇÃO -->
+      <nav aria-label="Paginação" class="mt-3">
+        <ul class="pagination justify-content-center">
+          <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ page_url(1) }}">&laquo;</a>
+          </li>
+          <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ page_url(pagination.prev_page) }}">Anterior</a>
+          </li>
+
+          {# janela simples de páginas #}
+          {% set start = (pagination.page-2 if pagination.page-2>1 else 1) %}
+          {% set end = (pagination.page+2 if pagination.page+2<pagination.pages else pagination.pages) %}
+          {% for n in range(start, end+1) %}
+          <li class="page-item {% if n==pagination.page %}active{% endif %}">
+            <a class="page-link" href="{{ page_url(n) }}">{{ n }}</a>
+          </li>
+          {% endfor %}
+
+          <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ page_url(pagination.next_page) }}">Próxima</a>
+          </li>
+          <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ page_url(pagination.pages) }}">&raquo;</a>
+          </li>
+        </ul>
+      </nav>
+    {% else %}
+      <div class="alert alert-info">
+        Nenhum carro encontrado com os filtros atuais. Tente ajustar os filtros e aplicar novamente.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

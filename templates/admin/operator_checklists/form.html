@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block title %}Checklist — {{ stage|capitalize }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <h1 class="h5">Checklist — {{ stage|capitalize }} (Reserva #{{ reservation.id }})</h1>
+  <form method="post" action="{{ url_for('admin.operator_checklists_create', tenant_slug=g.tenant.slug) }}" enctype="multipart/form-data" id="checklistForm">
+    {{ csrf_token() if csrf_token is defined }}
+
+    <input type="hidden" name="reservation_id" value="{{ reservation.id }}">
+    <input type="hidden" name="stage" value="{{ stage }}">
+    <input type="hidden" name="marks_json" id="marks_json">
+    <input type="hidden" name="signature_dataurl" id="signature_dataurl">
+
+    <div class="row g-3">
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h6 class="card-title mb-3">Marcar danos (toque para marcar/remover)</h6>
+            <div id="car-grid" class="car-grid">
+              <!-- FRONT L/C/R -->
+              <button type="button" class="zone" data-zone="front" data-tag="L">Frente L</button>
+              <button type="button" class="zone" data-zone="front" data-tag="C">Frente C</button>
+              <button type="button" class="zone" data-zone="front" data-tag="R">Frente R</button>
+              <!-- LEFT F/M/T -->
+              <button type="button" class="zone" data-zone="left" data-tag="F">Esq F</button>
+              <button type="button" class="zone" data-zone="left" data-tag="M">Esq M</button>
+              <button type="button" class="zone" data-zone="left" data-tag="T">Esq T</button>
+              <!-- RIGHT F/M/T -->
+              <button type="button" class="zone" data-zone="right" data-tag="F">Dir F</button>
+              <button type="button" class="zone" data-zone="right" data-tag="M">Dir M</button>
+              <button type="button" class="zone" data-zone="right" data-tag="T">Dir T</button>
+              <!-- REAR L/C/R -->
+              <button type="button" class="zone" data-zone="rear" data-tag="L">Traseira L</button>
+              <button type="button" class="zone" data-zone="rear" data-tag="C">Traseira C</button>
+              <button type="button" class="zone" data-zone="rear" data-tag="R">Traseira R</button>
+            </div>
+            <div class="small text-muted mt-2">Os botões mostram “✕” quando selecionados.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Nível de combustível (%)</label>
+              <input type="number" name="fuel_level" class="form-control form-control-lg" min="0" max="100" step="1" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Hodômetro (mi/km)</label>
+              <input type="number" name="odometer" class="form-control form-control-lg" min="0" step="1" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Fotos (opcional)</label>
+              <input type="file" name="photos" accept="image/*" class="form-control" multiple>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Observações Externas</label>
+              <textarea class="form-control" name="notes_ext" rows="3" placeholder="Riscos, amassados, pneus, etc."></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Observações Internas</label>
+              <textarea class="form-control" name="notes_int" rows="3" placeholder="Estofado, painel, itens, etc."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Operador</label>
+                <input type="text" name="operator_name" class="form-control form-control-lg"
+                    value="{{ (current_user.name if current_user.is_authenticated and current_user.name) or '' }}" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Cliente</label>
+                <input type="text" name="customer_name" class="form-control form-control-lg"
+                    value="{{ default_customer_name or '' }}" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">E-mail do Cliente</label>
+                <input type="email" name="customer_email" class="form-control form-control-lg"
+                    value="{{ default_customer_email or '' }}" required>              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h6 class="mb-2">Assinatura do Cliente</h6>
+            <canvas id="sigpad" width="600" height="200" class="border rounded w-100" style="touch-action: none; background:#fff"></canvas>
+            <div class="mt-2 d-flex gap-2">
+              <button type="button" class="btn btn-outline-secondary btn-lg" id="clearSig">Limpar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 d-grid gap-2 mt-2">
+        <button class="btn btn-primary btn-lg" type="submit">Salvar Checklist</button>
+        <a class="btn btn-light btn-lg" href="{{ url_for('admin.operator_checklists_index', tenant_slug=g.tenant.slug, stage=stage) }}">Cancelar</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<style>
+  .car-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+  .zone { height: 64px; border: 2px solid #ced4da; border-radius: .75rem; background: #f8f9fa; font-weight: 600; }
+  .zone.active { background: #fff; position: relative; }
+  .zone.active::after { content: '✕'; position: absolute; right: 12px; bottom: 6px; font-size: 28px; line-height: 1; color: #dc3545; }
+  @media (max-width: 576px) { .zone { height: 56px; } }
+</style>
+
+<script>
+(function(){
+  const marks = { front: [], left: [], right: [], rear: [] };
+  const marksInput = document.getElementById('marks_json');
+
+  function toggle(zone, tag, el){
+    const arr = marks[zone] || (marks[zone] = []);
+    const i = arr.indexOf(tag);
+    if(i >= 0){ arr.splice(i,1); el.classList.remove('active'); }
+    else { arr.push(tag); el.classList.add('active'); }
+    marksInput.value = JSON.stringify(marks);
+  }
+
+  document.querySelectorAll('.zone').forEach(btn => {
+    btn.addEventListener('click', () => toggle(btn.dataset.zone, btn.dataset.tag, btn));
+  });
+
+  // assinatura (sem lib externa)
+  const canvas = document.getElementById('sigpad');
+  const sigInput = document.getElementById('signature_dataurl');
+  const ctx = canvas.getContext('2d');
+  let drawing = false, last = null;
+
+  function resizeCanvas(){
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const displayWidth = canvas.clientWidth;
+    canvas.width = displayWidth * ratio;
+    canvas.height = 200 * ratio;
+    canvas.style.height = '200px';
+    ctx.scale(ratio, ratio);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,canvas.width, canvas.height);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function pos(e){
+    const rect = canvas.getBoundingClientRect();
+    const t = (e.touches && e.touches[0]) || e;
+    return { x: (t.clientX - rect.left), y: (t.clientY - rect.top) };
+  }
+  function start(e){ drawing = true; last = pos(e); }
+  function move(e){ if(!drawing) return; const p = pos(e); ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke(); last = p; e.preventDefault(); }
+  function end(){ drawing = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  canvas.addEventListener('mouseup', end);
+  canvas.addEventListener('mouseleave', end);
+
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end);
+
+  document.getElementById('clearSig').addEventListener('click', () => { resizeCanvas(); });
+
+  document.getElementById('checklistForm').addEventListener('submit', () => {
+    sigInput.value = canvas.toDataURL('image/png');
+    marksInput.value = JSON.stringify(marks);
+  });
+})();
+</script>
+{% endblock %}

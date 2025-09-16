@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Checklist do Operador — {{ 'Entrega' if stage=='entrega' else ( 'Devolução' if stage=='devolucao' else 'Finalizadas' ) }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 mb-0">Checklist do Operador</h1>
+    <div class="btn-group" role="group">
+      <a class="btn btn-sm {% if stage=='entrega' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+         href="{{ url_for('admin.operator_checklists_index', tenant_slug=g.tenant.slug, stage='entrega') }}">Entrega</a>
+      <a class="btn btn-sm {% if stage=='devolucao' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+         href="{{ url_for('admin.operator_checklists_index', tenant_slug=g.tenant.slug, stage='devolucao') }}">Devolução</a>
+      <a class="btn btn-sm {% if stage=='finalizadas' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+         href="{{ url_for('admin.operator_checklists_index', tenant_slug=g.tenant.slug, stage='finalizadas') }}">Finalizadas</a>
+    </div>
+  </div>
+
+  <form class="mb-3" method="get" action="{{ url_for('admin.operator_checklists_index', tenant_slug=g.tenant.slug) }}">
+    <input type="hidden" name="stage" value="{{ stage }}"/>
+    <div class="input-group">
+      <input type="text" class="form-control" name="q" placeholder="Buscar por condutor ou placa" value="{{ request.args.get('q','') }}" />
+      <button class="btn btn-secondary" type="submit">Buscar</button>
+    </div>
+  </form>
+
+  <div class="list-group">
+    {% for r in reservations %}
+      {% set driver_name  = r.driver_name  or r.customer_name or r.condutor_nome or r.renter_name or r.nome_condutor or '—' %}
+      {% set driver_email = r.driver_email or r.customer_email %}
+
+      {% set v = r.vehicle %}
+      {% set plate = (v and (v.plate or v.license_plate)) or r.vehicle_plate or r.placa or r.license_plate or '—' %}
+
+      {# datas #}
+      {% set dt_retira = r.pickup_datetime or r.pickup_at or r.start_at or r.start_datetime
+                         or r.check_out_at or r.begin_at or r.from_datetime
+                         or r.data_retirada or r.retirada_em or r.created_at %}
+
+      {% set dt_retorno = r.dropoff_datetime or r.dropoff_at or r.end_at or r.end_datetime
+                          or r.check_in_at or r.to_datetime or r.data_devolucao or r.devolucao_em %}
+
+      {# PDF de entrega mapeado pela rota (ver routes) #}
+      {% set entrega_pdf_url = entrega_pdfs.get(r.id) %}
+
+      <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap">
+        <div class="small">
+          <div>
+            <strong>#{{ r.id }}</strong> — {{ driver_name }}
+            {% if driver_email %}<span class="text-muted">({{ driver_email }})</span>{% endif %}
+          </div>
+          <div>
+            Veículo: {{ plate }}
+            — Retirada: {{ dt_retira.strftime('%d/%m/%Y %H:%M') if dt_retira else '—' }}
+            {% if stage != 'entrega' %}
+              — <span class="text-muted">Retorno:</span> {{ dt_retorno.strftime('%d/%m/%Y %H:%M') if dt_retorno else '—' }}
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+         {% set pdf_url = entrega_pdfs.get(r.id) %}
+          {% if pdf_url %}
+            <a href="{{ pdf_url }}" class="btn btn-sm btn-outline-secondary" target="_blank"
+              title="Abrir PDF da entrega">
+              <i class="bi bi-file-earmark-pdf"></i>
+            </a>
+          {% endif %}
+
+          <a class="btn btn-primary btn-sm"
+             href="{{ url_for('admin.operator_checklists_new', tenant_slug=g.tenant.slug, reservation_id=r.id, stage=stage if stage!='finalizadas' else 'devolucao') }}">
+            {% if stage=='entrega' %}Abrir Entrega{% elif stage=='devolucao' %}Abrir Devolução{% else %}Ver Devolução{% endif %}
+          </a>
+        </div>
+      </div>
+    {% else %}
+      <div class="text-muted">Nenhuma reserva encontrada.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+  .btn { padding: .65rem 1rem; }
+  .list-group-item { touch-action: manipulation; }
+</style>
+{% endblock %}
