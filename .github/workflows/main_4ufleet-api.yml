@@ -1,71 +1,47 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
-
-name: Build and deploy Python app to Azure Web App - 4ufleet-api
+name: Build & Deploy 4uFleet (Container)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_CLIENT_ID:        ${{ vars.AZURE_CLIENT_ID }}
+  AZURE_TENANT_ID:        ${{ vars.AZURE_TENANT_ID }}
+  AZURE_SUBSCRIPTION_ID:  ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  ACR_NAME:               ${{ vars.ACR_NAME }}
+  ACR_LOGIN_SERVER:       ${{ vars.ACR_LOGIN_SERVER }}
+  IMAGE_NAME:             ${{ vars.IMAGE_NAME }}
+  RESOURCE_GROUP:         ${{ vars.RESOURCE_GROUP }}
+  WEBAPP_NAME:            ${{ vars.WEBAPP_NAME }}
+
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up Python version
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Create and start virtual environment
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-      
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-        
-      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
-
-      - name: Upload artifact for deployment jobs
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-app
-          path: |
-            .
-            !venv/
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: python-app
-      
-      - name: Login to Azure
+      - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_0C0A5DCD90AE47E2A33A5A4A13BE7F3C }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3EED9181D548406789CD8DB2A56C8C4E }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_AFAEE38731B7482FADCCAAD2A000C2C8 }}
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
-      - name: 'Deploy to Azure Web App'
-        uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
-        with:
-          app-name: '4ufleet-api'
-          slot-name: 'Production'
-          
+      - name: Log in to ACR
+        run: az acr login -n $ACR_NAME
+
+      - name: Build & push image to ACR
+        run: |
+          IMAGE="$ACR_LOGIN_SERVER/$IMAGE_NAME"
+          docker build -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
+          docker push "$IMAGE:${{ github.sha }}"
+          docker push "$IMAGE:latest"
+
+      - name: Restart App Service
+        run: az webapp restart -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME"
