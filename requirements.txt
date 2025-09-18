@@ -1,4 +1,3 @@
-# Core
 Flask==3.0.3
 Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.7
@@ -9,24 +8,23 @@ python-dotenv==1.0.1
 requests==2.32.3
 gunicorn==23.0.0
 
-# PDF / Contratos (par compatível!)
+# PDF / Contratos (backend pydyf)
 WeasyPrint==63.1
 pydyf==0.11.0
-tinycss2==1.2.1
-cssselect2==0.7.0
-pyphen==0.14.0
-fonttools==4.51.0
+tinycss2>=1.4.0
+cssselect2>=0.7.0
+pyphen>=0.14.0
+fonttools>=4.51.0
 Pillow>=10.4.0
 
-# PDF auxiliares (opcional)
-reportlab
-PyPDF2
+# (Se você usa em outra parte do projeto)
+PyPDF2==3.0.1
 
 # Azure
 azure-identity==1.17.1
 azure-keyvault-secrets==4.7.0
 azure-storage-blob==12.20.0
 
-# (cffi/pycparser normalmente vêm como deps; se quiser manter:)
+# deps nativas usadas por libs acima
 cffi>=1.15.1
 pycparser
