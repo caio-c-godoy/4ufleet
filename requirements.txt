@@ -28,3 +28,4 @@ azure-storage-blob==12.20.0
 # deps nativas usadas por libs acima
 cffi>=1.15.1
 pycparser
+reportlab==4.4.3
