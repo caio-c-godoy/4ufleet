@@ -24,6 +24,15 @@
     .btn-primary, .bg-primary { background-color: var(--brand-primary) !important; border-color: var(--brand-primary) !important; }
     a { color: var(--brand-primary); }
   </style>
+  {% else %}
+  <style>
+    :root{
+      --brand-primary:#0d6efd;
+      --brand-navbar:#0d6efd;
+    }
+    .btn-primary, .bg-primary { background-color: var(--brand-primary) !important; border-color: var(--brand-primary) !important; }
+    a { color: var(--brand-primary); }
+  </style>
   {% endif %}
 
   <style>
@@ -45,8 +54,8 @@
       <a class="navbar-brand fw-bold d-flex align-items-center gap-2"
          href="{{ url_for('public.search', tenant_slug=g.tenant.slug) if g.tenant else url_for('site.landing') }}">
 
-        {# tenta brand_logo_url, depois logo_url; cai para placeholder existente #}
-        {% set _logo = (g.tenant.brand_logo_url or g.tenant.logo_url) if g.tenant else None %}
+        {# tenta brand_logo_url, depois logo_url, depois logo_path; cai para placeholder #}
+        {% set _logo = (g.tenant.brand_logo_url or g.tenant.logo_url or g.tenant.logo_path) if g.tenant else None %}
         {% if _logo %}
           <img class="brand-logo" src="{{ _logo | imgsrc }}" alt="{{ g.tenant.name or 'Logo' }}">
         {% else %}
