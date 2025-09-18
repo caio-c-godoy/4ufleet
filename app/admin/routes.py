@@ -160,16 +160,47 @@ def _branding_dir() -> Path:
     return p
 
 def _save_logo(file_storage):
+    """
+    Salva o logo no Azure Blob (se configurado) e retorna URL pública.
+    Caso contrário, salva local e retorna /static/uploads/branding/<tenant>/<arquivo>.
+    """
     if not file_storage or file_storage.filename == "":
         return None
+
     ext = (file_storage.filename.rsplit(".", 1)[-1] or "").lower()
     if ext not in ("png", "jpg", "jpeg", "webp", "svg"):
         raise ValueError("Formato de logo não suportado.")
+
+    # Tenta Azure Blob primeiro (usa os mesmos clients do upload de veículos)
+    container_client, container_name, base_url = _blob_clients()  # já existe neste arquivo
+    if container_client and base_url:
+        from uuid import uuid4
+        filename = f"logo-{uuid4().hex}.{ext}"
+        blob_path = f"branding/{g.tenant.slug}/{filename}"
+
+        try:
+            # content-type correto
+            from azure.storage.blob import ContentSettings
+            content = ContentSettings(content_type=file_storage.mimetype or "application/octet-stream")
+
+            # upload sobrescrevendo se necessário
+            container_client.upload_blob(
+                name=blob_path,
+                data=file_storage.stream,
+                overwrite=True,
+                content_settings=content,
+            )
+            # URL pública (container precisa estar com acesso de leitura 'Blob' ou via CDN/SAS)
+            return f"{base_url}/{container_name}/{blob_path}"
+        except Exception:
+            current_app.logger.exception("Falha ao subir logo no Blob — usando fallback local.")
+
+    # Fallback local (comportamento antigo)
     dest = _branding_dir() / f"logo.{ext}"
     file_storage.save(dest)
-    # caminho relativo a /static
     rel = Path("uploads") / "branding" / g.tenant.slug / dest.name
     return str(rel).replace("\\", "/")
+
 
 
 # ====== Armazenamento de imagens (Azure Blob + fallback local) ==================
@@ -794,7 +825,6 @@ def rate_delete(rate_id):
     db.session.commit()
     flash("Tarifa excluída.", "success")
     return redirect(url_for("admin.rates"))
-# === /NOVO ====================================================================
 
 # =============================================================================
 # Veículos
