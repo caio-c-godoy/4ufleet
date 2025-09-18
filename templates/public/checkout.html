@@ -1,6 +1,33 @@
 {% extends "base_public.html" %}
 {% block title %}Checkout — {{ g.tenant.name if g.tenant else "" }}{% endblock %}
 
+{# --- Ajuste visual só deste template: aumenta a imagem do veículo, responsivo --- #}
+{% block extra_css %}
+<style>
+  /* tamanho padrão (mobile) */
+  .checkout-hero-img{
+    width: 140px;           /* antes 120 */
+    height: 94px;           /* antes 80  */
+    object-fit: cover;
+    border-radius: .375rem; /* igual ao .rounded */
+  }
+  /* md+ deixa maior */
+  @media (min-width: 768px){
+    .checkout-hero-img{
+      width: 200px;
+      height: 130px;
+    }
+  }
+  /* xl+ um pouco mais, se couber */
+  @media (min-width: 1200px){
+    .checkout-hero-img{
+      width: 220px;
+      height: 140px;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row g-4">
   <!-- ESQUERDA -->
@@ -11,11 +38,11 @@
           {% if vehicle.image_url %}
             <img
               src="{{ vehicle.image_url | imgsrc }}"
-              alt="Veículo" class="rounded"
-              style="width:120px;height:80px;object-fit:cover">
+              alt="Veículo"
+              class="checkout-hero-img">
           {% else %}
             <div class="bg-light rounded d-flex align-items-center justify-content-center"
-                 style="width:120px;height:80px;">
+                 style="width:140px;height:94px;">
               <i class="bi bi-car-front" style="font-size:1.6rem;"></i>
             </div>
           {% endif %}
@@ -110,7 +137,7 @@
               📄 Ver contrato
             </a>
 
-            <!-- Baixar assinado (aparece somente quando assinado) -->
+            <!-- Baixar assinado (apenas quando assinado) -->
             {% if is_signed %}
             <a href="{{ url_for('public.download_signed_contract', reserva_id=reservation.id, tenant_slug=g.tenant.slug) }}"
                class="btn btn-outline-secondary btn-sm flex-fill">

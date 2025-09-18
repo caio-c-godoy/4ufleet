@@ -9,7 +9,6 @@
         <h1 class="h4 mb-3">Encontre o carro ideal</h1>
         <form method="get" action="{{ url_for('public.results', tenant_slug=g.tenant.slug) }}">
           <div class="row g-3">
-            <!-- Retirada -->
             <div class="col-12 col-lg-6">
               <label class="form-label">Retirada (aeroporto)</label>
               <input class="form-control"
@@ -21,7 +20,6 @@
                      required>
             </div>
 
-            <!-- Devolução -->
             <div class="col-12 col-lg-6">
               <label class="form-label">Devolução (aeroporto)</label>
               <input class="form-control"
@@ -33,7 +31,6 @@
                      required>
             </div>
 
-            <!-- Datas / Horas -->
             <div class="col-6 col-lg-3">
               <label class="form-label">Data de retirada</label>
               <input type="date" name="pickup_date" class="form-control" required>
@@ -51,7 +48,6 @@
               <input type="time" name="dropoff_time" class="form-control" value="10:00" required>
             </div>
 
-            <!-- Contato opcional -->
             <div class="col-12 col-lg-4">
               <label class="form-label">Nome completo</label>
               <input name="name" class="form-control" placeholder="Seu nome">
@@ -75,25 +71,23 @@
       </div>
     </div>
 
-    <!-- Ajuda -->
     <p class="text-muted small mt-3 mb-0">
       Dica: digite o nome do aeroporto ou o código IATA (ex.: <strong>MCO</strong>, <strong>LAX</strong>, <strong>JFK</strong>).
     </p>
   </div>
 </div>
 
-<!-- datalist vazio: só será preenchido via JS quando houver 2+ letras -->
 <datalist id="us-airports"></datalist>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+/* seu JS de autocomplete permanece idêntico */
 (function () {
   const DL_ID = 'us-airports';
   const dl = document.getElementById(DL_ID);
   const inputs = document.querySelectorAll('input[list="us-airports"]');
 
-  // helper: monta URL do endpoint com ?q=
   function buildUrl(q) {
     const url = new URL(window.location.origin + "{{ url_for('public.airports_json', tenant_slug=g.tenant.slug) }}");
     url.searchParams.set('q', q);
@@ -106,51 +100,25 @@
       if (!res.ok) return [];
       const data = await res.json();
       return Array.isArray(data.items) ? data.items : [];
-    } catch {
-      return [];
-    }
+    } catch { return []; }
   }
 
-  function clearDatalist() {
-    dl.innerHTML = '';
-  }
+  function clearDatalist() { dl.innerHTML = ''; }
 
   async function handleChange(inp) {
     const q = (inp.value || '').trim();
-    if (q.length < 2) {
-      // desliga o datalist para evitar a lista inteira no foco
-      inp.removeAttribute('list');
-      clearDatalist();
-      return;
-    }
-    // liga o datalist e popula
+    if (q.length < 2) { inp.removeAttribute('list'); clearDatalist(); return; }
     inp.setAttribute('list', DL_ID);
     const items = await fetchAirports(q);
     dl.innerHTML = items.map(txt => `<option value="${txt.replace(/"/g, '&quot;')}"></option>`).join('');
   }
 
   inputs.forEach(inp => {
-    // no load, já garante estado correto
     handleChange(inp);
-
-    // digitação
     inp.addEventListener('input', () => handleChange(inp));
-
-    // ao focar, se tiver < 2 letras, não mostra nada
     inp.addEventListener('focus', () => {
-      if ((inp.value || '').trim().length < 2) {
-        inp.removeAttribute('list');
-        clearDatalist();
-      } else {
-        // tem 2+ letras? reforça preenchimento
-        handleChange(inp);
-      }
-    });
-
-    // opcional: ao perder o foco, não precisa manter opções
-    inp.addEventListener('blur', () => {
-      // se quiser manter vazia sempre após uso, descomente:
-      // clearDatalist();
+      if ((inp.value || '').trim().length < 2) { inp.removeAttribute('list'); clearDatalist(); }
+      else { handleChange(inp); }
     });
   });
 })();

@@ -99,26 +99,12 @@
               {% set st = v.status or 'available' %}
               <tr>
                 <td>
-                  {# ==== thumbnail do veículo — evita /static/static/ ==== #}
-                  {% set raw = v.image_url or '' %}
-                  {% if raw.startswith('http') %}
-                    {% set img_src = raw %}
-                  {% elif raw.startswith('/static/') %}
-                    {% set img_src = raw %}
-                  {% elif raw %}
-                    {% set img_src = url_for('static', filename=raw.lstrip('/')) %}
-                  {% else %}
-                    {% set img_src = url_for('static', filename='img/placeholder-car.jpg') %}
-                  {% endif %}
-
-                  {% if img_src %}
-                    <img src="{{ img_src }}" alt="{{ v.brand or '' }} {{ v.model or '' }}"
+                  {% if v.image_url %}
+                    <img src="{{ v.image_url | imgsrc }}" alt="{{ (v.brand or '') ~ ' ' ~ (v.model or '') }}"
                          class="rounded" style="width:56px;height:56px;object-fit:cover;">
                   {% else %}
-                    <div class="bg-light rounded d-flex align-items-center justify-content-center"
-                         style="width:56px;height:56px;">
-                      <i class="bi bi-car-front"></i>
-                    </div>
+                    <img src="{{ 'img/no-image.png' | imgsrc }}" alt="Sem foto"
+                         class="rounded" style="width:56px;height:56px;object-fit:cover;">
                   {% endif %}
                 </td>
 

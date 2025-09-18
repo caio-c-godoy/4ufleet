@@ -5,14 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Car Rental{% endblock %}</title>
 
-  <!-- Libs -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
 
   {% block extra_head %}{% endblock %}
 
-  {# Paleta do tenant (ou padrão) #}
   {% if tenant %}
   <style>
     :root{
@@ -24,9 +22,7 @@
   {% else %}
   <style>
     :root{
-      --brand-primary: #0d6efd;
-      --brand-navbar:  #0d6efd;
-      --brand-sidebar: #0b5ed7;
+      --brand-primary:#0d6efd; --brand-navbar:#0d6efd; --brand-sidebar:#0b5ed7;
     }
   </style>
   {% endif %}
@@ -37,19 +33,14 @@
     .btn-primary, .bg-primary { background-color: var(--brand-primary) !important; border-color: var(--brand-primary) !important; }
     a { color: var(--brand-primary); }
     .brand-logo { height: 22px; width:auto; object-fit:contain; }
-
-    /* Quando esconder chrome (landing etc.), o conteúdo ocupa a largura toda */
     body.no-chrome .app-main { margin-left: 0; }
-    body.no-chrome .topbar,
-    body.no-chrome .sidebar { display: none !important; }
+    body.no-chrome .topbar, body.no-chrome .sidebar { display: none !important; }
   </style>
 </head>
 
-{# aplica classe condicional ao body #}
 {% set nochrome = hide_chrome|default(false) %}
 <body class="app-body{% if nochrome %} no-chrome{% endif %}">
 
-  {# TOPBAR — exibida apenas quando NÃO está em modo no-chrome #}
   {% if not nochrome %}
   <nav class="navbar navbar-dark topbar px-3">
     <div class="d-flex align-items-center gap-2">
@@ -62,7 +53,9 @@
       <a class="navbar-brand fw-bold letter-wide d-flex align-items-center gap-2"
          href="{{ url_for('admin.dashboard', tenant_slug=tenant.slug) if tenant else url_for('site.landing') }}">
         {% if tenant and tenant.logo_url %}
-          <img class="brand-logo" src="{{ tenant.logo_url }}" alt="{{ tenant.name or 'Logo' }}">
+          <img class="brand-logo" src="{{ tenant.logo_url | imgsrc }}" alt="{{ tenant.name or 'Logo' }}">
+        {% else %}
+          <img class="brand-logo" src="{{ 'img/logo-default.png' | imgsrc }}" alt="Logo">
         {% endif %}
         <span>{{ tenant.name if tenant else 'CAR RENTAL' }}</span>
       </a>
@@ -81,7 +74,6 @@
 
   <div class="app-wrapper">
 
-    {# SIDEBAR — só aparece com chrome e quando há tenant #}
     {% if not nochrome and tenant %}
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-inner">
@@ -162,7 +154,6 @@
     </main>
   </div>
 
-  <!-- Modais globais (opcionais) -->
   <div class="modal fade" id="globalModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog"><div class="modal-content">
       <div class="modal-header">
@@ -175,7 +166,7 @@
 
   <div class="modal fade" id="ajaxModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-      <div class="modal-body p-0"><!-- conteúdo ajax --></div>
+      <div class="modal-body p-0"></div>
     </div></div>
   </div>
 
