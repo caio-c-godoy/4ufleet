@@ -10,7 +10,7 @@
         <div class="d-flex gap-3 align-items-start">
           {% if vehicle.image_url %}
             <img
-              src="{{ url_for('static', filename=vehicle.image_url) }}"
+              src="{{ vehicle.image_url | imgsrc }}"
               alt="Veículo" class="rounded"
               style="width:120px;height:80px;object-fit:cover">
           {% else %}

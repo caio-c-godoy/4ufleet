@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, date
 import os
 import re
 import unicodedata
-import uuid
+from uuid import uuid4
 from pathlib import Path
 from . import admin_bp
 from sqlalchemy.exc import IntegrityError
@@ -17,6 +17,8 @@ from app.services.mailer import save_tenant_mail_creds, get_tenant_mail_creds, s
 from . import admin_bp
 
 
+from azure.storage.blob import BlobServiceClient, ContentSettings
+from azure.identity import DefaultAzureCredential
 
 from flask import (
     render_template, request, redirect, url_for, flash,
@@ -168,6 +170,112 @@ def _save_logo(file_storage):
     # caminho relativo a /static
     rel = Path("uploads") / "branding" / g.tenant.slug / dest.name
     return str(rel).replace("\\", "/")
+
+
+# ====== Armazenamento de imagens (Azure Blob + fallback local) ==================
+
+def _blob_clients():
+    """
+    Tenta criar clients para Storage via:
+    1) Connection string (AZURE_STORAGE_CONN), ou
+    2) Managed Identity (DefaultAzureCredential) + AZURE_STORAGE_ACCOUNT.
+    Retorna (container_client, container_name, base_url) ou (None, None, None) para fallback local.
+    """
+    import os
+    conn = os.getenv("AZURE_STORAGE_CONN")
+    account = os.getenv("AZURE_STORAGE_ACCOUNT")
+    container = os.getenv("AZURE_STORAGE_CONTAINER", "vehicles")
+    base_url = os.getenv("AZURE_BLOB_BASE_URL") or (f"https://{account}.blob.core.windows.net" if account else None)
+
+    try:
+        if conn:
+            svc = BlobServiceClient.from_connection_string(conn)
+            return svc.get_container_client(container), container, (base_url or f"https://{svc.account_name}.blob.core.windows.net")
+        if account:
+            cred = DefaultAzureCredential(exclude_interactive_browser_credential=True)
+            svc = BlobServiceClient(account_url=f"https://{account}.blob.core.windows.net", credential=cred)
+            return svc.get_container_client(container), container, (base_url or f"https://{account}.blob.core.windows.net")
+    except Exception:
+        current_app.logger.exception("Falha construindo clientes do Blob.")
+    return None, None, None
+
+
+def _local_vehicle_dir() -> Path:
+    """
+    Pasta local para fallback: /static/uploads/vehicles/<tenant_slug>
+    """
+    root = Path(current_app.root_path).parent  # projeto/
+    p = root / "static" / "uploads" / "vehicles" / g.tenant.slug
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _save_vehicle_image(file_storage) -> str:
+    """
+    Salva a imagem no Azure Blob (se configurado) e retorna URL pública.
+    Caso contrário, salva local e retorna /static/uploads/vehicles/<tenant>/<arquivo>.
+    """
+    if not file_storage or not file_storage.filename:
+        return None
+
+    filename = secure_filename(file_storage.filename)
+    ext = (Path(filename).suffix or "").lower()
+    safe_name = f"{uuid4().hex}{ext}"
+    blob_path = f"{g.tenant.slug}/{safe_name}"
+
+    # Tenta Azure Blob
+    cclient, container, base_url = _blob_clients()
+    if cclient:
+        try:
+            cclient.upload_blob(
+                name=blob_path,
+                data=file_storage.stream,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=file_storage.mimetype or "application/octet-stream"),
+            )
+            return f"{base_url}/{container}/{blob_path}"
+        except Exception:
+            current_app.logger.exception("Falha ao subir imagem para Blob. Fallback para disco local.")
+
+    # Fallback local
+    local_dir = _local_vehicle_dir()
+    target = local_dir / safe_name
+    file_storage.stream.seek(0)
+    file_storage.save(target)
+    # URL pública para servir pelo static
+    rel_url = f"/static/uploads/vehicles/{g.tenant.slug}/{safe_name}"
+    return rel_url
+
+
+def _delete_vehicle_image(image_url: str) -> None:
+    """
+    Tenta remover a imagem anterior (Blob ou local). Não explode em caso de erro.
+    """
+    if not image_url:
+        return
+    try:
+        # Se for URL do Blob
+        if image_url.startswith("http") and ".blob.core.windows.net" in image_url:
+            # .../<container>/<tenant>/<arquivo>
+            parts = image_url.split(".blob.core.windows.net/")
+            if len(parts) == 2:
+                _, path = parts
+                container, blob_name = path.split("/", 1)
+                cclient, _, _ = _blob_clients()
+                if cclient and cclient.container_name == container:
+                    cclient.delete_blob(blob_name, delete_snapshots="include")
+            return
+
+        # Se for caminho /static/...
+        if image_url.startswith("/static/"):
+            root = Path(current_app.root_path).parent
+            abs_path = root / image_url.lstrip("/")
+            if abs_path.exists():
+                abs_path.unlink(missing_ok=True)
+    except Exception:
+        current_app.logger.exception("Falha ao remover imagem antiga.")
+# =============================================================================== 
+
 
 
 # =============================================================================
@@ -703,9 +811,23 @@ def vehicles():
         model = (request.form.get("model") or "").strip()
         year  = request.form.get("year", type=int)
         color = (request.form.get("color") or "").strip() or None
-        image_url = (request.form.get("image_url") or "").strip() or None
         status = (request.form.get("status") or "available").strip() or "available"
 
+        # URL externa opcional (se o usuário colar um link)
+        image_url = (request.form.get("image_url") or "").strip() or None
+
+        # Upload de arquivo (campo "photo" do formulário)
+        file = request.files.get("photo")
+        if file and file.filename:
+            try:
+                # vamos implementar esse helper no próximo passo
+                from app.services.media import save_vehicle_image_from_request
+                image_url = save_vehicle_image_from_request(file, tenant_slug=g.tenant.slug)
+            except Exception:
+                current_app.logger.exception("Falha ao salvar imagem do veículo")
+                flash("Imagem não pôde ser salva; tente novamente.", "warning")
+
+        # categoria obrigatória
         cat_id = request.form.get("category_id", type=int)
         if not cat_id:
             flash("Selecione uma categoria para o veículo.", "warning")
@@ -726,7 +848,7 @@ def vehicles():
             model=model,
             year=year,
             status=status,
-            image_url=image_url,
+            image_url=image_url,   # <- agora vem do upload (se houver) ou do link
             color=color,
         )
         db.session.add(v)
@@ -741,11 +863,18 @@ def vehicles():
     # ----- LIST (GET) com paginação -----
     page = request.args.get("page", type=int) or 1
     per_page = request.args.get("per_page", type=int) or 20
-    if per_page < 5: per_page = 5
-    if per_page > 100: per_page = 100
-    if page < 1: page = 1
+    if per_page < 5:
+        per_page = 5
+    if per_page > 100:
+        per_page = 100
+    if page < 1:
+        page = 1
 
-    qv = Vehicle.query.filter_by(tenant_id=g.tenant.id).order_by(Vehicle.model.asc())
+    qv = (
+        Vehicle.query
+        .filter_by(tenant_id=g.tenant.id)
+        .order_by(Vehicle.model.asc())
+    )
     total = qv.count()
     items = qv.offset((page - 1) * per_page).limit(per_page).all()
 
@@ -760,17 +889,19 @@ def vehicles():
         "next_page": page + 1 if (page * per_page) < total else max((total + per_page - 1) // per_page, 1),
     }
 
-    categories = VehicleCategory.query.filter_by(
-        tenant_id=g.tenant.id
-    ).order_by(VehicleCategory.name.asc()).all()
+    categories = (
+        VehicleCategory.query
+        .filter_by(tenant_id=g.tenant.id)
+        .order_by(VehicleCategory.name.asc())
+        .all()
+    )
 
     return render_template(
         "admin/vehicles.html",
         categories=categories,
         vehicles=items,
-        pagination=pagination,   # <<< ESSENCIAL para o template
+        pagination=pagination,
     )
-
 
 @admin_bp.route("/vehicles/<int:vehicle_id>/edit.modal", methods=["GET", "POST"])
 @login_required

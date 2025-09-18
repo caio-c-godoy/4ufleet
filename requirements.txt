@@ -21,6 +21,7 @@ pyphen>=0.14.0
 fonttools>=4.50.0
 reportlab
 PyPDF2
-azure-identity
-azure-keyvault-secrets
 Pillow>=10.4.0
+azure-keyvault-secrets
+azure-identity>=1.17.1
+azure-storage-blob>=12.20.0

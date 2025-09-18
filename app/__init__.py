@@ -49,28 +49,58 @@ def create_app() -> Flask:
 
         d = _to_date(value)
         meses = [
-            "janeiro","fevereiro","março","abril","maio","junho",
-            "julho","agosto","setembro","outubro","novembro","dezembro",
+            "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+            "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
         ]
         return f"{d.day} de {meses[d.month-1]} de {d.year}"
 
     app.add_template_filter(datefmt_long_pt, "datefmt_long_pt")
 
-    # ---------- Variáveis úteis nos templates ----------
-    # app/__init__.py
+    # ---------- Filtro Jinja: normalizar caminho p/ url_for('static', filename=...) ----------
+    @app.template_filter("static_rel")
+    def static_rel(path: str | None) -> str:
+        """
+        Remove prefixos 'static/' e '/' para que possamos fazer:
+            url_for('static', filename=(valor|static_rel))
+        sem gerar '/static/static/...'.
+        """
+        if not path:
+            return ""
+        p = str(path).lstrip("/")
+        if p.startswith("static/"):
+            p = p[7:]
+        return p
 
+    # ---------- Filtro Jinja: resolver caminho de imagem (http ou /static) ----------
+    # Uso no template: <img src="{{ 'img/4ufleet-logo.png' | imgsrc }}" ...>
+    @app.template_filter("imgsrc")
+    def imgsrc(path_or_url: str | None) -> str:
+        """
+        - Se começar com http(s)://, retorna como está.
+        - Caso contrário, monta via url_for('static', filename=...).
+        - Se vier vazio/None, usa um placeholder.
+        """
+        if not path_or_url:
+            return url_for("static", filename="img/no-image.png")
+        p = str(path_or_url).strip()
+        if p.startswith(("http://", "https://")):
+            return p
+        p = (p.lstrip("/")).removeprefix("static/")
+        return url_for("static", filename=p)
+
+    # ---------- Variáveis úteis nos templates ----------
     @app.context_processor
     def inject_common():
         def env(name, default=""):
             return os.getenv(name, default)
+
         t = getattr(g, "tenant", None)
         return {
             "config": app.config,
             "env": env,
-            "tenant": t,              # já existia
-            "current_tenant": t,      # <-- alias p/ templates legados
+            "tenant": t,          # já existia
+            "current_tenant": t,  # alias p/ templates legados
         }
-
 
     # ---------- Extensões ----------
     db.init_app(app)
@@ -103,7 +133,7 @@ def create_app() -> Flask:
     app.register_blueprint(public_bp,  url_prefix="/<tenant_slug>")
     app.register_blueprint(auth_bp,    url_prefix="/<tenant_slug>/auth")
     app.register_blueprint(admin_bp,   url_prefix="/<tenant_slug>/admin")
-    app.register_blueprint(superadmin_bp) 
+    app.register_blueprint(superadmin_bp)
 
     # ---------- Home -> landing ----------
     @app.get("/")

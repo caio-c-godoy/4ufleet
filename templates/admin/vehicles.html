@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h3 class="mb-0">Frota</h3>
@@ -6,11 +7,16 @@
 </div>
 
 <div class="row g-4">
+  <!-- COL ESQUERDA: FORM NOVO VEÍCULO -->
   <div class="col-lg-4">
     <div class="card shadow-sm">
       <div class="card-body">
         <h5 class="card-title">Novo veículo</h5>
-        <form method="post" action="{{ url_for('admin.vehicles') }}" enctype="multipart/form-data" autocomplete="off">
+
+        <form method="post"
+              action="{{ url_for('admin.vehicles') }}"
+              enctype="multipart/form-data"
+              autocomplete="off">
           <div class="row g-2">
             <div class="col-md-6">
               <label class="form-label">Marca</label>
@@ -33,17 +39,17 @@
               <label class="form-label">Cor</label>
               <input type="text" class="form-control" name="color" placeholder="Ex.: Prata, Preto, Vermelho">
             </div>
-          
+
             <div class="col-12">
               <label class="form-label">Categoria</label>
-            <select name="category_id" class="form-select" required>
-              <option value="" selected disabled>Selecione uma categoria...</option>
-              {% for c in categories %}
-                <option value="{{ c.id }}">{{ c.name }}</option>
-              {% endfor %}
-            </select>
-
+              <select name="category_id" class="form-select" required>
+                <option value="" selected disabled>Selecione uma categoria...</option>
+                {% for c in categories %}
+                  <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+              </select>
             </div>
+
             <div class="col-12">
               <label class="form-label">Status</label>
               <select name="status" class="form-select">
@@ -53,12 +59,14 @@
               </select>
               <div class="form-text">Se escolher “maintenance”, cadastre o motivo depois pelo menu.</div>
             </div>
+
             <div class="col-12">
               <label class="form-label">Foto</label>
               <input type="file" name="photo" class="form-control" accept="image/*">
               <div class="form-text">Opcional. JPG/PNG recomendados.</div>
             </div>
           </div>
+
           <div class="mt-3 d-flex gap-2">
             <button class="btn btn-primary">Salvar</button>
             <button type="reset" class="btn btn-light">Limpar</button>
@@ -68,6 +76,7 @@
     </div>
   </div>
 
+  <!-- COL DIREITA: LISTA -->
   <div class="col-lg-8">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -79,8 +88,8 @@
                 <th>Veículo</th>
                 <th>Categoria</th>
                 <th>Placa</th>
-                <th>Foto</th>
                 <th style="width:90px">Ano</th>
+                <th>Cor</th>
                 <th style="width:120px">Status</th>
                 <th class="text-end" style="width:200px">Ações</th>
               </tr>
@@ -90,24 +99,43 @@
               {% set st = v.status or 'available' %}
               <tr>
                 <td>
-                  {% if v.image_url %}
-                    <img src="{{ url_for('static', filename=v.image_url) }}" alt="" class="rounded" style="width:56px;height:56px;object-fit:cover;">
+                  {# ==== thumbnail do veículo — evita /static/static/ ==== #}
+                  {% set raw = v.image_url or '' %}
+                  {% if raw.startswith('http') %}
+                    {% set img_src = raw %}
+                  {% elif raw.startswith('/static/') %}
+                    {% set img_src = raw %}
+                  {% elif raw %}
+                    {% set img_src = url_for('static', filename=raw.lstrip('/')) %}
                   {% else %}
-                    <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                    {% set img_src = url_for('static', filename='img/placeholder-car.jpg') %}
+                  {% endif %}
+
+                  {% if img_src %}
+                    <img src="{{ img_src }}" alt="{{ v.brand or '' }} {{ v.model or '' }}"
+                         class="rounded" style="width:56px;height:56px;object-fit:cover;">
+                  {% else %}
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                         style="width:56px;height:56px;">
                       <i class="bi bi-car-front"></i>
                     </div>
                   {% endif %}
                 </td>
-                <td class="fw-semibold">{{ (v.brand ~ ' ') if v.brand else '' }}{{ v.model }}</td>
+
+                <td class="fw-semibold">
+                  {{ (v.brand ~ ' ') if v.brand else '' }}{{ v.model }}
+                </td>
                 <td class="text-muted">{{ v.category.name if v.category else '-' }}</td>
                 <td class="text-muted">{{ v.plate or '-' }}</td>
                 <td class="text-muted">{{ v.year or '-' }}</td>
                 <td class="text-muted">{{ v.color or '-' }}</td>
+
                 <td>
                   <span class="badge text-bg-{% if st=='available' %}success{% elif st=='maintenance' %}warning{% else %}secondary{% endif %}">
                     {{ st }}
                   </span>
                 </td>
+
                 <td class="text-end">
                   <!-- Editar -->
                   <button type="button"
@@ -119,7 +147,8 @@
 
                   <!-- Dropdown de Status -->
                   <div class="btn-group me-1">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Alterar status">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                            data-bs-toggle="dropdown" aria-expanded="false" title="Alterar status">
                       <i class="bi bi-arrow-left-right"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
@@ -137,7 +166,8 @@
                       </li>
                       <li><hr class="dropdown-divider"></li>
                       <li>
-                        <a class="dropdown-item" data-modal-url="{{ url_for('admin.vehicle_maintenance_modal', vehicle_id=v.id) }}">
+                        <a class="dropdown-item"
+                           data-modal-url="{{ url_for('admin.vehicle_maintenance_modal', vehicle_id=v.id) }}">
                           <i class="bi bi-wrench me-2"></i>Manutenção…
                         </a>
                       </li>
@@ -145,7 +175,10 @@
                   </div>
 
                   <!-- Excluir -->
-                  <form class="d-inline" method="post" action="{{ url_for('admin.vehicle_delete', vehicle_id=v.id) }}" onsubmit="return confirm('Excluir este veículo?')">
+                  <form class="d-inline"
+                        method="post"
+                        action="{{ url_for('admin.vehicle_delete', vehicle_id=v.id) }}"
+                        onsubmit="return confirm('Excluir este veículo?')">
                     <button class="btn btn-sm btn-outline-danger" title="Excluir">
                       <i class="bi bi-trash"></i>
                     </button>
@@ -157,27 +190,30 @@
           </table>
         </div>
 
-        {% if pagination.pages > 1 %}
-        <nav class="mt-3">
-          <ul class="pagination pagination-sm justify-content-end mb-0">
-            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-              <a class="page-link" href="{{ url_for('admin.vehicles', page=pagination.prev_num) if pagination.has_prev else '#' }}">Anterior</a>
+        {# --- PAGINAÇÃO (usa dict `pagination`) --- #}
+        {% set p = pagination %}
+        <nav aria-label="Veículos - Paginação">
+          <ul class="pagination">
+            <li class="page-item {% if not p.has_prev %}disabled{% endif %}">
+              <a class="page-link"
+                 href="{{ url_for('admin.vehicles', tenant_slug=tenant.slug, page=p.prev_page, per_page=p.per_page) }}"
+                 aria-label="Anterior">«</a>
             </li>
-            {% for p in pagination.iter_pages(left_edge=1, left_current=1, right_current=1, right_edge=1) %}
-              {% if p %}
-                <li class="page-item {% if p==pagination.page %}active{% endif %}">
-                  <a class="page-link" href="{{ url_for('admin.vehicles', page=p) }}">{{ p }}</a>
-                </li>
-              {% else %}
-                <li class="page-item disabled"><span class="page-link">…</span></li>
-              {% endif %}
+
+            {% for n in range(1, p.pages + 1) %}
+              <li class="page-item {% if n == p.page %}active{% endif %}">
+                <a class="page-link"
+                   href="{{ url_for('admin.vehicles', tenant_slug=tenant.slug, page=n, per_page=p.per_page) }}">{{ n }}</a>
+              </li>
             {% endfor %}
-            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-              <a class="page-link" href="{{ url_for('admin.vehicles', page=pagination.next_num) if pagination.has_next else '#' }}">Próxima</a>
+
+            <li class="page-item {% if not p.has_next %}disabled{% endif %}">
+              <a class="page-link"
+                 href="{{ url_for('admin.vehicles', tenant_slug=tenant.slug, page=p.next_page, per_page=p.per_page) }}"
+                 aria-label="Próxima">»</a>
             </li>
           </ul>
         </nav>
-        {% endif %}
       </div>
     </div>
   </div>
