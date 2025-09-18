@@ -32,7 +32,7 @@
     .sidebar { background-color: var(--brand-sidebar) !important; }
     .btn-primary, .bg-primary { background-color: var(--brand-primary) !important; border-color: var(--brand-primary) !important; }
     a { color: var(--brand-primary); }
-    .brand-logo { height: 22px; width:auto; object-fit:contain; }
+    .brand-logo { height: 36px; width:auto; object-fit:contain; }
     body.no-chrome .app-main { margin-left: 0; }
     body.no-chrome .topbar, body.no-chrome .sidebar { display: none !important; }
   </style>
@@ -50,15 +50,16 @@
       </button>
       {% endif %}
 
-      <a class="navbar-brand fw-bold letter-wide d-flex align-items-center gap-2"
-         href="{{ url_for('admin.dashboard', tenant_slug=tenant.slug) if tenant else url_for('site.landing') }}">
-        {% if tenant and tenant.logo_url %}
-          <img class="brand-logo" src="{{ tenant.logo_url | imgsrc }}" alt="{{ tenant.name or 'Logo' }}">
-        {% else %}
-          <img class="brand-logo" src="{{ 'img/logo-default.png' | imgsrc }}" alt="Logo">
-        {% endif %}
-        <span>{{ tenant.name if tenant else 'CAR RENTAL' }}</span>
-      </a>
+     <a class="navbar-brand fw-bold letter-wide d-flex align-items-center gap-2"
+      href="{{ url_for('admin.dashboard', tenant_slug=tenant.slug) if tenant else url_for('site.landing') }}">
+      {% if tenant and tenant.logo_url %}
+        <img class="brand-logo" src="{{ tenant.logo_url | imgsrc }}" alt="{{ tenant.name or 'Logo' }}">
+      {% else %}
+        <img class="brand-logo" src="{{ 'img/4ufleet-logo.png' | imgsrc }}" alt="Logo">
+      {% endif %}
+      <span>{{ tenant.name if tenant else 'CAR RENTAL' }}</span>
+    </a>
+
     </div>
 
     <div class="d-flex align-items-center gap-3">

@@ -130,12 +130,14 @@
           <p class="small text-muted mb-2">Para prosseguir, visualize e assine o contrato.</p>
 
           <div class="d-flex gap-2">
-            <!-- Ver contrato (se assinado, a rota já serve o assinado) -->
-            <a href="{{ url_for('public.view_contract', reserva_id=reservation.id, tenant_slug=g.tenant.slug) }}"
-               target="_blank"
-               class="btn btn-outline-secondary btn-sm flex-fill">
-              📄 Ver contrato
-            </a>
+            <!-- Ver contrato -->
+            <a href="{{ (contract_urls.view
+              if contract_urls is defined and contract_urls and contract_urls.view
+              else url_for('public.view_contract', reserva_id=reservation.id, tenant_slug=g.tenant.slug)) }}"
+            target="_blank"
+            class="btn btn-outline-secondary btn-sm flex-fill">
+            📄 Ver contrato
+          </a>
 
             <!-- Baixar assinado (apenas quando assinado) -->
             {% if is_signed %}
@@ -416,7 +418,7 @@
     const fd = new FormData(form);
     const payload = Object.fromEntries(fd.entries());
 
-    // driver_id -> customer_doc (o backend espera customer_doc)
+    // driver_id -> customer_doc (backend espera customer_doc)
     payload.customer_doc = payload.driver_id || payload.customer_doc || '';
 
     // Se BR, junta cidade/UF no formato "Cidade/UF"
@@ -432,9 +434,15 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!resp.ok) throw new Error('Falha ao salvar');
-      // Vai para a tela de assinatura
-      window.location.href = "{{ url_for('public.sign_contract', tenant_slug=g.tenant.slug, reserva_id=reservation.id) }}";
+
+      // ➜ O backend retorna JSON com { redirect_url: "/<tenant>/contrato/<id>/sign?t=..." }
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.redirect_url) {
+        throw new Error('Falha ao salvar ou obter a URL de assinatura.');
+      }
+
+      // Redireciona para a URL COM TOKEN (funciona na Azure)
+      window.location.href = data.redirect_url;
     } catch (err) {
       console.error(err);
       alert('Não foi possível salvar os dados do contrato agora.');
