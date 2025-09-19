@@ -11,7 +11,11 @@
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.06);overflow:hidden">
           <tr><td style="padding:28px 28px 8px;">
             <div style="display:flex;align-items:center;gap:10px">
-              {% if tenant.logo_path %}<img src="{{ url_for('static', filename=tenant.logo_path) }}" alt="" style="height:36px">{% endif %}
+              {% set _logo = tenant.brand_logo_url or tenant.logo_url or tenant.logo_path %}
+              {% if _logo %}
+                <img src="{{ _logo | imgsrc }}" alt="" style="height:36px">
+              {% endif %}
+
               <div style="font-size:16px;font-weight:700">{{ tenant.name }}</div>
             </div>
             <h1 style="margin:18px 0 4px;font-size:22px;">Bem-vindo(a)!</h1>

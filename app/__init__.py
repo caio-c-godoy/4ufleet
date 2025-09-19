@@ -13,6 +13,8 @@ from .extensions import db, login_manager
 
 migrate = Migrate()
 
+# importe o módulo utils e use a função de lá como fonte única
+from . import utils
 
 def create_app() -> Flask:
     # Carrega .env
@@ -26,6 +28,10 @@ def create_app() -> Flask:
     )
     app.config.from_object(Config())
     app.config.setdefault("TEMPLATES_AUTO_RELOAD", True)
+
+    # --------- Registra filtros Jinja vindos de utils ----------
+    # usa a função imgsrc definida em app.utils
+    app.add_template_filter(utils.imgsrc, "imgsrc")
 
     # ---------- Filtro Jinja: data por extenso (pt) ----------
     def datefmt_long_pt(value):
@@ -71,23 +77,6 @@ def create_app() -> Flask:
             p = p[7:]
         return p
 
-    # ---------- Filtro Jinja: resolver caminho de imagem (http ou /static) ----------
-    # Uso no template: <img src="{{ 'img/4ufleet-logo.png' | imgsrc }}" ...>
-    @app.template_filter("imgsrc")
-    def imgsrc(path_or_url: str | None) -> str:
-        """
-        - Se começar com http(s)://, retorna como está.
-        - Caso contrário, monta via url_for('static', filename=...).
-        - Se vier vazio/None, usa um placeholder.
-        """
-        if not path_or_url:
-            return url_for("static", filename="img/no-image.png")
-        p = str(path_or_url).strip()
-        if p.startswith(("http://", "https://")):
-            return p
-        p = (p.lstrip("/")).removeprefix("static/")
-        return url_for("static", filename=p)
-
     # ---------- Variáveis úteis nos templates ----------
     @app.context_processor
     def inject_common():
@@ -107,7 +96,6 @@ def create_app() -> Flask:
     migrate.init_app(app, db)
 
     login_manager.init_app(app)
-    # Atenção: "auth.login" exige tenant_slug; normalmente você já trata isso nas rotas.
     login_manager.login_view = "auth.login"
     login_manager.login_message_category = "warning"
 

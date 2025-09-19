@@ -23,6 +23,12 @@
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="tab-mail" data-bs-toggle="tab" data-bs-target="#pane-mail" type="button" role="tab">E-mail</button>
   </li>
+  <li class="nav-item" role="presentation">
+  <button class="nav-link" id="tab-i18n" data-bs-toggle="tab" data-bs-target="#pane-i18n" type="button" role="tab">
+    Idioma
+  </button>
+    </li>
+
   <!-- NOVA ABA: Links & Embed -->
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="tab-links" data-bs-toggle="tab" data-bs-target="#pane-links" type="button" role="tab">Links &amp; Embed</button>
@@ -70,12 +76,22 @@
           <div class="col-md-6 d-flex align-items-end">
             <div>
               <div class="text-muted small mb-1">Pré-visualização atual:</div>
-              {% if t.logo_path %}
-                <img src="{{ url_for('static', filename=t.logo_path) }}" alt="Logo" style="max-height:40px">
-                <div class="small text-muted mt-1"><code>{{ t.logo_path }}</code></div>
+              <div class="col-md-6 d-flex align-items-end">
+            <div>
+              <div class="text-muted small mb-1">Pré-visualização atual:</div>
+
+              {# pega na ordem: brand_logo_url -> logo_url -> logo_path #}
+              {% set _preview = t.brand_logo_url or t.logo_url or t.logo_path %}
+
+              {% if _preview %}
+                <img src="{{ _preview | imgsrc }}" alt="Logo" style="max-height:40px">
+                <div class="small text-muted mt-1 text-break"><code>{{ _preview }}</code></div>
               {% else %}
                 <span class="text-muted">Nenhum logo definido.</span>
               {% endif %}
+            </div>
+          </div>
+
             </div>
           </div>
 

@@ -92,7 +92,51 @@ def imgsrc(path: str | None) -> str:
 
     # Qualquer outro relativo cai em /static/<relativo>
     return url_for('static', filename=s)
+# app/utils.py
+from flask import url_for
 
+def imgsrc(value: str | None) -> str:
+    """Normaliza caminhos de imagem:
+    - URL absoluta (http/https) => retorna como está
+    - Caminho começando por /static/ => retorna como está
+    - Qualquer outro caminho => trata como arquivo dentro de /static
+    """
+    if not value:
+        return url_for('static', filename='img/placeholder_car.jpg')
+
+    v = str(value).strip()
+
+    # URL absoluta: devolve direto
+    if v.startswith('http://') or v.startswith('https://'):
+        return v
+
+    # Se já vier com /static/... mantém
+    if v.startswith('/static/'):
+        return v
+
+    # Remove barras à esquerda para evitar // ao concatenar
+    v = v.lstrip('/')
+
+    # Se o valor já vier com "static/...", garante uma única / no início
+    if v.startswith('static/'):
+        return '/' + v
+
+    # Caso padrão: caminho relativo dentro do diretório static
+    return url_for('static', filename=v)
+# app/utils.py
+from flask import url_for
+
+ABS_PREFIXES = ("http://", "https://", "data:")
+
+def imgsrc(path: str | None) -> str:
+    if not path:
+        return ""
+    p = str(path).strip()
+    if p.startswith(ABS_PREFIXES):
+        return p
+    if p.startswith("/static/"):
+        return p
+    return url_for("static", filename=p.lstrip("/"))
 
 # -------------------------------------------------------------
 # Key Vault helpers (como você já tinha)
