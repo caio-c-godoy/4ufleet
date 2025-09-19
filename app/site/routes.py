@@ -83,8 +83,23 @@ def signup_submit():
         slug = f"{base}-{i}"
         i += 1
 
-    # cria tenant
-    t = Tenant(name=name, slug=slug, terms_accepted_at=datetime.utcnow())
+    # === cria tenant com defaults do Login Hero ===
+    t = Tenant(
+        name=name,
+        slug=slug,
+        terms_accepted_at=datetime.utcnow(),
+        # defaults do hero (pode editar depois em Configurações)
+        login_hero_enabled=True,
+        login_hero_kicker="4uFLEET • MULTIFROTA",
+        login_hero_title="Carros, motos, vans, barcos e mais — tudo pronto para alugar.",
+        login_hero_desc=(
+            "Centralize reservas, tarifas e manutenção em um único painel. "
+            "Aumente a ocupação da sua frota com automações e relatórios em tempo real."
+        ),
+        # caminho padrão relativo (será servido por /static). Caso use CDN/Blob, troque aqui.
+        login_hero_image = f"https://st4ufleetprd.blob.core.windows.net/branding/{slug}/login-hero.jpg",
+
+    )
     db.session.add(t)
     db.session.flush()  # t.id disponível
 
