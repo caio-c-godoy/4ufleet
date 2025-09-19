@@ -49,24 +49,40 @@ def absolute_url_for(endpoint: str, **values) -> str:
 # -------------------------------------------------------------
 _ABS_PREFIXES = ("https://", "http://", "//", "data:")
 
+# Placeholder inline para nunca dar 404 (SVG leve)
+_INLINE_PLACEHOLDER = (
+    "data:image/svg+xml;utf8,"
+    "<svg xmlns='http://www.w3.org/2000/svg' width='120' height='80'>"
+    "<rect width='100%' height='100%' fill='%23f0f2f5'/>"
+    "<text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' "
+    "font-family='Arial' font-size='12' fill='%2399a'>sem imagem</text>"
+    "</svg>"
+)
+
 def imgsrc(path: str | None) -> str:
     """
     Normaliza caminho/URL para uso em <img src="...">:
     - Corrige 'https:/' -> 'https://' e 'http:/' -> 'http://'
+    - Conserta casos de '/static/https:/...' removendo o /static/ indevido
     - Mantém URLs absolutas (http/https//data)
-    - Não adiciona '/static' quando já for externa
     - Aceita domínio sem protocolo -> força https://
-    - Para caminhos relativos, retorna sob /static
-    - Se vazio/None, retorna placeholder padrão
+    - Caminhos relativos viram /static/<...>
+    - Se vazio/None, retorna um placeholder inline (sem 404)
     """
-    placeholder = url_for("static", filename="img/placeholder-car.jpg")
-
     if not path:
-        return placeholder
+        return _INLINE_PLACEHOLDER
 
     s = str(path).strip()
+    if not s:
+        return _INLINE_PLACEHOLDER
 
-    # Corrige protocolos com 1 barra (erros comuns de armazenamento)
+    # Se veio prefixado indevidamente: "/static/https:/..." ou "/static/http:/..."
+    if s.startswith("/static/https:/") and not s.startswith("/static/https://"):
+        s = s[len("/static/"):]  # tira o /static/
+    elif s.startswith("/static/http:/") and not s.startswith("/static/http://"):
+        s = s[len("/static/"):]
+
+    # Corrige protocolos com 1 barra (erros comuns)
     if s.startswith("https:/") and not s.startswith("https://"):
         s = "https://" + s[len("https:/"):]
     elif s.startswith("http:/") and not s.startswith("http://"):
@@ -80,15 +96,15 @@ def imgsrc(path: str | None) -> str:
     if s.startswith("/static/") or s.startswith("/"):
         return s
 
-    # Domínio sem protocolo (ex.: contoso.blob.core.windows.net/foo)
+    # Domínio sem protocolo (ex.: st4ufleetprd.blob.core.windows.net/foo)
     if "://" not in s and re.match(r"^[A-Za-z0-9.\-]+(:\d+)?\.[A-Za-z]{2,}(/|$)", s):
         return "https://" + s.lstrip("/")
 
-    # 'static/...'
+    # "static/..."
     if s.startswith("static/"):
         return url_for("static", filename=s[len("static/"):])
 
-    # Qualquer outro relativo cai em /static/<relativo>
+    # Qualquer outro relativo -> /static/<...>
     return url_for("static", filename=s)
 
 

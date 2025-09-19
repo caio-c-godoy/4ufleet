@@ -26,7 +26,7 @@ def _guess_content_type(filename: str, default: str = "application/octet-stream"
     return ctype or default
 
 # --------------------------
-# Backend: LOCAL (filesystem)
+# LOCAL (filesystem)
 # --------------------------
 def _save_local(file_storage, tenant_slug: str) -> str:
     """Salva em /static/uploads/vehicles/<tenant_slug>/... e retorna a URL web (/static/...)."""
@@ -47,7 +47,7 @@ def _save_local(file_storage, tenant_slug: str) -> str:
     return web_path
 
 # --------------------------
-# Backend: AZURE BLOB
+# AZURE BLOB
 # --------------------------
 def _conn_str_account_name(conn_str: str) -> Optional[str]:
     try:
@@ -56,33 +56,29 @@ def _conn_str_account_name(conn_str: str) -> Optional[str]:
     except Exception:
         return None
 
+def _valid_conn_str(conn_str: str) -> bool:
+    if not conn_str:
+        return False
+    # precisa conter chaves básicas
+    return all(k in conn_str for k in ("AccountName=", "AccountKey=", "EndpointSuffix="))
+
 def _save_azure_blob(file_storage, tenant_slug: str) -> str:
-    """
-    Envia para Azure Blob Storage e retorna URL pública do blob.
-    Requer variáveis:
-      - AZURE_STORAGE_CONNECTION_STRING  (ou AZURE_BLOB_CONNECTION_STRING)
-      - AZURE_STORAGE_CONTAINER          (ou AZURE_BLOB_CONTAINER)
-    Opcional:
-      - AZURE_STORAGE_BASE_URL (ex: https://minhaconta.blob.core.windows.net)
-    """
-    try:
-        from azure.storage.blob import BlobServiceClient, ContentSettings
-    except Exception as e:
-        raise RuntimeError("Dependência ausente: instale 'azure-storage-blob'.") from e
+    from azure.storage.blob import BlobServiceClient, ContentSettings
 
     conn_str = (
         os.getenv("AZURE_STORAGE_CONNECTION_STRING")
         or os.getenv("AZURE_BLOB_CONNECTION_STRING")
+        or ""
     )
     container = (
         os.getenv("AZURE_STORAGE_CONTAINER")
         or os.getenv("AZURE_BLOB_CONTAINER")
+        or ""
     )
-    if not conn_str or not container:
-        raise RuntimeError(
-            "Faltam variáveis para Azure Blob: "
-            "AZURE_STORAGE_CONNECTION_STRING e AZURE_STORAGE_CONTAINER."
-        )
+
+    if not _valid_conn_str(conn_str) or not container:
+        # parâmetros ruins → trate como “sem Azure”
+        raise RuntimeError("Azure Blob mal configurado.")
 
     ext = _choose_ext(file_storage.filename)
     if ext not in _ALLOWED_EXT:
@@ -96,11 +92,10 @@ def _save_azure_blob(file_storage, tenant_slug: str) -> str:
 
     bsc = BlobServiceClient.from_connection_string(conn_str)
     cc = bsc.get_container_client(container)
-
     try:
         cc.create_container()
     except Exception:
-        pass  # já existe
+        pass
 
     file_storage.stream.seek(0)
     cc.upload_blob(
@@ -114,29 +109,29 @@ def _save_azure_blob(file_storage, tenant_slug: str) -> str:
     if not base_url:
         account = _conn_str_account_name(conn_str) or ""
         base_url = f"https://{account}.blob.core.windows.net"
-    public_url = f"{base_url.strip().rstrip('/')}/{container}/{blob_path}"
-    return public_url
+    return f"{base_url.strip().rstrip('/')}/{container}/{blob_path}"
 
 # --------------------------
-# Seleção de backend e API pública
+# API pública
 # --------------------------
-def _want_azure() -> bool:
-    has_conn = bool(os.getenv("AZURE_STORAGE_CONNECTION_STRING") or os.getenv("AZURE_BLOB_CONNECTION_STRING"))
-    has_cont = bool(os.getenv("AZURE_STORAGE_CONTAINER") or os.getenv("AZURE_BLOB_CONTAINER"))
-    return has_conn and has_cont
-
 def save_vehicle_image_from_request(file_storage, tenant_slug: str) -> str:
     """
-    Salva a imagem do veículo e retorna uma URL (web) utilizável no template.
-    - Se Azure Blob estiver configurado via env, envia para o Blob e retorna a URL.
-    - Caso contrário, salva localmente e retorna /static/...
+    Salva a imagem do veículo e **NÃO** levanta exceção:
+    - Tenta Azure (se configurado corretamente). Se falhar, faz fallback para local.
+    - Retorna sempre uma URL utilizável (externa ou /static/...).
     """
     if not file_storage or not getattr(file_storage, "filename", ""):
-        raise ValueError("Nenhum arquivo recebido.")
+        return ""  # nada enviado
 
-    _ = secure_filename(file_storage.filename)  # sanitiza (nome final será UUID)
+    # sanitiza (o nome final é UUID de qualquer forma)
+    _ = secure_filename(file_storage.filename)
 
-    if _want_azure():
+    try:
+        # tenta Azure primeiro; se der qualquer pau, cai no local
         return _save_azure_blob(file_storage, tenant_slug)
-
-    return _save_local(file_storage, tenant_slug)
+    except Exception:
+        # fallback local silencioso
+        try:
+            return _save_local(file_storage, tenant_slug)
+        except Exception:
+            return ""  # último recurso
