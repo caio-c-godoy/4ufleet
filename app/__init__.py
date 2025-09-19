@@ -29,7 +29,9 @@ def create_app() -> Flask:
     )
     app.config.from_object(Config())
     app.config.setdefault("TEMPLATES_AUTO_RELOAD", True)
-
+    
+    from .filters import imgsrc
+    app.jinja_env.filters['imgsrc'] = imgsrc
     # --------- Filtros Jinja ----------
     app.add_template_filter(utils.imgsrc, "imgsrc")
 
