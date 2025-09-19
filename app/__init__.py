@@ -13,8 +13,9 @@ from .extensions import db, login_manager
 
 migrate = Migrate()
 
-# importe o módulo utils e use a função de lá como fonte única
+# importa utils uma única vez; o filtro imgsrc vem daqui
 from . import utils
+
 
 def create_app() -> Flask:
     # Carrega .env
@@ -29,11 +30,9 @@ def create_app() -> Flask:
     app.config.from_object(Config())
     app.config.setdefault("TEMPLATES_AUTO_RELOAD", True)
 
-    # --------- Registra filtros Jinja vindos de utils ----------
-    # usa a função imgsrc definida em app.utils
+    # --------- Filtros Jinja ----------
     app.add_template_filter(utils.imgsrc, "imgsrc")
 
-    # ---------- Filtro Jinja: data por extenso (pt) ----------
     def datefmt_long_pt(value):
         def _to_date(val):
             if isinstance(val, date) and not isinstance(val, datetime):
@@ -62,14 +61,9 @@ def create_app() -> Flask:
 
     app.add_template_filter(datefmt_long_pt, "datefmt_long_pt")
 
-    # ---------- Filtro Jinja: normalizar caminho p/ url_for('static', filename=...) ----------
     @app.template_filter("static_rel")
     def static_rel(path: str | None) -> str:
-        """
-        Remove prefixos 'static/' e '/' para que possamos fazer:
-            url_for('static', filename=(valor|static_rel))
-        sem gerar '/static/static/...'.
-        """
+        """Remove 'static/' e a barra inicial para uso em url_for('static', filename=...)."""
         if not path:
             return ""
         p = str(path).lstrip("/")
@@ -77,7 +71,7 @@ def create_app() -> Flask:
             p = p[7:]
         return p
 
-    # ---------- Variáveis úteis nos templates ----------
+    # --------- Contexto comum nos templates ----------
     @app.context_processor
     def inject_common():
         def env(name, default=""):
@@ -87,11 +81,11 @@ def create_app() -> Flask:
         return {
             "config": app.config,
             "env": env,
-            "tenant": t,          # já existia
+            "tenant": t,
             "current_tenant": t,  # alias p/ templates legados
         }
 
-    # ---------- Extensões ----------
+    # --------- Extensões ----------
     db.init_app(app)
     migrate.init_app(app, db)
 
@@ -99,7 +93,16 @@ def create_app() -> Flask:
     login_manager.login_view = "auth.login"
     login_manager.login_message_category = "warning"
 
-    # ---------- CSP mínima para telas com editores/scripts específicos ----------
+    # --------- Middleware: corrige /static/https:/... & /static/http:/... ----------
+    @app.before_request
+    def _fix_broken_static_external():
+        p = request.path or ""
+        if p.startswith("/static/https:/") and not p.startswith("/static/https://"):
+            return redirect("https://" + p[len("/static/https:/"):], code=302)
+        if p.startswith("/static/http:/") and not p.startswith("/static/http://"):
+            return redirect("http://" + p[len("/static/http:/"):], code=302)
+
+    # --------- CSP mínima para páginas com editores ----------
     @app.after_request
     def apply_csp(resp):
         if request.endpoint in ("admin.settings", "admin.contract_preview", "admin.contract_validate") \
@@ -110,7 +113,7 @@ def create_app() -> Flask:
             )
         return resp
 
-    # ---------- Blueprints ----------
+    # --------- Blueprints ----------
     from .site import site_bp              # /landing, /signup
     from .public import public_bp          # /<tenant_slug>/
     from .auth import auth_bp              # /<tenant_slug>/auth
@@ -123,7 +126,7 @@ def create_app() -> Flask:
     app.register_blueprint(admin_bp,   url_prefix="/<tenant_slug>/admin")
     app.register_blueprint(superadmin_bp)
 
-    # ---------- Home -> landing ----------
+    # --------- Home -> landing ----------
     @app.get("/")
     def index():
         return redirect(url_for("site.landing"))

@@ -63,11 +63,11 @@ def imgsrc(path: str | None) -> str:
     """
     Normaliza caminho/URL para uso em <img src="...">:
     - Corrige 'https:/' -> 'https://' e 'http:/' -> 'http://'
-    - Conserta casos de '/static/https:/...' removendo o /static/ indevido
+    - Conserta '/static/https:/...' e '/static/http:/...' removendo o /static/ indevido
     - Mantém URLs absolutas (http/https//data)
     - Aceita domínio sem protocolo -> força https://
     - Caminhos relativos viram /static/<...>
-    - Se vazio/None, retorna um placeholder inline (sem 404)
+    - Se vazio/None, retorna placeholder inline (sem 404)
     """
     if not path:
         return _INLINE_PLACEHOLDER
@@ -76,9 +76,9 @@ def imgsrc(path: str | None) -> str:
     if not s:
         return _INLINE_PLACEHOLDER
 
-    # Se veio prefixado indevidamente: "/static/https:/..." ou "/static/http:/..."
+    # Remove /static/ indevido antes de protocolo de 1 barra
     if s.startswith("/static/https:/") and not s.startswith("/static/https://"):
-        s = s[len("/static/"):]  # tira o /static/
+        s = s[len("/static/"):]
     elif s.startswith("/static/http:/") and not s.startswith("/static/http://"):
         s = s[len("/static/"):]
 
