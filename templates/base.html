@@ -101,10 +101,13 @@
   </style>
 </head>
 
-{% set nochrome = hide_chrome|default(false) %}
-<body class="app-body{% if nochrome %} no-chrome{% endif %}">
+{# --- Lógica central de exibição do chrome --- #}
+{% set _force_hide = hide_chrome|default(false) %}
+{% set show_chrome = (current_user.is_authenticated and tenant and not _force_hide) %}
 
-  {% if not nochrome %}
+<body class="app-body{% if not show_chrome %} no-chrome{% endif %}">
+
+  {% if show_chrome %}
   <nav class="navbar navbar-dark topbar px-3">
     <div class="d-flex align-items-center gap-2">
       {% if tenant %}
@@ -141,64 +144,99 @@
   {% endif %}
 
   <div class="app-wrapper">
-    {% if not nochrome and tenant %}
+    {% if show_chrome %}
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-inner">
+        {# ---------- CORE (sempre) ---------- #}
         <div class="sidebar-section">CORE</div>
         <a class="nav-link {% if request.endpoint=='admin.dashboard' %}active{% endif %}"
            href="{{ url_for('admin.dashboard', tenant_slug=tenant.slug) }}">
           <i class="bi bi-speedometer2 me-2"></i> <span>Dashboard</span>
         </a>
 
-        <div class="sidebar-section mt-3">RESERVAS</div>
-        <a class="nav-link {% if request.endpoint=='admin.reservations' %}active{% endif %}"
-           href="{{ url_for('admin.reservations', tenant_slug=tenant.slug) }}">
-          <i class="bi bi-list-check me-2"></i> <span>Reservas</span>
-        </a>
-        <a class="nav-link {% if request.endpoint=='admin.calendar' %}active{% endif %}"
-           href="{{ url_for('admin.calendar', tenant_slug=tenant.slug) }}">
-          <i class="bi bi-calendar4-week me-2"></i> <span>Calendário</span>
-        </a>
+        {# ---------- RESERVAS ---------- #}
+        {% set _can_res = can('reservations','view') %}
+        {% set _can_chk = can('checklists','view') %}
+        {% set _can_vehview = can('vehicles','view') %}
+        {% if _can_res or _can_chk or _can_vehview %}
+          <div class="sidebar-section mt-3">RESERVAS</div>
 
-        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.operator_checklists') %}active{% endif %}"
-           href="{{ url_for('admin.operator_checklists_index', tenant_slug=tenant.slug, stage='entrega') }}">
-          <i class="bi bi-clipboard2-check me-2"></i> <span>Checklist do Operador</span>
-        </a>
-        <a class="nav-link {% if request.endpoint=='admin.operator_checklists_index' and request.args.get('stage')=='finalizadas' %}active{% endif %}"
-           href="{{ url_for('admin.operator_checklists_index', tenant_slug=tenant.slug, stage='finalizadas') }}">
-          <i class="bi bi-archive-check me-2"></i> <span>Reservas finalizadas</span>
-        </a>
+          {% if _can_res %}
+          <a class="nav-link {% if request.endpoint=='admin.reservations' %}active{% endif %}"
+             href="{{ url_for('admin.reservations', tenant_slug=tenant.slug) }}">
+            <i class="bi bi-list-check me-2"></i> <span>Reservas</span>
+          </a>
+          <a class="nav-link {% if request.endpoint=='admin.calendar' %}active{% endif %}"
+             href="{{ url_for('admin.calendar', tenant_slug=tenant.slug) }}">
+            <i class="bi bi-calendar4-week me-2"></i> <span>Calendário</span>
+          </a>
+          {% endif %}
 
-        <a class="nav-link {% if request.endpoint=='admin.maintenance_list' %}active{% endif %}"
-           href="{{ url_for('admin.maintenance_list', tenant_slug=tenant.slug) }}">
-          <i class="bi bi-wrench-adjustable me-2"></i> <span>Em manutenção</span>
-        </a>
+          {% if _can_chk %}
+          <a class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.operator_checklists') %}active{% endif %}"
+             href="{{ url_for('admin.operator_checklists_index', tenant_slug=tenant.slug, stage='entrega') }}">
+            <i class="bi bi-clipboard2-check me-2"></i> <span>Checklist do Operador</span>
+          </a>
+          <a class="nav-link {% if request.endpoint=='admin.operator_checklists_index' and request.args.get('stage')=='finalizadas' %}active{% endif %}"
+             href="{{ url_for('admin.operator_checklists_index', tenant_slug=tenant.slug, stage='finalizadas') }}">
+            <i class="bi bi-archive-check me-2"></i> <span>Reservas finalizadas</span>
+          </a>
+          {% endif %}
 
-        <div class="sidebar-section mt-3">VENDAS</div>
-        <a class="nav-link {% if request.endpoint=='admin.leads' %}active{% endif %}"
-           href="{{ url_for('admin.leads', tenant_slug=tenant.slug) }}">
-          <i class="bi bi-people me-2"></i> <span>CRM / Leads</span>
-        </a>
+          {% if _can_vehview %}
+          <a class="nav-link {% if request.endpoint=='admin.maintenance_list' %}active{% endif %}"
+             href="{{ url_for('admin.maintenance_list', tenant_slug=tenant.slug) }}">
+            <i class="bi bi-wrench-adjustable me-2"></i> <span>Em manutenção</span>
+          </a>
+          {% endif %}
+        {% endif %}
 
-        <div class="sidebar-section mt-3">CADASTRO</div>
-        <a class="nav-link {% if request.endpoint=='admin.categories' %}active{% endif %}"
-           href="{{ url_for('admin.categories', tenant_slug=tenant.slug) }}">
-          <i class="bi bi-tags me-2"></i> <span>Categorias</span>
-        </a>
-        <a class="nav-link {% if request.endpoint=='admin.rates' %}active{% endif %}"
-           href="{{ url_for('admin.rates', tenant_slug=tenant.slug) }}">
-          <i class="bi bi-cash-coin me-2"></i> <span>Tarifas</span>
-        </a>
-        <a class="nav-link {% if request.endpoint=='admin.vehicles' %}active{% endif %}"
-           href="{{ url_for('admin.vehicles', tenant_slug=tenant.slug) }}">
-          <i class="bi bi-car-front me-2"></i> <span>Frota</span>
-        </a>
+        {# ---------- VENDAS (usei mesma permissão de reservas.view; ajuste se criar módulo "leads") ---------- #}
+        {% if _can_res %}
+          <div class="sidebar-section mt-3">VENDAS</div>
+          <a class="nav-link {% if request.endpoint=='admin.leads' %}active{% endif %}"
+             href="{{ url_for('admin.leads', tenant_slug=tenant.slug) }}">
+            <i class="bi bi-people me-2"></i> <span>CRM / Leads</span>
+          </a>
+        {% endif %}
 
-        <div class="sidebar-section mt-3">CONFIGURAÇÕES</div>
-        <a class="nav-link {% if request.endpoint=='admin.settings' %}active{% endif %}"
-           href="{{ url_for('admin.settings', tenant_slug=tenant.slug) }}">
-          <i class="bi bi-gear me-2"></i> <span>Configurações</span>
-        </a>
+        {# ---------- CADASTRO ---------- #}
+        {% set _can_cat = can('categories','view') %}
+        {% set _can_rate = can('rates','view') %}
+        {% set _can_veh  = can('vehicles','view') %}
+        {% if _can_cat or _can_rate or _can_veh %}
+          <div class="sidebar-section mt-3">CADASTRO</div>
+
+          {% if _can_cat %}
+          <a class="nav-link {% if request.endpoint=='admin.categories' %}active{% endif %}"
+             href="{{ url_for('admin.categories', tenant_slug=tenant.slug) }}">
+            <i class="bi bi-tags me-2"></i> <span>Categorias</span>
+          </a>
+          {% endif %}
+
+          {% if _can_rate %}
+          <a class="nav-link {% if request.endpoint=='admin.rates' %}active{% endif %}"
+             href="{{ url_for('admin.rates', tenant_slug=tenant.slug) }}">
+            <i class="bi bi-cash-coin me-2"></i> <span>Tarifas</span>
+          </a>
+          {% endif %}
+
+          {% if _can_veh %}
+          <a class="nav-link {% if request.endpoint=='admin.vehicles' %}active{% endif %}"
+             href="{{ url_for('admin.vehicles', tenant_slug=tenant.slug) }}">
+            <i class="bi bi-car-front me-2"></i> <span>Frota</span>
+          </a>
+          {% endif %}
+        {% endif %}
+
+        {# ---------- CONFIGURAÇÕES (apenas admin) ---------- #}
+        {% if current_user.is_admin %}
+          <div class="sidebar-section mt-3">CONFIGURAÇÕES</div>
+          <a class="nav-link {% if request.endpoint=='admin.settings' %}active{% endif %}"
+             href="{{ url_for('admin.settings', tenant_slug=tenant.slug) }}">
+            <i class="bi bi-gear me-2"></i> <span>Configurações</span>
+          </a>
+        {% endif %}
       </div>
       <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
     </aside>
@@ -247,12 +285,8 @@
       var sidebar = document.getElementById('sidebar');
       var backdrop = document.getElementById('sidebarBackdrop');
       if(btn && sidebar && backdrop){
-        btn.addEventListener('click', function(){
-          sidebar.classList.toggle('open');
-        });
-        backdrop.addEventListener('click', function(){
-          sidebar.classList.remove('open');
-        });
+        btn.addEventListener('click', function(){ sidebar.classList.toggle('open'); });
+        backdrop.addEventListener('click', function(){ sidebar.classList.remove('open'); });
       }
     })();
   </script>

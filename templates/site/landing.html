@@ -108,6 +108,16 @@
     transition: transform .12s ease-in-out, box-shadow .12s ease-in-out;
   }
   .ff-fab:hover{ transform: translateY(-2px) scale(1.03); box-shadow:0 16px 40px rgba(18,140,126,.40); }
+
+  /* ---------- STATS (COUNTERS) ---------- */
+  .ff-stats{ padding:22px; border-radius:16px; background:var(--ff-glass); backdrop-filter:blur(10px); }
+  .ff-stats .stat{ display:flex; align-items:center; gap:12px; }
+  .ff-stats .stat + .stat{ border-left:1px solid rgba(0,0,0,.06); padding-left:18px; }
+  .ff-stats .num{ font-weight:800; font-size: clamp(28px, 4vw, 40px); letter-spacing:-.5px; line-height:1; color:#0b5ed7; }
+  .ff-stats .label{ color:var(--ff-muted); font-size:14px; }
+  @media (max-width: 991.98px){
+    .ff-stats .stat + .stat{ border-left:0; padding-left:0; border-top:1px solid rgba(0,0,0,.06); padding-top:14px; margin-top:14px; }
+  }
 </style>
 {% endblock %}
 
@@ -205,6 +215,40 @@
         <img src="{{ url_for('static', filename='img/brand2.png') }}" alt="" height="26">
         <img src="{{ url_for('static', filename='img/brand3.png') }}" alt="" height="26">
         <img src="{{ url_for('static', filename='img/brand4.png') }}" alt="" height="26">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS STRIP (counters) -->
+<section id="stats" class="mt-3">
+  <div class="container">
+    <div class="ff-stats ff-card ff-glass">
+      <div class="row g-3 align-items-center">
+        <div class="col-12 col-lg-3">
+          <div class="stat">
+            <div class="num" data-counter data-total="sum" data-sum-selector="#stats [data-region]">0</div>
+            <div class="label">Locadoras ativas</div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-3">
+          <div class="stat">
+            <div class="num" data-counter data-target="128" data-region="us">0</div>
+            <div class="label">Estados Unidos</div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-3">
+          <div class="stat">
+            <div class="num" data-counter data-target="64" data-region="ca">0</div>
+            <div class="label">Canadá</div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-3">
+          <div class="stat">
+            <div class="num" data-counter data-target="228" data-region="eu">0</div>
+            <div class="label">Europa</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -659,6 +703,56 @@
       terms.addEventListener('hidden.bs.modal', openPre);
       inst.hide();
     });
+  })();
+
+  // --- Animated counters (runs once when #stats enters viewport)
+  (function(){
+    const sec = document.getElementById('stats');
+    if(!sec) return;
+
+    const fmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+
+    function animateNumber(el, target, duration){
+      const start = performance.now();
+      const from = 0;
+      function tick(now){
+        const p = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+        const val = Math.round(from + (target - from) * eased);
+        el.textContent = fmt.format(val);
+        if(p < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function run(){
+      // se tiver um [data-total="sum"], soma todos os [data-region]
+      sec.querySelectorAll('[data-counter]').forEach(el => {
+        let target = Number(el.getAttribute('data-target') || '0');
+
+        if (el.getAttribute('data-total') === 'sum') {
+          const sel = el.getAttribute('data-sum-selector') || '[data-region]';
+          target = Array.from(sec.querySelectorAll(sel))
+                    .map(n => Number(n.getAttribute('data-target') || '0'))
+                    .reduce((a,b)=>a+b, 0);
+        }
+
+        // 1.2–1.8s com leve variação
+        const dur = 1200 + (Math.random()*600|0);
+        animateNumber(el, target, dur);
+      });
+    }
+
+    const io = new IntersectionObserver((entries, obs) => {
+      entries.forEach(e => {
+        if(e.isIntersecting){
+          run();
+          obs.disconnect(); // só uma vez
+        }
+      });
+    }, { threshold: 0.35 });
+
+    io.observe(sec);
   })();
 </script>
 {% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% set hide_chrome = true %}
+{% block title %}Esqueci a senha — {{ tenant.name if tenant else 'Car Rental' }}{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:560px;">
+  <div class="text-center mb-4">
+    {% set _logo = tenant.logo_url or tenant.brand_logo_url or tenant.logo_path %}
+    {% if _logo %}
+      <img src="{{ _logo | imgsrc }}" alt="{{ tenant.name or 'Logo' }}" style="height:48px;">
+    {% else %}
+      <img src="{{ 'img/4ufleet-logo.png' | imgsrc }}" alt="Logo" style="height:48px;">
+    {% endif %}
+  </div>
+  <div class="card shadow-sm">
+    <div class="card-body p-4">
+      <h4 class="mb-2">Esqueceu a senha?</h4>
+      <p class="text-muted">Informe seu e-mail. Se houver uma conta, enviaremos um link para redefinir sua senha.</p>
+      <form method="post">
+        <div class="mb-3">
+          <label class="form-label" for="email">E-mail</label>
+          <input type="email" name="email" id="email" class="form-control" required autocomplete="username">
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Enviar link</button>
+      </form>
+      <div class="text-center mt-3">
+        <a href="{{ url_for('auth.login', tenant_slug=tenant.slug) }}">Voltar ao login</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -8,6 +8,7 @@ from pathlib import Path
 from . import admin_bp
 from sqlalchemy.exc import IntegrityError
 from jinja2.sandbox import SandboxedEnvironment
+from functools import wraps
 import base64, io
 from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -15,18 +16,14 @@ from weasyprint import HTML
 import json
 from app.services.mailer import save_tenant_mail_creds, get_tenant_mail_creds, send_test_mail
 from . import admin_bp
-
-
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.identity import DefaultAzureCredential
-
 from flask import (
     render_template, request, redirect, url_for, flash,
-    g, abort, jsonify, current_app, send_file
+    g, abort, jsonify, current_app, send_file, render_template_string
 )
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-
 from sqlalchemy import (
     select, func, and_, or_,
     MetaData, Table, Column, Integer, String, DateTime, Boolean, Text
@@ -43,6 +40,406 @@ from . import admin_bp
 # >>> NOVO: serviço para salvar credenciais no Key Vault
 from app.services.payments import save_tenant_payment_creds
 
+
+import json
+from flask import jsonify, render_template_string, current_app  # garanta estes 3
+
+# --- Constantes já usadas ---
+# --- Guard universal para o blueprint admin (cola no app/admin/routes.py) ---
+from flask import request, abort, current_app
+from flask_login import current_user
+
+# Endpoint -> módulo (por prefixo do endpoint)
+_ENDPOINT_MODULE_PREFIX = {
+    "admin.vehicles":      "vehicles",
+    "admin.vehicle_":      "vehicles",
+    "admin.categories":    "categories",
+    "admin.category_":     "categories",
+    "admin.rates":         "rates",
+    "admin.rate_":         "rates",
+    "admin.reservations":  "reservations",
+    "admin.reservation_":  "reservations",
+    "admin.payments":      "payments",
+    "admin.payment_":      "payments",
+    "admin.contracts":     "contracts",
+    "admin.contract_":     "contracts",
+    "admin.checklists":    "checklists",
+    "admin.checklist_":    "checklists",
+    "admin.operator_":     "checklists",   # operator_checklists_index etc.
+    "admin.leads":         "reservations", # ajuste se tiver módulo leads próprio
+}
+
+# keywords -> ação
+_ACTION_KEYWORDS = {
+    "new": "create", "create": "create", "add": "create", "clone": "create",
+    "edit": "edit", "update": "edit",
+    "delete": "delete", "remove": "delete",
+    "cancel": "cancel", "void": "cancel",
+    "send-link": "send_payment", "send_link": "send_payment", "send-payment": "send_payment",
+    "export": "export", "download": "export",
+}
+
+# endpoints liberados (admin-only ou já protegidos)
+_ALLOW_ENDPOINTS = {
+    "admin.dashboard",
+    "admin.settings",
+    "admin.user_perms_modal",
+    "admin.user_perms_save",
+    "auth.logout",
+}
+
+def _infer_module_from_endpoint(ep: str | None) -> str | None:
+    if not ep or not ep.startswith("admin."):
+        return None
+    for prefix, module in _ENDPOINT_MODULE_PREFIX.items():
+        if ep.startswith(prefix):
+            return module
+    return None
+
+def _infer_action(method: str, endpoint: str | None, subpath: str) -> str:
+    ep = (endpoint or "").lower()
+
+    # prioridade 1: palavra no endpoint
+    for k, act in _ACTION_KEYWORDS.items():
+        if k in ep:
+            return act
+
+    # prioridade 2: por método + path
+    if method == "GET":
+        sp = subpath.lower()
+        if "export" in sp or sp.endswith(".csv") or sp.endswith(".xlsx"):
+            return "export"
+        return "view"
+    else:
+        for seg in subpath.lower().split("/"):
+            if seg in _ACTION_KEYWORDS:
+                return _ACTION_KEYWORDS[seg]
+        return "edit"
+
+@admin_bp.before_request
+def _enforce_permissions_admin_blueprint():
+    """
+    Enforça permissão em TODAS as rotas do blueprint admin.
+    Não depende de g.tenant (removeu o early-return).
+    """
+    ep = request.endpoint or ""
+    if not ep.startswith("admin."):
+        return
+
+    # sem login? deixa o fluxo normal (login_required das rotas cuida disso)
+    if not current_user.is_authenticated:
+        return
+
+    # admin passa livre
+    if getattr(current_user, "is_admin", False):
+        return
+
+    # whitelisted
+    if ep in _ALLOW_ENDPOINTS:
+        return
+
+    # path relativo depois de /admin/
+    path = request.path
+    sub = ""
+    if "/admin/" in path:
+        sub = path.split("/admin/", 1)[1]
+
+    # descobre módulo por endpoint, fallback por path
+    module = _infer_module_from_endpoint(ep)
+    if not module and sub:
+        first = sub.split("/", 1)[0].lower()
+        module = {
+            "vehicles": "vehicles",
+            "categories": "categories",
+            "rates": "rates",
+            "reservations": "reservations",
+            "payments": "payments",
+            "contracts": "contracts",
+            "checklists": "checklists",
+            "operator": "checklists",   # /admin/operator/...
+            "leads": "reservations",
+        }.get(first)
+
+    # se não souber mapear, não bloqueia (evita falso positivo)
+    if not module:
+        return
+
+    action = _infer_action(request.method, ep, sub)
+
+    # checa permissão do usuário
+    perms = getattr(current_user, "permissions", {}) or {}
+    allowed = bool(perms.get(module, {}).get(action, 0) == 1)
+
+    if not allowed:
+        current_app.logger.info(
+            "AUTH DENY user_id=%s email=%s module=%s action=%s endpoint=%s path=%s",
+            getattr(current_user, "id", None),
+            getattr(current_user, "email", None),
+            module, action, ep, request.path
+        )
+        abort(403)
+
+
+PERM_MODULES = [
+    ("vehicles", "Veículos"), ("categories", "Categorias"), ("rates", "Tarifas"),
+    ("reservations", "Reservas"), ("payments", "Pagamentos"),
+    ("contracts", "Contratos"), ("checklists", "Checklists"), ("users", "Usuários"),
+]
+PERM_ACTIONS = ["view","create","edit","delete","cancel","send_payment","export"]
+
+def _build_permissions_from_form(form) -> dict:
+    perms = {}
+    for mod, _ in PERM_MODULES:
+        row = {}
+        for a in PERM_ACTIONS:
+            row[a] = 1 if form.get(f"perms[{mod}][{a}]") else 0
+        perms[mod] = row
+    return perms
+
+def _empty_perms() -> dict:
+    return {m: {a: 0 for a in PERM_ACTIONS} for m, _ in PERM_MODULES}
+
+
+def _normalize_perms(perms_any) -> dict:
+    """
+    Aceita dict ou JSON string; normaliza para:
+      {module: {action: 0/1(int)}}
+    Tudo que for truthy ('1','true',True,'on') vira 1; restante 0.
+    """
+    if not perms_any:
+        return {m: {a: 0 for a in PERM_ACTIONS} for m, _ in PERM_MODULES}
+
+    # se veio string, tenta decodificar
+    if isinstance(perms_any, str):
+        try:
+            perms_any = json.loads(perms_any)
+        except Exception:
+            return {m: {a: 0 for a in PERM_ACTIONS} for m, _ in PERM_MODULES}
+
+    out = {}
+    for mod, _ in PERM_MODULES:
+        src = (perms_any or {}).get(mod, {})
+        row = {}
+        for a in PERM_ACTIONS:
+            v = src.get(a, 0)
+            row[a] = 1 if (v in (1, True, "1", "true", "True", "on", "yes")) else 0
+        out[mod] = row
+    return out
+
+def _save_perms_to_user(u, perms_dict) -> bool:
+    """
+    Tenta salvar nas seguintes opções:
+      1) u.permissions (JSON/dict ou string)
+      2) u.meta['permissions'] (dict ou string)
+      3) u.settings['permissions'] (dict ou string)
+    Retorna True se conseguiu persistir em alguma delas.
+    """
+    # 1) Campo direto
+    if hasattr(u, "permissions"):
+        try:
+            # se já há string, grava JSON string
+            if isinstance(getattr(u, "permissions"), str):
+                u.permissions = json.dumps(perms_dict, ensure_ascii=False)
+            else:
+                u.permissions = perms_dict
+            return True
+        except Exception:
+            pass
+
+    # 2) Meta
+    try:
+        if not hasattr(u, "meta") or not isinstance(getattr(u, "meta"), dict):
+            setattr(u, "meta", {})
+        # se meta['permissions'] já é string, manter string
+        if isinstance(u.meta.get("permissions"), str):
+            u.meta["permissions"] = json.dumps(perms_dict, ensure_ascii=False)
+        else:
+            u.meta["permissions"] = perms_dict
+        return True
+    except Exception:
+        pass
+
+    # 3) Settings
+    try:
+        if not hasattr(u, "settings") or not isinstance(getattr(u, "settings"), dict):
+            setattr(u, "settings", {})
+        if isinstance(u.settings.get("permissions"), str):
+            u.settings["permissions"] = json.dumps(perms_dict, ensure_ascii=False)
+        else:
+            u.settings["permissions"] = perms_dict
+        return True
+    except Exception:
+        pass
+
+    return False
+
+def _load_perms_from_user(u) -> dict:
+    """
+    Carrega permissões de u.permissions / u.meta / u.settings
+    Aceita dict ou JSON string. Sempre normaliza para ints 0/1.
+    """
+    # 1) Direto
+    base = getattr(u, "permissions", None)
+    if base:
+        return _normalize_perms(base)
+
+    # 2) Meta
+    if hasattr(u, "meta") and isinstance(getattr(u, "meta"), dict):
+        if "permissions" in u.meta:
+            return _normalize_perms(u.meta.get("permissions"))
+
+    # 3) Settings
+    if hasattr(u, "settings") and isinstance(getattr(u, "settings"), dict):
+        if "permissions" in u.settings:
+            return _normalize_perms(u.settings.get("permissions"))
+
+    # vazio
+    return _normalize_perms(None)
+
+    
+def user_can(u, module: str, action: str) -> bool:
+    try:
+        if getattr(u, "is_admin", False):
+            return True
+        perms = getattr(u, "permissions", {}) or {}
+        return bool(perms.get(module, {}).get(action, 0) == 1)
+    except Exception:
+        return False
+
+@admin_bp.app_context_processor
+def inject_can():
+    # nos templates: {% if can('rates','create') %} ... {% endif %}
+    return { "can": lambda module, action: user_can(current_user, module, action) }
+
+def require_perm(module: str, action: str):
+    """
+    Uso:
+      @admin_bp.get("/rates")
+      @login_required
+      @require_perm("rates","view")
+      def rates(): ...
+    """
+    def deco(fn):
+      @wraps(fn)
+      def wrapper(*args, **kwargs):
+          if not user_can(current_user, module, action):
+              abort(403)
+          return fn(*args, **kwargs)
+      return wrapper
+    return deco
+
+# Página 403 simples (opcional)
+@admin_bp.app_errorhandler(403)
+def _err_403(e):
+    # troque por render_template("errors/403.html"), se tiver
+    return (
+        "<div style='padding:24px;font:14px/1.4 system-ui'>"
+        "<h3>Você não tem permissão para acessar esta página.</h3>"
+        "<p>Se precisar de acesso, fale com um administrador.</p>"
+        "</div>",
+        403,
+        {"Content-Type": "text/html; charset=utf-8"},
+    )
+
+
+ALLOWED_IMG_EXTS = {"jpg", "jpeg", "png", "webp", "gif"}
+
+def _allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMG_EXTS
+
+
+@admin_bp.route("/settings/login-hero", methods=["GET", "POST"], endpoint="settings_login_hero")
+@login_required
+def settings_login_hero():
+    tenant: Tenant = g.tenant
+
+    if request.method == "POST":
+        # -------- textos --------
+        tenant.login_hero_enabled = bool(request.form.get("login_hero_enabled"))
+        tenant.login_hero_kicker  = (request.form.get("login_hero_kicker") or "").strip() or None
+        tenant.login_hero_title   = (request.form.get("login_hero_title") or "").strip() or None
+        tenant.login_hero_desc    = (request.form.get("login_hero_desc") or "").strip() or None
+
+        # -------- upload de imagem (opcional) --------
+        file = request.files.get("login_hero_image")
+        if file and file.filename:
+            if not _allowed_file(file.filename):
+                flash("Formato de imagem inválido. Use JPG, PNG, WEBP ou GIF.", "warning")
+            else:
+                try:
+                    # nome seguro + extensão normalizada
+                    filename = secure_filename(file.filename)
+                    ext = filename.rsplit(".", 1)[1].lower()
+
+                    # caminho relativo ao /static: uploads/tenant/<slug>/login-hero.<ext>
+                    rel_dir = Path("uploads") / "tenant" / tenant.slug
+                    rel_path = rel_dir / f"login-hero.{ext}"
+
+                    # diretório absoluto no disco
+                    static_folder = Path(current_app.static_folder)  # ex.: <root>/static
+                    dst_dir = static_folder / rel_dir
+                    dst_dir.mkdir(parents=True, exist_ok=True)
+
+                    # apaga versões antigas de outros formatos
+                    for old in dst_dir.glob("login-hero.*"):
+                        try:
+                            old.unlink()
+                        except Exception:
+                            pass
+
+                    # salva arquivo novo
+                    file.save(dst_dir / rel_path.name)
+
+                    # grava o caminho RELATIVO (compatível com url_for('static', filename=...))
+                    tenant.login_hero_image = str(rel_path).replace("\\", "/")
+                    flash("Imagem enviada com sucesso.", "success")
+                except Exception as e:
+                    current_app.logger.exception("Falha ao salvar imagem do login hero")
+                    flash("Não foi possível salvar a imagem agora.", "warning")
+
+        db.session.commit()
+        flash("Configurações atualizadas.", "success")
+        return redirect(url_for("admin.settings_login_hero", tenant_slug=tenant.slug))
+
+    return render_template("admin/settings_login_hero.html", tenant=tenant)
+
+
+from urllib.parse import urlparse
+
+@admin_bp.post("/settings/login-hero/remove-image")
+@login_required
+def settings_login_hero_remove_image():
+    tenant: Tenant = g.tenant
+    img = (tenant.login_hero_image or "").strip()
+    if not img:
+        flash("Não há imagem configurada.", "info")
+        return redirect(url_for("admin.settings_login_hero", tenant_slug=tenant.slug))
+
+    # Se for URL externa (http/https), apenas limpa o campo (não temos como apagar na origem)
+    parsed = urlparse(img)
+    is_external = parsed.scheme in {"http", "https"}
+
+    try:
+        if not is_external:
+            # caminho local relativo ao static: ex. "uploads/tenant/<slug>/login-hero.jpg"
+            from pathlib import Path
+            from flask import current_app
+
+            static_folder = Path(current_app.static_folder)
+            file_path = static_folder / img
+            # segurança: garante que está dentro do /static
+            file_path = file_path.resolve()
+            if static_folder.resolve() in file_path.parents and file_path.exists():
+                file_path.unlink(missing_ok=True)
+
+        tenant.login_hero_image = None
+        db.session.commit()
+        flash("Imagem removida.", "success")
+    except Exception as e:
+        current_app.logger.exception("Falha ao remover imagem do login hero")
+        flash("Não foi possível remover a imagem agora.", "warning")
+
+    return redirect(url_for("admin.settings_login_hero", tenant_slug=tenant.slug))
 
 # =============================================================================
 # Helpers multitenant: captura <tenant_slug> e injeta automaticamente no url_for
@@ -498,7 +895,8 @@ def settings():
             flash("Configurações da assinatura salvas.", "success")
             return redirect(url_for("admin.settings"))
 
-        # ---------- Usuários (criação rápida) ----------
+                # ---------- Usuários (criação + permissões por módulo) ----------
+              # ---------- Usuários (criação + permissões por módulo) ----------
         if sec == "user_new":
             email = (request.form.get("email") or "").strip().lower()
             pwd   = request.form.get("password") or ""
@@ -506,16 +904,27 @@ def settings():
             if not email or not pwd:
                 flash("Informe email e senha.", "warning")
                 return redirect(url_for("admin.settings"))
+
             from app.models import User
             if User.query.filter_by(email=email).first():
                 flash("Já existe um usuário com esse e-mail.", "warning")
                 return redirect(url_for("admin.settings"))
+
             u = User(tenant_id=t.id, email=email, is_admin=admin)
+            u.permissions = _build_permissions_from_form(request.form)
             u.set_password(pwd)
+
+            perms_dict = _build_permissions_from_form(request.form)
+            saved = _save_perms_to_user(u, perms_dict)
+            if not saved:
+                current_app.logger.warning("Não foi possível salvar permissões; adicione campo JSON 'permissions' no modelo User.")
+
             db.session.add(u)
             db.session.commit()
-            flash("Usuário criado.", "success")
+            flash("Usuário criado com permissões configuradas.", "success")
             return redirect(url_for("admin.settings"))
+
+
 
         # ---------- E-mail (SMTP por tenant) ----------
         if sec == "mail":
@@ -1902,3 +2311,210 @@ def mail_test():
     except Exception as e:
         current_app.logger.exception("mail_test")
         return jsonify(ok=False, error=str(e)), 500
+
+
+
+#===== ROTAS PERMISSÕES USUÁRIOS =====#
+@admin_bp.get("/user-perms-modal")
+@login_required
+def user_perms_modal():
+    admin_required()
+    from app.models import User
+
+    user_id = request.args.get("user_id", type=int)
+    if not user_id:
+        return "Parâmetro user_id é obrigatório.", 400
+
+    u = User.query.get_or_404(user_id)
+    current_perms = u.permissions or _empty_perms()
+
+    html = render_template_string("""
+<div class="mb-2">
+  <div class="fw-semibold">{{ user.email }}</div>
+  {% if user.is_admin %}
+    <div class="text-success small">Administrador (acesso total; permissões abaixo são ignoradas)</div>
+  {% else %}
+    <div class="text-muted small">Defina as permissões específicas para este usuário.</div>
+  {% endif %}
+</div>
+
+<form id="userPermsForm" method="post" action="{{ url_for('admin.user_perms_save') }}">
+  <input type="hidden" name="user_id" value="{{ user.id }}">
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead class="table-light">
+        <tr>
+          <th style="min-width:180px">Módulo</th>
+          {% for a in actions %}
+            <th class="text-center text-capitalize">{{ a.replace('_',' ') }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for key, label in modules %}
+          <tr>
+            <td class="fw-semibold">{{ label }} <div class="small text-muted">({{ key }})</div></td>
+            {% for a in actions %}
+              {% set checked = 1 if (perms.get(key, {}).get(a, 0) == 1) else 0 %}
+              <td class="text-center">
+                <input type="checkbox"
+                       class="form-check-input"
+                       name="perms[{{ key }}][{{ a }}]"
+                       value="1"
+                       {% if checked %}checked{% endif %}>
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="bi bi-save"></i> Salvar
+    </button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+  </div>
+</form>
+    """, user=u, modules=PERM_MODULES, actions=PERM_ACTIONS, perms=current_perms)
+
+    return html
+
+
+
+@admin_bp.post("/user-perms-save")
+@login_required
+def user_perms_save():
+    admin_required()
+    from app.models import User
+
+    user_id = request.form.get("user_id", type=int)
+    if not user_id:
+        return jsonify(ok=False, error="user_id obrigatório"), 400
+
+    u = User.query.get_or_404(user_id)
+    u.permissions = _build_permissions_from_form(request.form)
+
+    try:
+        db.session.commit()
+        return jsonify(ok=True)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Falha ao salvar permissões")
+        return jsonify(ok=False, error="db_commit_failed"), 500
+
+
+@admin_bp.post("/user-delete")
+@login_required
+def user_delete():
+    admin_required()  # só quem acessa Settings já é admin, mantém por segurança
+    from app.models import User
+
+    t = g.tenant
+    user_id = request.form.get("user_id", type=int)
+    if not user_id:
+        flash("user_id obrigatório.", "warning")
+        return redirect(url_for("admin.settings", _anchor="pane-users"))
+
+    u = User.query.get_or_404(user_id)
+
+    # escopo do tenant
+    if getattr(u, "tenant_id", None) != t.id:
+        flash("Usuário não pertence a este tenant.", "danger")
+        return redirect(url_for("admin.settings", _anchor="pane-users"))
+
+    # não excluir a si mesmo
+    if u.id == current_user.id:
+        flash("Você não pode excluir a si mesmo.", "warning")
+        return redirect(url_for("admin.settings", _anchor="pane-users"))
+
+    # proteger último admin do tenant
+    if u.is_admin:
+        from sqlalchemy import func
+        admins_count = db.session.query(func.count(User.id)).filter_by(tenant_id=t.id, is_admin=True).scalar() or 0
+        if admins_count <= 1:
+            flash("Não é possível excluir o último administrador do tenant.", "warning")
+            return redirect(url_for("admin.settings", _anchor="pane-users"))
+
+    try:
+        db.session.delete(u)
+        db.session.commit()
+        flash(f"Usuário '{u.email}' excluído.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Falha ao excluir usuário")
+        flash("Não foi possível excluir o usuário agora.", "danger")
+
+    return redirect(url_for("admin.settings", _anchor="pane-users"))
+
+@admin_bp.post("/user-activate")
+@login_required
+def user_activate():
+    admin_required()
+    from app.models import User
+    from datetime import datetime
+
+    t = g.tenant
+    user_id = request.form.get("user_id", type=int)
+    if not user_id:
+        flash("user_id obrigatório.", "warning")
+        return redirect(url_for("admin.settings", _anchor="pane-users"))
+
+    u = User.query.get_or_404(user_id)
+    if getattr(u, "tenant_id", None) != t.id:
+        flash("Usuário não pertence a este tenant.", "danger")
+        return redirect(url_for("admin.settings", _anchor="pane-users"))
+
+    # Não faz sentido 'ativar' a si mesmo pela UI de admin, mas se quiser permitir, ok.
+    # if u.id == current_user.id:
+    #     flash("Você já está autenticado.", "info")
+    #     return redirect(url_for("admin.settings", _anchor="pane-users"))
+
+    # Marca como confirmado/ativo nos campos que existirem no seu modelo
+    now = datetime.utcnow()
+    changed = False
+
+    def set_bool(attr):
+        nonlocal changed
+        if hasattr(u, attr):
+            try:
+                setattr(u, attr, True)
+                changed = True
+            except Exception:
+                pass
+
+    def set_time(attr):
+        nonlocal changed
+        if hasattr(u, attr):
+            try:
+                setattr(u, attr, now)
+                changed = True
+            except Exception:
+                pass
+
+    # Campos comuns em apps Flask
+    set_bool("is_active")
+    set_bool("active")
+    set_bool("email_confirmed")
+    set_bool("is_confirmed")
+    set_bool("confirmed")
+    set_bool("is_verified")
+    set_bool("email_verified")
+
+    set_time("email_confirmed_at")
+    set_time("confirmed_at")
+    set_time("email_verified_at")
+
+    try:
+        db.session.add(u)
+        db.session.commit()
+        if changed:
+            flash(f"Usuário '{u.email}' ativado/confirmado.", "success")
+        else:
+            flash("Nenhum campo de confirmação/ativação encontrado no modelo User.", "warning")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Falha ao ativar usuário")
+        flash("Não foi possível ativar o usuário agora.", "danger")
+
+    return redirect(url_for("admin.settings", _anchor="pane-users"))

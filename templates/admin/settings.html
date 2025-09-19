@@ -23,6 +23,7 @@
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="tab-mail" data-bs-toggle="tab" data-bs-target="#pane-mail" type="button" role="tab">E-mail</button>
   </li>
+  
   <li class="nav-item" role="presentation">
   <button class="nav-link" id="tab-i18n" data-bs-toggle="tab" data-bs-target="#pane-i18n" type="button" role="tab">
     Idioma
@@ -32,6 +33,11 @@
   <!-- NOVA ABA: Links & Embed -->
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="tab-links" data-bs-toggle="tab" data-bs-target="#pane-links" type="button" role="tab">Links &amp; Embed</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a class="nav-link" href="{{ url_for('admin.settings_login_hero', tenant_slug=g.tenant.slug) }}">
+      Login (Hero)
+    </a>
   </li>
   <li class="nav-item ms-auto" role="presentation">
     <button class="nav-link" id="tab-users" data-bs-toggle="tab" data-bs-target="#pane-users" type="button" role="tab">Usuários</button>
@@ -340,8 +346,7 @@
   </div>
 </div>
 
-
-  <!-- LINKS & EMBED -->
+    <!-- LINKS & EMBED -->
   <div class="tab-pane fade" id="pane-links" role="tabpanel" aria-labelledby="tab-links">
     <div class="card">
       <div class="card-header">Links do Tenant &amp; Código de Incorporação</div>
@@ -395,73 +400,234 @@
     </div>
   </div>
 
+
+
   <!-- USERS -->
-  <div class="tab-pane fade" id="pane-users" role="tabpanel" aria-labelledby="tab-users">
-    <div class="row g-3">
-      <div class="col-lg-5">
-        <div class="card h-100">
-          <div class="card-header">Novo usuário</div>
-          <div class="card-body">
-            <form action="{{ url_for('admin.settings', tenant_slug=g.tenant.slug) }}" method="post" class="row g-3">
-              <input type="hidden" name="_section" value="user_new">
-              <div class="col-12">
-                <label class="form-label">E-mail</label>
-                <input type="email" name="email" class="form-control" required>
-              </div>
-              <div class="col-12">
-                <label class="form-label">Senha</label>
-                <input type="password" name="password" class="form-control" required>
-              </div>
-              <div class="col-12">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="is_admin" id="isAdmin">
-                  <label class="form-check-label" for="isAdmin">Administrador</label>
-                </div>
-              </div>
-              <div class="col-12">
-                <button class="btn btn-primary"><i class="bi bi-person-plus"></i> Criar usuário</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-lg-7">
-        <div class="card h-100">
-          <div class="card-header">Usuários da empresa</div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-sm table-hover mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>E-mail</th>
-                    <th class="text-center">Admin</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for u in users %}
-                    <tr>
-                      <td>{{ u.email }}</td>
-                      <td class="text-center">
-                        {% if u.is_admin %}
-                          <span class="badge text-bg-success">Sim</span>
-                        {% else %}
-                          <span class="badge text-bg-secondary">Não</span>
-                        {% endif %}
-                      </td>
-                    </tr>
-                  {% else %}
-                    <tr><td colspan="2" class="text-muted p-3">Nenhum usuário cadastrado.</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+<div class="tab-pane fade" id="pane-users" role="tabpanel" aria-labelledby="tab-users">
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="card h-100">
+        <div class="card-header">Novo usuário</div>
+        <div class="card-body">
+          <form action="{{ url_for('admin.settings', tenant_slug=g.tenant.slug) }}" method="post" class="row g-3">
+            <input type="hidden" name="_section" value="user_new">
+            <div class="col-12">
+              <label class="form-label">E-mail</label>
+              <input type="email" name="email" class="form-control" required>
             </div>
-          </div>
-        </div>
-      </div>
+            <div class="col-12">
+              <label class="form-label">Senha</label>
+              <input type="password" name="password" class="form-control" required>
+            </div>
 
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="is_admin" id="isAdmin">
+                <label class="form-check-label" for="isAdmin">Administrador (acesso total)</label>
+              </div>
+              <div class="form-text">
+                Dica: se marcar “Administrador”, as permissões abaixo são ignoradas.
+              </div>
+            </div>
+
+            <!-- MATRIZ DE PERMISSÕES POR MÓDULO -->
+            <div class="col-12">
+              <div class="d-flex align-items-center justify-content-between">
+                <label class="form-label mb-0">Permissões por módulo</label>
+                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnPermClear">Limpar tudo</button>
+              </div>
+
+              <div class="table-responsive mt-2">
+                <table class="table table-sm align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="min-width:180px">Módulo</th>
+                      <th class="text-center">
+                        Ver<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="view" title="Marcar coluna 'Ver'">
+                      </th>
+                      <th class="text-center">
+                        Criar<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="create" title="Marcar coluna 'Criar'">
+                      </th>
+                      <th class="text-center">
+                        Editar<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="edit" title="Marcar coluna 'Editar'">
+                      </th>
+                      <th class="text-center">
+                        Excluir<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="delete" title="Marcar coluna 'Excluir'">
+                      </th>
+                      <th class="text-center">
+                        Cancelar<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="cancel" title="Marcar coluna 'Cancelar'">
+                      </th>
+                      <th class="text-center">
+                        Enviar link pgto<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="send_payment" title="Marcar coluna 'Enviar link'">
+                      </th>
+                      <th class="text-center">
+                        Exportar<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="export" title="Marcar coluna 'Exportar'">
+                      </th>
+                      <th class="text-center">
+                        Tudo<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="all" title="Marcar todas colunas">
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% set modules = [
+                      ('vehicles', 'Veículos'),
+                      ('categories', 'Categorias'),
+                      ('rates', 'Tarifas'),
+                      ('reservations', 'Reservas'),
+                      ('payments', 'Pagamentos'),
+                      ('contracts', 'Contratos'),
+                      ('checklists', 'Checklists'),
+                      ('users', 'Usuários')
+                    ] %}
+                    {% for key,label in modules %}
+                      <tr data-module="{{ key }}">
+                        <td class="fw-semibold">
+                          {{ label }}
+                          <div class="small text-muted">({{ key }})</div>
+                        </td>
+                        {% for action in ['view','create','edit','delete','cancel','send_payment','export'] %}
+                          <td class="text-center">
+                            <input
+                              type="checkbox"
+                              class="form-check-input perm-cell"
+                              name="perms[{{ key }}][{{ action }}]"
+                              value="1"
+                              data-action="{{ action }}"
+                            >
+                          </td>
+                        {% endfor %}
+                        <td class="text-center">
+                          <input type="checkbox" class="form-check-input perm-row-all" title="Marcar todas as ações deste módulo">
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              <div class="form-text">
+                As permissões definidas aqui serão salvas no cadastro do usuário (escopo deste tenant).
+              </div>
+            </div>
+
+            <div class="col-12">
+  <button class="btn btn-primary">
+    <i class="bi bi-person-plus"></i> Criar usuário
+  </button>
+</div>
+</form>
+</div>
+</div>
+</div>
+
+<div class="col-lg-7">
+  <div class="card h-100">
+    <div class="card-header">Usuários da empresa</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>E-mail</th>
+              <th class="text-center">Admin</th>
+              <th class="text-end">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+              <tr>
+                <td class="align-middle">{{ u.email }}</td>
+                <td class="text-center align-middle">
+                  {% if u.is_admin %}
+                    <span class="badge text-bg-success">Sim</span>
+                  {% else %}
+                    <span class="badge text-bg-secondary">Não</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <!-- Permissões -->
+                  <button
+                    class="btn btn-sm btn-outline-primary me-1"
+                    data-bs-toggle="modal"
+                    data-bs-target="#editPermsModal"
+                    data-user-id="{{ u.id }}"
+                    data-user-email="{{ u.email }}"
+                    title="Editar permissões"
+                  >
+                    <i class="bi bi-shield-lock"></i> Permissões
+                  </button>
+<!-- ATIVAR (aparece sempre; backend trata os campos existentes) -->
+<form action="{{ url_for('admin.user_activate') }}"
+      method="post"
+      class="d-inline"
+      onsubmit="return confirm('Ativar/confirmar o usuário {{ u.email }}?');">
+  <input type="hidden" name="user_id" value="{{ u.id }}">
+  <button type="submit"
+          class="btn btn-sm btn-outline-success me-1"
+          title="Ativar usuário (marcar como confirmado)">
+    <i class="bi bi-check2-circle"></i>
+  </button>
+</form>
+
+                  <!-- Excluir (não permite excluir a si mesmo; proteção extra no backend impede último admin) -->
+                  <form action="{{ url_for('admin.user_delete') }}"
+                        method="post"
+                        class="d-inline"
+                        onsubmit="return confirm('Excluir o usuário {{ u.email }}? Esta ação não pode ser desfeita.');">
+                    <input type="hidden" name="user_id" value="{{ u.id }}">
+                    {% if u.id != current_user.id %}
+                      <button type="submit"
+                              class="btn btn-sm btn-outline-danger"
+                              title="Excluir usuário">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    {% else %}
+                      <!-- opcional: mostrar um botão desabilitado para indicar que é você -->
+                      <button type="button"
+                              class="btn btn-sm btn-outline-danger"
+                              title="Você não pode excluir a si mesmo"
+                              disabled>
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    {% endif %}
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="text-muted p-3">Nenhum usuário cadastrado.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
+</div>
+
+</div>
+
+
+  <!-- Modal (placeholder) para edição — conteúdo dinâmico por fetch -->
+  <div class="modal fade" id="editPermsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 class="modal-title">Permissões do usuário</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="editPermsBody">
+          <div class="text-center text-muted py-5">Carregando…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 </div> <!-- /tab-content -->
 
@@ -670,7 +836,7 @@
 <h1>Contrato de Locação de Veículo</h1>
 <div class="box">
   <p><b>Locatário:</b> ${jv('cliente_nome')} — <b>Doc:</b> ${jv('cliente_doc')}</p>
-  <p><b>Período:</b> ${jv('data_inicio|datefmt')} a ${jv('data_fim|datefmt')} —
+  <p><b>Período:</b> ${jv('data_inicio|datefmt')} a ${jv('data_fim|datefmt')} — 
      <b>Total:</b> ${jv('valor_total|money(currency)')}</p>
   <p><b>Veículo:</b> ${jv('carro_marca')} ${jv('carro_modelo')} ${jv('carro_ano')} (${jv('carro_cor')})</p>
 </div>
@@ -728,29 +894,104 @@
     });
   });
 
-  /* Teste de e-mail (movido para extra_js) */
-  document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('btnMailTest');
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
-    const to = document.getElementById('mailTestTo')?.value?.trim();
-    if (!to) { alert('Informe um e-mail em "Para (teste)".'); return; }
-    try {
-      const res = await fetch(btn.dataset.url, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ to })
-      });
-      const data = await res.json();
-      if (data.ok) {
-        alert(data.mock ? 'Teste simulado (mock) no log.' : 'E-mail de teste enviado!');
-      } else {
-        alert('Falha ao enviar e-mail de teste: ' + (data.error || 'erro desconhecido'));
+  /* =============================== */
+  /*   PERMISSÕES POR MÓDULO - JS    */
+  /* =============================== */
+
+  // helper: intercepta submit do form do modal e salva via fetch
+  function bindUserPermsForm(container) {
+    const form = container.querySelector('#userPermsForm');
+    if (!form) return;
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(form);
+      try {
+        const res = await fetch(form.action, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) {
+          form.insertAdjacentHTML('beforebegin',
+            '<div class="alert alert-success py-2">Permissões salvas.</div>');
+          setTimeout(() => {
+            const modalEl = document.getElementById('editPermsModal');
+            if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+          }, 600);
+        } else {
+          form.insertAdjacentHTML('beforebegin',
+            '<div class="alert alert-danger py-2">Erro: ' + (data.error || 'Falha ao salvar') + '</div>');
+        }
+      } catch {
+        form.insertAdjacentHTML('beforebegin',
+          '<div class="alert alert-danger py-2">Não foi possível salvar agora.</div>');
       }
-    } catch (e) {
-      alert('Não foi possível enviar o teste agora.');
+    });
+  }
+
+  // Marcar coluna inteira (inclui um "all" que marca todas as colunas)
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.perm-col').forEach(colChk => {
+      colChk.addEventListener('change', e => {
+        const col = e.target.dataset.col;
+        const checked = e.target.checked;
+
+        if (col === 'all') {
+          const cols = ['view','create','edit','delete','cancel','send_payment','export'];
+          cols.forEach(c => {
+            document.querySelectorAll(`tbody input.perm-cell[data-action="${c}"]`)
+              .forEach(cb => { cb.checked = checked; });
+          });
+          document.querySelectorAll('.perm-row-all').forEach(cb => { cb.checked = checked; });
+          document.querySelectorAll('.perm-col').forEach(cb => { if (cb.dataset.col !== 'all') cb.checked = checked; });
+          return;
+        }
+
+        document.querySelectorAll(`tbody input.perm-cell[data-action="${col}"]`)
+          .forEach(cb => { cb.checked = checked; });
+      });
+    });
+
+    // Marcar linha inteira (por módulo) e sincronizar o select-all da linha
+    document.querySelectorAll('tbody tr[data-module]').forEach(tr => {
+      const rowAll = tr.querySelector('.perm-row-all');
+      const cells = tr.querySelectorAll('.perm-cell');
+      if (rowAll) {
+        rowAll.addEventListener('change', () => {
+          cells.forEach(cb => { cb.checked = rowAll.checked; });
+        });
+      }
+      cells.forEach(cb => {
+        cb.addEventListener('change', () => {
+          const allChecked = Array.from(cells).every(x => x.checked);
+          if (rowAll) rowAll.checked = allChecked;
+        });
+      });
+    });
+
+    // Limpar tudo
+    const btnClear = document.getElementById('btnPermClear');
+    if (btnClear) {
+      btnClear.addEventListener('click', () => {
+        document.querySelectorAll('.perm-cell, .perm-row-all, .perm-col').forEach(cb => { cb.checked = false; });
+      });
+    }
+
+    // Modal de edição de permissões (carrega HTML e faz bind do form)
+    const editPermsModal = document.getElementById('editPermsModal');
+    if (editPermsModal) {
+      editPermsModal.addEventListener('show.bs.modal', (ev) => {
+        const btn = ev.relatedTarget;
+        const uid = btn?.getAttribute('data-user-id');
+        const email = btn?.getAttribute('data-user-email') || '';
+        const body = editPermsModal.querySelector('#editPermsBody');
+
+        body.innerHTML = `<div class="text-center text-muted py-5">Carregando permissões de <b>${email}</b>…</div>`;
+
+        const url = "{{ url_for('admin.user_perms_modal') }}?user_id=" + encodeURIComponent(uid);
+        fetch(url)
+          .then(r => r.text())
+          .then(html => { body.innerHTML = html; bindUserPermsForm(body); })
+          .catch(() => { body.innerHTML = '<div class="text-danger">Falha ao carregar.</div>'; });
+      });
     }
   });
-});
 </script>
 {% endblock %}

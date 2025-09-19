@@ -1,78 +1,167 @@
+{# templates/auth/login.html #}
 {% extends "base.html" %}
-{% block title %}Entrar{% endblock %}
+{% set hide_chrome = true %}
+
+{% block title %}Entrar — {{ tenant.name if tenant else 'Car Rental' }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .auth-wrap {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 520px 1fr;
+  }
+  .auth-left { display:flex; align-items:center; justify-content:center; padding:48px 40px; background:#fff; }
+  .auth-card { width:100%; max-width:440px; }
+  .brand-login { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+  .brand-login img { height:44px; width:auto; object-fit:contain; }
+  .brand-login .brand-name { font-weight:700; font-size:1.1rem; letter-spacing:.02em; }
+  .muted { color:#6c757d; }
+  .forgot a { text-decoration:none; }
+  .forgot a:hover { text-decoration:underline; }
+  .btn-login { height:46px; font-weight:600; background-color:var(--brand-primary)!important; border-color:var(--brand-primary)!important; }
+
+  .auth-right { position:relative; overflow:hidden; background:#0b1e3a; }
+  .hero-bg { position:absolute; inset:0; background-size:cover; background-position:center; filter:saturate(1.05) contrast(1.02); opacity:.9; }
+  .hero-overlay{ position:absolute; inset:0; background:linear-gradient(120deg, rgba(0,0,0,.45) 0%, color-mix(in srgb, var(--brand-primary) 35%, transparent) 40%, rgba(0,0,0,.35) 100%); }
+  .hero-copy{ position:relative; z-index:1; height:100%; color:#f1f5f9; display:grid; place-items:center; padding:48px; text-shadow:0 1px 12px rgba(0,0,0,.35); }
+  .hero-box{ max-width:720px; backdrop-filter:blur(2px); }
+  .hero-kicker{ text-transform:uppercase; letter-spacing:.18em; font-size:.78rem; opacity:.85; }
+  .hero-title{ font-weight:800; line-height:1.12; margin:.4rem 0 1rem; font-size:clamp(1.6rem,2.2vw + 1rem,2.6rem); }
+  .hero-desc{ opacity:.92; font-size:clamp(.98rem,.6vw + .7rem,1.05rem); }
+
+  @media (max-width: 991.98px){
+    .auth-wrap{ grid-template-columns:1fr; }
+    .auth-right{ display:none; }
+    .auth-left{ padding:36px 24px; }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container py-4" style="max-width: 520px">
-  <div class="card shadow-sm">
-    <div class="card-body p-4">
+{# mostrar coluna da direita somente se explicitamente habilitada (default: true) #}
+{% set show_hero = tenant.login_hero_enabled if tenant and tenant.login_hero_enabled is not none else true %}
 
-      <h4 class="mb-3">Entrar</h4>
+{# HERO: resolve URL em 3 cenários: http(s), já começa com /static/, ou caminho relativo salvo #}
+{% set hero_img = tenant.login_hero_image if tenant and tenant.login_hero_image else None %}
+{% if hero_img %}
+  {% if hero_img.startswith('http') %}
+    {% set hero_url = hero_img %}
+  {% elif hero_img.startswith('/static/') %}
+    {% set hero_url = hero_img %}
+  {% else %}
+    {% set hero_url = url_for('static', filename=hero_img.lstrip('/')) %}
+  {% endif %}
+{% endif %}
 
-      {% if pending_confirmation %}
-        <div class="alert alert-warning d-flex justify-content-between align-items-center">
-          <div>Seu e-mail ainda não foi confirmado.</div>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnResendConfirm">
-            Reenviar link
-          </button>
-        </div>
-      {% endif %}
+{# textos com fallback #}
+{% set hero_kicker = tenant.login_hero_kicker if tenant and tenant.login_hero_kicker else '4UFLEET • MULTIFROTA' %}
+{% set hero_title  = tenant.login_hero_title  if tenant and tenant.login_hero_title  else 'Carros, motos, vans, barcos e mais — tudo pronto para alugar.' %}
+{% set hero_desc   = tenant.login_hero_desc   if tenant and tenant.login_hero_desc   else 'Centralize reservas, tarifas e manutenção em um único painel. Aumente a ocupação da sua frota com automações e relatórios em tempo real.' %}
 
-      <form method="post" id="loginForm" novalidate>
+<div class="auth-wrap" style="{% if not show_hero %}grid-template-columns:1fr;{% endif %}">
+  <section class="auth-left">
+    <div class="auth-card">
+      <div class="brand-login">
+        {# LOGO: resolve URL em 3 cenários também #}
+        {% set _logo = tenant.logo_url or tenant.brand_logo_url or tenant.logo_path %}
+        {% if _logo %}
+          {% if _logo.startswith('http') %}
+            {% set logo_url = _logo %}
+          {% elif _logo.startswith('/static/') %}
+            {% set logo_url = _logo %}
+          {% else %}
+            {% set logo_url = url_for('static', filename=_logo.lstrip('/')) %}
+          {% endif %}
+          <img src="{{ logo_url }}" alt="{{ tenant.name or 'Logo' }}">
+        {% else %}
+          <img src="{{ url_for('static', filename='img/4ufleet-logo.png') }}" alt="Logo">
+        {% endif %}
+        <span class="brand-name">{{ tenant.name if tenant else 'Car Rental' }}</span>
+      </div>
+
+      <h3 class="mb-2">Entrar</h3>
+      <p class="muted mb-4">Acesse o painel da sua locadora para gerenciar reservas, frota e tarifas.</p>
+
+      <form method="post" action="{{ url_for('auth.login', tenant_slug=tenant.slug) }}">
+        {{ form.hidden_tag() if form is defined }}
+
         <div class="mb-3">
-          <label class="form-label" for="emailInput">E-mail</label>
-          <input id="emailInput" type="email" class="form-control"
-                 name="email" value="{{ email or '' }}" autocomplete="email" required>
+          <label for="email" class="form-label">E-mail</label>
+          <input type="email" class="form-control" id="email" name="email"
+                 value="{{ request.form.get('email','') }}" required autocomplete="username">
         </div>
-        <div class="mb-3">
-          <label class="form-label" for="passwordInput">Senha</label>
-          <input id="passwordInput" type="password" class="form-control"
-                 name="password" autocomplete="current-password" required>
+
+        <div class="mb-2">
+          <label for="password" class="form-label">Senha</label>
+          <div class="input-group">
+            <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
+            <button type="button" class="btn btn-outline-secondary" id="togglePwd" title="Mostrar/ocultar">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
         </div>
-        <button class="btn btn-primary w-100" type="submit">Entrar</button>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="1" id="remember" name="remember">
+            <label class="form-check-label" for="remember">Manter conectado</label>
+          </div>
+          <div class="forgot">
+            <a href="{{ url_for('auth.forgot_password', tenant_slug=tenant.slug) }}">Esqueceu a senha?</a>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 btn-login">Entrar</button>
       </form>
 
-      <div class="small text-muted mt-3 text-center">
-        Ambiente: <b>{{ tenant.name if tenant else '-' }}</b>
+      <div class="mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for cat, msg in messages %}
+              <div class="alert alert-{{ cat }} py-2 mb-2">{{ msg }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      <div class="text-center mt-4 muted small">
+        Ambiente: <strong>{{ tenant.name if tenant else '—' }}</strong>
       </div>
     </div>
-  </div>
+  </section>
+
+  {% if show_hero %}
+  <section class="auth-right">
+    <div class="hero-bg" style="
+      {% if hero_img %}background-image:url('{{ hero_url }}');
+      {% else %}background-image:linear-gradient(120deg,#0b1e3a,#112d58);
+      {% endif %}"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-copy">
+      <div class="hero-box">
+        {% if hero_kicker %}<div class="hero-kicker">{{ hero_kicker }}</div>{% endif %}
+        {% if hero_title  %}<h1 class="hero-title">{{ hero_title }}</h1>{% endif %}
+        {% if hero_desc   %}<p class="hero-desc">{{ hero_desc }}</p>{% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
 </div>
+{% endblock %}
 
-{% if pending_confirmation %}
+{% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('btnResendConfirm');
-  if (!btn) return;
-
-  btn.addEventListener('click', async () => {
-    const email = document.querySelector('input[name="email"]')?.value?.trim();
-    if (!email) { alert('Informe seu e-mail no campo acima para reenviar o link.'); return; }
-
-    btn.disabled = true;
-    const orig = btn.textContent;
-    btn.textContent = 'Enviando...';
-
-    try {
-      const res = await fetch("{{ url_for('auth.resend_confirmation', tenant_slug=tenant.slug) }}", {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'email=' + encodeURIComponent(email)
+  (function(){
+    const btn = document.getElementById('togglePwd');
+    const input = document.getElementById('password');
+    if(btn && input){
+      btn.addEventListener('click', function(){
+        const isPwd = input.type === 'password';
+        input.type = isPwd ? 'text' : 'password';
+        this.innerHTML = isPwd ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
       });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.ok) {
-        alert(data.already ? 'Seu e-mail já está confirmado.' : 'Reenviamos o link de confirmação.');
-      } else {
-        alert((data && data.error) || 'Não foi possível reenviar agora.');
-      }
-    } catch {
-      alert('Falha de rede ao reenviar.');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = orig;
     }
-  });
-});
+  })();
 </script>
-
-{% endif %}
 {% endblock %}

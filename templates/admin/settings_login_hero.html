@@ -1,0 +1,143 @@
+{# templates/admin/settings_login_hero.html #}
+{% extends "base.html" %}
+{% block title %}Configurações › Login (Hero){% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="mb-0">Configurações do Login (Hero)</h3>
+    <a class="btn btn-outline-secondary" href="{{ url_for('admin.settings', tenant_slug=tenant.slug) }}">
+      <i class="bi bi-gear"></i> Voltar
+    </a>
+  </div>
+
+  <div class="row g-4">
+    <!-- Coluna: Formulário -->
+    <div class="col-lg-7">
+      <form method="post" enctype="multipart/form-data" class="card shadow-sm">
+        <div class="card-body">
+          <div class="form-check form-switch mb-4">
+            <input class="form-check-input" type="checkbox" id="login_hero_enabled"
+                   name="login_hero_enabled" {% if tenant.login_hero_enabled %}checked{% endif %}>
+            <label class="form-check-label" for="login_hero_enabled">Exibir coluna de destaque no login</label>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Kicker (linha pequena acima do título)</label>
+              <input type="text" class="form-control" name="login_hero_kicker"
+                     value="{{ tenant.login_hero_kicker or '' }}" maxlength="120"
+                     placeholder="Ex.: 4UFLEET • MULTIFROTA">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Título</label>
+              <input type="text" class="form-control" name="login_hero_title"
+                     value="{{ tenant.login_hero_title or '' }}" maxlength="180"
+                     placeholder="Ex.: Carros, motos, vans, barcos e mais — tudo pronto para alugar.">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Descrição</label>
+              <textarea class="form-control" rows="4" name="login_hero_desc"
+                        placeholder="Breve descrição ao lado do formulário de login.">{{ tenant.login_hero_desc or '' }}</textarea>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Imagem (opcional)</label>
+              <input class="form-control" type="file" name="login_hero_image" accept=".jpg,.jpeg,.png,.webp,.gif">
+              <div class="form-text">
+                Recomendado: ≥ 1600×1000 (≤ 1.5 MB). Formatos: JPG/PNG/WEBP/GIF.
+              </div>
+
+              {% if tenant.login_hero_image %}
+                {% set _img = tenant.login_hero_image %}
+                {% if _img.startswith('http') %}
+                  {% set thumb_url = _img %}
+                {% elif _img.startswith('/static/') %}
+                  {% set thumb_url = _img %}
+                {% else %}
+                  {% set thumb_url = url_for('static', filename=_img.lstrip('/')) %}
+                {% endif %}
+                <div class="d-flex align-items-center gap-3 mt-3">
+                  <img src="{{ thumb_url }}" alt="Imagem atual"
+                       style="height:56px;width:auto;object-fit:cover;border-radius:.5rem;">
+                  <form method="post" action="{{ url_for('admin.settings_login_hero_remove_image', tenant_slug=tenant.slug) }}">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                      <i class="bi bi-trash"></i> Remover imagem
+                    </button>
+                  </form>
+                  <a class="btn btn-outline-secondary btn-sm" target="_blank" href="{{ thumb_url }}">Abrir</a>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer d-flex gap-2">
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-check2-circle"></i> Salvar
+          </button>
+          <a class="btn btn-light" href="{{ url_for('admin.settings_login_hero', tenant_slug=tenant.slug) }}">
+            Descartar alterações
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Coluna: Pré-visualização -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex align-items-center gap-2">
+          <i class="bi bi-eye"></i> Pré-visualização
+        </div>
+        <div class="card-body">
+          <div class="ratio ratio-16x9 border rounded position-relative overflow-hidden">
+            {% set preview_img = tenant.login_hero_image %}
+            {% if preview_img %}
+              {% if preview_img.startswith('http') %}
+                {% set preview_url = preview_img %}
+              {% elif preview_img.startswith('/static/') %}
+                {% set preview_url = preview_img %}
+              {% else %}
+                {% set preview_url = url_for('static', filename=preview_img.lstrip('/')) %}
+              {% endif %}
+              <img src="{{ preview_url }}" class="w-100 h-100" style="object-fit:cover;" alt="Preview">
+              <div class="position-absolute top-0 start-0 w-100 h-100"
+                   style="background: linear-gradient(120deg, rgba(0,0,0,.45), rgba(0,0,0,.2));"></div>
+            {% else %}
+              <div class="d-flex w-100 h-100 align-items-center justify-content-center text-muted bg-light">
+                Sem imagem — será usado apenas o gradiente com os textos
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="mt-3">
+            <div class="text-uppercase small text-muted">{{ tenant.login_hero_kicker or 'Kicker' }}</div>
+            <div class="fw-bold fs-5">{{ tenant.login_hero_title or 'Seu título de destaque' }}</div>
+            <div class="text-muted">{{ tenant.login_hero_desc or 'Sua descrição aparecerá aqui.' }}</div>
+          </div>
+
+          <hr>
+          <div class="small text-muted">
+            <div><strong>Status:</strong>
+              {% if tenant.login_hero_enabled %}<span class="text-success">Exibindo no login</span>
+              {% else %}<span class="text-danger">Oculto no login</span>{% endif %}
+            </div>
+            {% if tenant.login_hero_image %}
+              <div class="text-truncate"><strong>Imagem:</strong> {{ tenant.login_hero_image }}</div>
+            {% else %}
+              <div><strong>Imagem:</strong> não definida</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info mt-3">
+        Dica: pode salvar um caminho relativo (ex.: <code>uploads/tenant/{{ tenant.slug }}/login-hero.jpg</code>)
+        ou uma URL externa (CDN/Blob).
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

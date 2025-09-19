@@ -13,8 +13,10 @@ try:
     from sqlalchemy.dialects.postgresql import JSONB as JSONType  # type: ignore
 except Exception:  # fallback p/ SQLite, MySQL, etc.
     from sqlalchemy.types import JSON as JSONType  # type: ignore
+    # app/models.py  (ou onde fica seu modelo Tenant)
+from sqlalchemy import Boolean, String, Text
 
-
+from sqlalchemy.ext.mutable import MutableDict
 # =====================================================================
 # MIXIN: escopo multi-tenant (usado pelo filtro automático no __init__)
 # =====================================================================
@@ -60,6 +62,13 @@ class Tenant(db.Model):
 
     # Contrato (HTML Jinja)
     contract_template_html = db.Column(db.Text)
+
+        # --- Personalização da tela de login (Hero) ---
+    login_hero_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    login_hero_kicker  = db.Column(db.String(120))
+    login_hero_title   = db.Column(db.String(180))
+    login_hero_desc    = db.Column(db.Text)
+    login_hero_image   = db.Column(db.String(300))  # caminho relativo a /static ou URL http(s)
 
     # Assinatura (posição/tamanho)
     sign_x_rel = db.Column(db.Float)
@@ -127,6 +136,12 @@ class User(UserMixin, db.Model, TenantScoped):
     is_superadmin = db.Column(db.Boolean, default=False, nullable=False)
     last_login_at = db.Column(db.DateTime)
 
+    # NOVO: campo de permissões como JSON mutável
+    permissions = db.Column(
+        MutableDict.as_mutable(db.JSON),  # em SQLite vira TEXT com JSON
+        default=dict,
+        nullable=False,
+    )
     tenant = db.relationship("Tenant", back_populates="users", lazy=True)
 
     def set_password(self, raw: str):
@@ -491,3 +506,5 @@ class Prospect(db.Model):
 
     def __repr__(self):
         return f"<Prospect {self.email} status={self.status}>"
+
+
