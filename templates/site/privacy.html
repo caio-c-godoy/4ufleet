@@ -1,9 +1,159 @@
 {% extends "base.html" %}
 {% block title %}Política de Privacidade{% endblock %}
+
 {% block content %}
-<div class="container py-3">
-  <h3>Política de Privacidade</h3>
-  <p>Coletamos dados necessários para operação da plataforma e contato com clientes.
-     Você pode solicitar a exclusão mediante requisição ao suporte.</p>
+{% set app_name = (g.tenant.name if g and g.tenant and g.tenant.name else "4uFleet") %}
+{% set terms_url = (url_for('public.terms', tenant_slug=g.tenant.slug) if g and g.tenant else '#') %}
+{% set updated_at = (g.tenant.privacy_updated_at.strftime('%d/%m/%Y') if g and g.tenant and g.tenant.privacy_updated_at else "—") %}
+
+{# logo com fallback que funciona local e na Azure #}
+{% set raw_logo = (
+  g.tenant.brand_logo_url if g and g.tenant and g.tenant.brand_logo_url
+  else url_for('static', filename='img/4ufleet-logo.png')
+) %}
+
+<div class="container py-4">
+  <div class="d-flex align-items-center gap-3 mb-2">
+    <img
+      src="{{ raw_logo }}"
+      alt="{{ app_name }}"
+      height="86"
+      onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/4ufleet-logo.svg') }}';"
+      style="object-fit:contain"
+    />
+    <h3 class="mb-0">Política de Privacidade — {{ app_name }}</h3>
+  </div>
+  <span class="text-muted small">Última atualização: 09/20/2025{{ updated_at }}</span>
+
+  <div class="alert alert-info small mt-3" role="alert">
+    Esta Política descreve como o {{ app_name }} coleta, usa, compartilha e protege dados pessoais no contexto de gestão de locação de veículos. Ao usar a plataforma, você concorda com as práticas descritas aqui e nos <a href="{{ terms_url }}">Termos de Uso</a>.
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Sumário</h5>
+      <ul class="list-unstyled mb-0">
+        <li><a href="#definicoes">1. Definições</a></li>
+        <li><a href="#dados-coletados">2. Dados Coletados</a></li>
+        <li><a href="#finalidades">3. Finalidades do Tratamento</a></li>
+        <li><a href="#bases-legais">4. Bases Legais</a></li>
+        <li><a href="#compartilhamento">5. Compartilhamento e Subprocessadores</a></li>
+        <li><a href="#cookies">6. Cookies e Tecnologias Similares</a></li>
+        <li><a href="#retencao">7. Retenção e Exclusão</a></li>
+        <li><a href="#seguranca">8. Segurança da Informação</a></li>
+        <li><a href="#direitos">9. Seus Direitos</a></li>
+        <li><a href="#transferencias">10. Transferências Internacionais</a></li>
+        <li><a href="#criancas">11. Dados de Crianças</a></li>
+        <li><a href="#atualizacoes">12. Atualizações desta Política</a></li>
+        <li><a href="#contato">13. Contato</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <section id="definicoes" class="mb-4">
+    <h5>1. Definições</h5>
+    <p><strong>Controlador:</strong> O responsável pelas decisões relativas ao tratamento de dados (o locador/tenant que opera sua conta no {{ app_name }}).</p>
+    <p><strong>Operador/Processador:</strong> O {{ app_name }}, quando trata dados por conta do Controlador para prover a plataforma.</p>
+    <p><strong>Titular:</strong> Pessoa natural a quem se referem os dados (clientes finais, motoristas, equipe do locador).</p>
+  </section>
+
+  <section id="dados-coletados" class="mb-4">
+    <h5>2. Dados Coletados</h5>
+    <ul>
+      <li><strong>Conta e empresa:</strong> nome, e-mail, telefone, CNPJ/empresa, endereço, preferências, configurações e permissões de usuários da equipe.</li>
+      <li><strong>Operacionais de locação:</strong> dados de reservas, contratos, checklists (retirada/devolução), fotos do veículo (avarias), assinaturas, termos, uploads de documentos.</li>
+      <li><strong>Clientes finais:</strong> nome, e-mail, telefone, documentos exigidos pela operação (ex.: CNH, passaporte), dados de pagamento <em>(processados por terceiros)</em>.</li>
+      <li><strong>Uso da plataforma:</strong> logs de acesso, páginas visitadas, IP, identificadores de dispositivo e navegador, data/hora.</li>
+      <li><strong>Comunicações:</strong> mensagens transacionais (e-mail), notificações e comprovantes gerados pelo sistema.</li>
+    </ul>
+  </section>
+
+  <section id="finalidades" class="mb-4">
+    <h5>3. Finalidades do Tratamento</h5>
+    <ul>
+      <li>Prover e manter funcionalidades de gestão de locação (reservas, contratos, checagens, documentos, relatórios).</li>
+      <li>Autenticar usuários, aplicar permissões e registrar auditoria de ações.</li>
+      <li>Emitir documentos e comprovantes (PDFs, links de pagamento, recibos).</li>
+      <li>Prevenir fraudes e reforçar a segurança da plataforma.</li>
+      <li>Atender obrigações legais/regulatórias e solicitações de autoridades, quando aplicável.</li>
+      <li>Comunicação operacional e suporte.</li>
+      <li>Melhoria contínua (métricas de uso, estabilidade, UX, monitoramento de erros).</li>
+    </ul>
+  </section>
+
+  <section id="bases-legais" class="mb-4">
+    <h5>4. Bases Legais</h5>
+    <p>Tratamos dados com base em: (i) execução de contrato ou procedimentos preliminares (ex.: reserva, contrato), (ii) cumprimento de obrigação legal/regulatória, (iii) legítimo interesse do Controlador/Operador (segurança, melhoria, prevenção a fraudes), (iv) consentimento quando exigido por lei (ex.: determinadas comunicações de marketing, quando aplicável).</p>
+  </section>
+
+  <section id="compartilhamento" class="mb-4">
+    <h5>5. Compartilhamento e Subprocessadores</h5>
+    <p>Podemos compartilhar dados com:</p>
+    <ul>
+      <li><strong>Provedores de pagamento:</strong> para processar cobranças e repasses. O uso desses serviços está sujeito aos termos dos próprios provedores.</li>
+      <li><strong>Infraestrutura e e-mail transacional:</strong> hospedagem, CDN, armazenamento de arquivos/fotos, serviços de fila e e-mail.</li>
+      <li><strong>Suporte e monitoramento:</strong> ferramentas de atendimento, logs e rastreamento de erros.</li>
+      <li><strong>Autoridades:</strong> quando necessário para cumprir lei, decisão judicial ou prevenir fraudes e danos.</li>
+    </ul>
+    <p>Quando atuamos como Operador, tratamos os dados conforme instruções do Controlador (tenant) e contratos aplicáveis.</p>
+  </section>
+
+  <section id="cookies" class="mb-4">
+    <h5>6. Cookies e Tecnologias Similares</h5>
+    <p>Usamos cookies estritamente necessários (login, sessão, segurança) e, quando habilitado, cookies funcionais/analíticos para melhorar a experiência. Você pode gerenciar cookies pelo navegador; alguns recursos podem ficar indisponíveis sem cookies essenciais.</p>
+  </section>
+
+  <section id="retencao" class="mb-4">
+    <h5>7. Retenção e Exclusão</h5>
+    <ul>
+      <li><strong>Retenção operacional:</strong> Mantemos dados pelo período necessário para cumprir as finalidades descritas e obrigações legais/contratuais.</li>
+      <li><strong>Exclusão por inatividade:</strong> Contas sem acessos por mais de <strong>90 (noventa) dias</strong> podem ter <strong>todos os dados excluídos permanentemente</strong> (consulte também os Termos de Uso — Seções de Inatividade).</li>
+      <li><strong>Solicitações do titular:</strong> Você pode requisitar exclusão/anonimização quando aplicável; certas informações podem ser mantidas por exigências legais, disputa ou auditoria.</li>
+    </ul>
+  </section>
+
+  <section id="seguranca" class="mb-4">
+    <h5>8. Segurança da Informação</h5>
+    <p>Adotamos medidas técnicas e organizacionais compatíveis com o porte do {{ app_name }} (controle de acesso, criptografia em trânsito, registros de auditoria, backups e segregação de ambientes). Nenhum sistema é 100% seguro; encorajamos o uso de senhas fortes, 2FA (se disponível) e boas práticas pela sua equipe.</p>
+  </section>
+
+  <section id="direitos" class="mb-4">
+    <h5>9. Seus Direitos</h5>
+    <p>Nos termos da legislação aplicável, você (ou, quando atuarmos como Operador, o seu cliente final por meio do Controlador) pode exercer direitos como: acesso, correção, portabilidade, anonimização, oposição, limitação e exclusão, além de informações sobre compartilhamento e revogação de consentimento quando pertinente.</p>
+    <p>Para solicitações, utilize o canal de suporte abaixo. Quando formos Operador, poderemos direcionar o pedido ao Controlador competente (seu tenant).</p>
+  </section>
+
+  <section id="transferencias" class="mb-4">
+    <h5>10. Transferências Internacionais</h5>
+    <p>Dados podem ser processados em outros países por provedores de infraestrutura e serviços. Nesses casos, buscamos assegurar garantias adequadas (por exemplo, cláusulas contratuais padrão e medidas suplementares), sempre que exigido por lei.</p>
+  </section>
+
+  <section id="criancas" class="mb-4">
+    <h5>11. Dados de Crianças</h5>
+    <p>A plataforma não é destinada a menores sem autorização adequada. Se você acredita que dados de crianças foram tratados indevidamente, contate-nos para remoção.</p>
+  </section>
+
+  <section id="atualizacoes" class="mb-4">
+    <h5>12. Atualizações desta Política</h5>
+    <p>Podemos atualizar esta Política periodicamente. Alterações relevantes serão comunicadas por e-mail ou aviso no sistema. O uso contínuo após a publicação implica concordância.</p>
+  </section>
+
+  <section id="contato" class="mb-4">
+    <h5>13. Contato</h5>
+    <p>Dúvidas, solicitações de acesso/retificação/exclusão de dados e demais assuntos de privacidade: <a href="mailto:support@4ufleet.com">support@4ufleet.com</a>.</p>
+  </section>
+
+  <hr>
+  {# Botão Fechar: volta historicamente ou cai no /signup #}
+  {% set signup_url = (url_for('auth.signup', tenant_slug=g.tenant.slug) if g and g.tenant else '/signup') %}
+  <div class="d-flex justify-content-end mt-3">
+    <a
+      href="{{ signup_url }}"
+      class="btn btn-secondary"
+      onclick="if (window.history.length > 1) { window.history.back(); return false; }"
+    >
+      Fechar
+    </a>
+  </div>
 </div>
 {% endblock %}

@@ -1,16 +1,185 @@
 {% extends "base.html" %}
 {% block title %}Termos de Uso{% endblock %}
+
 {% block content %}
-<div class="container py-3">
-  <h3>Termos de Uso</h3>
-  <p class="text-muted">Última atualização: {{ (caller or None) and "" }}</p>
-  <p>Estes termos descrevem as condições de uso da plataforma de locação multitenant...</p>
-  <ul>
-    <li>Conta e segurança</li>
-    <li>Responsabilidades do locatário e da plataforma</li>
-    <li>Pagamentos e reembolsos</li>
-    <li>Privacidade e dados</li>
-  </ul>
-  <p>Ao prosseguir com o cadastro você concorda com estes termos.</p>
+{% set app_name = (g.tenant.name if g and g.tenant and g.tenant.name else "4uFleet") %}
+{% set support_email = (
+    g.tenant.support_email if g and g.tenant and g.tenant.support_email
+    else (g.tenant.email if g and g.tenant and g.tenant.email else "support@4ufleet.com")
+) %}
+{% set privacy_url = (url_for('public.privacy', tenant_slug=g.tenant.slug) if g and g.tenant else '#') %}
+{% set terms_updated_at = (g.tenant.terms_updated_at.strftime('%d/%m/%Y') if g and g.tenant and g.tenant.terms_updated_at else "—") %}
+
+<div class="container py-4">
+  {% set raw_logo = (
+  g.tenant.brand_logo_url if g and g.tenant and g.tenant.brand_logo_url
+  else url_for('static', filename='img/4ufleet-logo.png')
+) %}
+<div class="d-flex align-items-center gap-3 mb-3">
+  <img
+    src="{{ raw_logo }}"
+    alt="4uFleet"
+    height="86"
+    onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/4ufleet-logo.svg') }}';"
+    style="object-fit:contain"
+  />
+  <h3 class="mb-0">Termos de Uso — {{ g.tenant.name if g and g.tenant and g.tenant.name else '4uFleet' }}</h3>
+</div>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="mb-0">Termos de Uso — {{ app_name }}</h3>
+    <span class="text-muted small">Última atualização: 09/20/2025 {{ terms_updated_at }}</span>
+  </div>
+
+  <div class="alert alert-info small" role="alert">
+    Ao usar o {{ app_name }}, você concorda com estes Termos de Uso. Podemos atualizar este documento a qualquer momento; versões novas passam a valer quando publicadas nesta página.
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Sumário</h5>
+      <ul class="list-unstyled mb-0">
+        <li><a href="#escopo">1. Escopo e Aceite</a></li>
+        <li><a href="#conta">2. Conta, Elegibilidade e Segurança</a></li>
+        <li><a href="#uso">3. Uso da Plataforma e Obrigações</a></li>
+        <li><a href="#reservas">4. Reservas, Contratos e Checklists</a></li>
+        <li><a href="#pagamentos">5. Pagamentos, Reembolsos e Cobranças</a></li>
+        <li><a href="#gratuito">6. Plano Gratuito Condicionado & Limites</a></li>
+        <li><a href="#privacidade">7. Privacidade e Proteção de Dados</a></li>
+        <li><a href="#suporte">8. Suporte e Comunicação</a></li>
+        <li><a href="#propriedade">9. Propriedade Intelectual</a></li>
+        <li><a href="#responsabilidade">10. Isenções e Limitação de Responsabilidade</a></li>
+        <li><a href="#suspensao">11. Suspensão, Encerramento e Inatividade</a></li>
+        <li><a href="#alteracoes">12. Alterações dos Termos</a></li>
+        <li><a href="#lei-foro">13. Lei Aplicável e Foro</a></li>
+        <li><a href="#contato">14. Contato</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <section id="escopo" class="mb-4">
+    <h5>1. Escopo e Aceite</h5>
+    <p>Estes Termos regem o uso do {{ app_name }}, uma plataforma multitenant para gestão de locações de veículos. Ao criar uma conta, acessar ou utilizar qualquer recurso, você declara que leu, entendeu e concorda com estes Termos.</p>
+  </section>
+
+  <section id="conta" class="mb-4">
+    <h5>2. Conta, Elegibilidade e Segurança</h5>
+    <ul>
+      <li><strong>Elegibilidade:</strong> O uso é destinado a pessoas jurídicas e profissionais legalmente habilitados à atividade de locação.</li>
+      <li><strong>Exatidão dos dados:</strong> Você é responsável por manter informações de conta, empresa e cobrança corretas e atualizadas.</li>
+      <li><strong>Segurança:</strong> Proteja suas credenciais. Atividades realizadas com seu usuário são de sua responsabilidade.</li>
+      <li><strong>Acessos de equipe:</strong> Você define perfis/permissões dos usuários do seu time e responde pelo uso que eles fizerem.</li>
+    </ul>
+  </section>
+
+  <section id="uso" class="mb-4">
+    <h5>3. Uso da Plataforma e Obrigações</h5>
+    <ul>
+      <li><strong>Legalidade:</strong> Você concorda em usar o {{ app_name }} em conformidade com leis aplicáveis, políticas internas e boas práticas do setor.</li>
+      <li><strong>Conteúdo:</strong> Uploads (fotos, documentos, contratos) não podem violar direitos de terceiros ou leis.</li>
+      <li><strong>Limites técnicos:</strong> Podemos aplicar políticas de uso justo para preservar estabilidade (ex.: armazenamento de fotos, geração de PDFs, disparo de e-mails, etc.).</li>
+    </ul>
+  </section>
+
+  <section id="reservas" class="mb-4">
+    <h5>4. Reservas, Contratos e Checklists</h5>
+    <ul>
+      <li><strong>Fluxo válido:</strong> Uma locação é considerada válida quando houver reserva/contrato com checklist completo conforme o fluxo da plataforma.</li>
+      <li><strong>Cancelamentos:</strong> Cancelamentos rápidos, reservas sem checklist ou contratos inválidos podem não ser contabilizados para fins de métricas e elegibilidade de plano (ver Seção 6).</li>
+    </ul>
+  </section>
+
+  <section id="pagamentos" class="mb-4">
+    <h5>5. Pagamentos, Reembolsos e Cobranças</h5>
+    <ul>
+      <li><strong>Gateway:</strong> Pagamentos podem ser processados por provedores terceiros. Ao utilizá-los, você concorda com seus termos.</li>
+      <li><strong>Reembolsos:</strong> Quando aplicável, seguem as regras do seu contrato com o cliente final e do gateway de pagamento.</li>
+      <li><strong>Encargos:</strong> Tarifas de processamento, estornos e taxas de chargeback são de responsabilidade do locador.</li>
+    </ul>
+  </section>
+
+  <section id="gratuito" class="mb-4">
+  <h5>6. Plano Gratuito Condicionado & Limites</h5>
+  <div class="border rounded p-3 bg-light">
+    <ul class="mb-0">
+      <li><strong>Gratuito condicionado:</strong> O plano gratuito exige a <em>conclusão</em> (status <em>finalizada</em>) de pelo menos <strong>2 locações por semana</strong>, gerando o link de pagamento total <em>dentro do sistema</em> (janela móvel de 7 dias).</li>
+      <li><strong>Bloqueio por inatividade:</strong> Se o mínimo não for atingido, novas reservas/contratos ficam bloqueados. Dados e relatórios seguem acessíveis em <em>modo leitura</em>.</li>
+      <li><strong>Desbloqueio:</strong> Você pode reativar o uso pagando <strong>US$ 89,90</strong> (pagamento único). Liberação é imediata após confirmação.</li>
+      <li><strong>Validação de contagem:</strong> Reservas sem checklist/contrato válido ou com cancelamento rápido podem <strong>não contar</strong> para o mínimo.</li>
+      <li><strong>Limites técnicos (uso justo):</strong> Podemos aplicar limites para preservar estabilidade (armazenamento de fotos, e-mails, geração de documentos, etc.).</li>
+      <li><strong>Privacidade:</strong> Seguimos boas práticas de proteção de dados; consulte a <a href="{{ url_for('public.privacy', tenant_slug=g.tenant.slug) if g and g.tenant else '#' }}">Política de Privacidade</a>.</li>
+      <li><strong>Suporte:</strong> Atendimento por e-mail; prazos podem variar conforme demanda.</li>
+      <li class="text-danger"><strong>Exclusão por inatividade &gt; 90 dias:</strong> Contas sem acessos por período superior a <strong>90 (noventa) dias</strong> podem ter <strong>todos os dados excluídos de forma permanente</strong>. Veja também a Seção 11 (Suspensão, Encerramento e Inatividade).</li>
+    </ul>
+  </div>
+  <p class="mt-3 mb-0 small text-muted">Observação: Esses critérios podem ser ajustados com aviso prévio por esta página.</p>
+</section>
+
+  <section id="privacidade" class="mb-4">
+    <h5>7. Privacidade e Proteção de Dados</h5>
+    <p>O tratamento de dados pessoais observará os princípios e obrigações previstos em lei. Detalhes constam na nossa
+      <a href="{{ privacy_url }}">Política de Privacidade</a>. Ao usar o {{ app_name }}, você declara estar ciente e de acordo com esse tratamento.</p>
+  </section>
+
+  <section id="suporte" class="mb-4">
+    <h5>8. Suporte e Comunicação</h5>
+    <ul>
+      <li><strong>Canais:</strong> Suporte por e-mail em <a href="mailto:{{ support_email }}">{{ support_email }}</a>.</li>
+      <li><strong>Prazos:</strong> O tempo de resposta pode variar conforme volume e severidade.</li>
+      <li><strong>Comunicados:</strong> Avisos operacionais podem ser enviados por e-mail ou exibidos na própria plataforma.</li>
+    </ul>
+  </section>
+
+  <section id="propriedade" class="mb-4">
+    <h5>9. Propriedade Intelectual</h5>
+    <p>O {{ app_name }}, seus códigos, marcas, layouts e conteúdos pertencem aos respectivos titulares. Estes Termos não concedem qualquer licença além da necessária para o uso normal da plataforma.</p>
+  </section>
+
+  <section id="responsabilidade" class="mb-4">
+    <h5>10. Isenções e Limitação de Responsabilidade</h5>
+    <ul>
+      <li><strong>Ambiente do cliente:</strong> O correto uso, parametrização e conexão com serviços terceiros é de responsabilidade do locador.</li>
+      <li><strong>Indisponibilidade:</strong> A plataforma pode ficar temporariamente indisponível por manutenção, casos fortuitos ou força maior.</li>
+      <li><strong>Limitação:</strong> Na máxima extensão permitida, nossa responsabilidade global é limitada ao valor pago nos 12 meses anteriores ao evento gerador.</li>
+    </ul>
+  </section>
+
+  <section id="suspensao" class="mb-4">
+    <h5>11. Suspensão, Encerramento e Inatividade</h5>
+    <ul>
+      <li><strong>Suspensão/encerramento:</strong> Podemos suspender ou encerrar o acesso em caso de violação destes Termos, ordem legal ou risco à estabilidade.</li>
+      <li><strong>Inatividade no gratuito:</strong> Ver Seção 6 para regras de bloqueio e desbloqueio.</li>
+      <li><strong>Exportação de dados:</strong> Você pode solicitar exportação dos seus dados, observadas limitações técnicas e legais.</li>
+    </ul>
+  </section>
+
+  <section id="alteracoes" class="mb-4">
+    <h5>12. Alterações dos Termos</h5>
+    <p>Podemos atualizar estes Termos. Alterações relevantes serão comunicadas por e-mail ou aviso no sistema. O uso contínuo após a publicação implica concordância.</p>
+  </section>
+
+  <section id="lei-foro" class="mb-4">
+    <h5>13. Lei Aplicável e Foro</h5>
+    <p>Salvo disposição específica em contrato, aplica-se a legislação do local de constituição do provedor da plataforma. Fica eleito o foro competente desse local, com renúncia a qualquer outro, por mais privilegiado que seja.</p>
+  </section>
+
+  <section id="contato" class="mb-4">
+  <h5>14. Contato</h5>
+  <p>Dúvidas? Fale com: <a href="mailto:support@4ufleet.com">support@4ufleet.com</a>.</p>
+</section>
+
+  <hr>
+{# URL de fallback para o /signup (suporta tenant se existir) #}
+{% set signup_url = (url_for('auth.signup', tenant_slug=g.tenant.slug) if g and g.tenant else '/signup') %}
+
+<div class="d-flex justify-content-end mt-3">
+  <a
+    href="{{ signup_url }}"
+    class="btn btn-secondary"
+    onclick="if (window.history.length > 1) { window.history.back(); return false; }"
+  >
+    Fechar
+  </a>
+</div>
+
 </div>
 {% endblock %}
