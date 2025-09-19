@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h3 class="mb-0">Frota</h3>
-  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.dashboard') }}">Voltar</a>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.dashboard', tenant_slug=tenant.slug) }}">Voltar</a>
 </div>
 
 <div class="row g-4">
@@ -14,7 +14,7 @@
         <h5 class="card-title">Novo veículo</h5>
 
         <form method="post"
-              action="{{ url_for('admin.vehicles') }}"
+              action="{{ url_for('admin.vehicles', tenant_slug=tenant.slug) }}"
               enctype="multipart/form-data"
               autocomplete="off">
           <div class="row g-2">
@@ -99,13 +99,9 @@
               {% set st = v.status or 'available' %}
               <tr>
                 <td>
-                  {% if v.image_url %}
-                    <img src="{{ v.image_url | imgsrc }}" alt="{{ (v.brand or '') ~ ' ' ~ (v.model or '') }}"
-                         class="rounded" style="width:56px;height:56px;object-fit:cover;">
-                  {% else %}
-                    <img src="{{ 'img/no-image.png' | imgsrc }}" alt="Sem foto"
-                         class="rounded" style="width:56px;height:56px;object-fit:cover;">
-                  {% endif %}
+                  {% set foto = v.image_url or 'img/placeholder-car.jpg' %}
+                  <img src="{{ foto | imgsrc }}" alt="{{ (v.brand or '') ~ ' ' ~ (v.model or '') }}"
+                       class="rounded" style="width:56px;height:56px;object-fit:cover;">
                 </td>
 
                 <td class="fw-semibold">
@@ -127,7 +123,7 @@
                   <button type="button"
                           class="btn btn-sm btn-outline-primary me-1"
                           title="Editar"
-                          data-modal-url="{{ url_for('admin.vehicle_edit_modal', vehicle_id=v.id) }}">
+                          data-modal-url="{{ url_for('admin.vehicle_edit_modal', tenant_slug=tenant.slug, vehicle_id=v.id) }}">
                     <i class="bi bi-pencil-square"></i>
                   </button>
 
@@ -139,13 +135,13 @@
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                       <li>
-                        <form method="post" action="{{ url_for('admin.vehicle_set_status', vehicle_id=v.id) }}">
+                        <form method="post" action="{{ url_for('admin.vehicle_set_status', tenant_slug=tenant.slug, vehicle_id=v.id) }}">
                           <input type="hidden" name="target" value="available">
                           <button class="dropdown-item {% if st=='available' %}active{% endif %}">Disponível</button>
                         </form>
                       </li>
                       <li>
-                        <form method="post" action="{{ url_for('admin.vehicle_set_status', vehicle_id=v.id) }}">
+                        <form method="post" action="{{ url_for('admin.vehicle_set_status', tenant_slug=tenant.slug, vehicle_id=v.id) }}">
                           <input type="hidden" name="target" value="unavailable">
                           <button class="dropdown-item {% if st=='unavailable' %}active{% endif %}">Indisponível</button>
                         </form>
@@ -153,7 +149,7 @@
                       <li><hr class="dropdown-divider"></li>
                       <li>
                         <a class="dropdown-item"
-                           data-modal-url="{{ url_for('admin.vehicle_maintenance_modal', vehicle_id=v.id) }}">
+                           data-modal-url="{{ url_for('admin.vehicle_maintenance_modal', tenant_slug=tenant.slug, vehicle_id=v.id) }}">
                           <i class="bi bi-wrench me-2"></i>Manutenção…
                         </a>
                       </li>
@@ -163,7 +159,7 @@
                   <!-- Excluir -->
                   <form class="d-inline"
                         method="post"
-                        action="{{ url_for('admin.vehicle_delete', vehicle_id=v.id) }}"
+                        action="{{ url_for('admin.vehicle_delete', tenant_slug=tenant.slug, vehicle_id=v.id) }}"
                         onsubmit="return confirm('Excluir este veículo?')">
                     <button class="btn btn-sm btn-outline-danger" title="Excluir">
                       <i class="bi bi-trash"></i>

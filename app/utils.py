@@ -5,6 +5,7 @@ import os
 import re
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
+from functools import lru_cache
 
 from flask import current_app, url_for
 
@@ -13,8 +14,8 @@ from flask import current_app, url_for
 # -------------------------------------------------------------
 def slugify(text: str) -> str:
     text = text.lower().strip()
-    text = re.sub(r'[^a-z0-9]+', '-', text)
-    return re.sub(r'-+', '-', text).strip('-')
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    return re.sub(r"-+", "-", text).strip("-")
 
 
 def parse_datetime(date_str: str, time_str: str) -> datetime:
@@ -24,135 +25,84 @@ def parse_datetime(date_str: str, time_str: str) -> datetime:
 
 def absolute_url_for(endpoint: str, **values) -> str:
     """
-    Gera URL ABSOLUTA. Se EXTERNAL_BASE_URL (no .env/config) estiver
-    definido, monta a URL usando essa base; caso contrário, usa
-    url_for(..., _external=True) (localhost/dev).
-
-    Exemplo:
-        absolute_url_for("auth.verify_email", tenant_slug="locadora1", token="XYZ")
+    Gera URL ABSOLUTA. Se EXTERNAL_BASE_URL estiver definida (config/.env),
+    monta a URL usando essa base; senão usa url_for(..., _external=True).
     """
-    # tenta em config primeiro; se não tiver, busca no ambiente
-    base = (current_app.config.get("EXTERNAL_BASE_URL") if current_app else None) or os.getenv("EXTERNAL_BASE_URL") or ""
+    base = (current_app.config.get("EXTERNAL_BASE_URL") if current_app else None) \
+           or os.getenv("EXTERNAL_BASE_URL") or ""
     base = base.strip()
 
-    # Caminho “local” (sem domínio) a partir do endpoint
     path_url = url_for(endpoint, _external=False, **values)
 
-    # Se por algum motivo path_url já vier absoluto, retorna como está
     parsed = urlparse(path_url)
     if parsed.scheme and parsed.netloc:
-        return path_url
+        return path_url  # já veio absoluto
 
     if base:
-        # garante que teremos exatamente uma / entre base e path
         return urljoin(base.rstrip("/") + "/", path_url.lstrip("/"))
 
-    # fallback: usa o domínio do próprio servidor (localhost em dev)
     return url_for(endpoint, _external=True, **values)
 
-# app/utils.py
 
-from flask import url_for
+# -------------------------------------------------------------
+# imgsrc: única fonte da verdade (NÃO duplique esta função)
+# -------------------------------------------------------------
+_ABS_PREFIXES = ("https://", "http://", "//", "data:")
 
 def imgsrc(path: str | None) -> str:
     """
-    Resolve URLs de imagem para uso no <img src="...">.
-
-    - URLs absolutas ('https://', 'http://', ou '//') são retornadas como estão.
-    - Corrige 'https:/' -> 'https://', 'http:/' -> 'http://' se aparecer.
-    - Caminhos começando com 'static/' ou relativos viram url_for('static', filename=...).
-    - Se vier vazio, usa placeholder.
+    Normaliza caminho/URL para uso em <img src="...">:
+    - Corrige 'https:/' -> 'https://' e 'http:/' -> 'http://'
+    - Mantém URLs absolutas (http/https//data)
+    - Não adiciona '/static' quando já for externa
+    - Aceita domínio sem protocolo -> força https://
+    - Para caminhos relativos, retorna sob /static
+    - Se vazio/None, retorna placeholder padrão
     """
-    placeholder = url_for('static', filename='img/placeholder-car.jpg')
+    placeholder = url_for("static", filename="img/placeholder-car.jpg")
 
     if not path:
         return placeholder
 
     s = str(path).strip()
 
-    # Correções de esquemas malformados vindos do storage
-    if s.startswith('https:/') and not s.startswith('https://'):
-        s = s.replace('https:/', 'https://', 1)
-        return s
-    if s.startswith('http:/') and not s.startswith('http://'):
-        s = s.replace('http:/', 'http://', 1)
-        return s
+    # Corrige protocolos com 1 barra (erros comuns de armazenamento)
+    if s.startswith("https:/") and not s.startswith("https://"):
+        s = "https://" + s[len("https:/"):]
+    elif s.startswith("http:/") and not s.startswith("http://"):
+        s = "http://" + s[len("http:/"):]
 
-    # URLs absolutas (inclui protocolo omitido com '//')
-    if s.startswith('https://') or s.startswith('http://') or s.startswith('//'):
+    # URL absoluta (ou protocol-relative/data:)
+    if s.startswith(_ABS_PREFIXES):
         return s
 
-    # Se alguém salvou já com prefixo '/static/', normalize
-    if s.startswith('/static/'):
-        return s  # já é caminho absoluto do app
+    # Caminhos absolutos do app
+    if s.startswith("/static/") or s.startswith("/"):
+        return s
 
-    # Se veio 'static/...', transforme corretamente
-    if s.startswith('static/'):
-        return url_for('static', filename=s[len('static/'):])
+    # Domínio sem protocolo (ex.: contoso.blob.core.windows.net/foo)
+    if "://" not in s and re.match(r"^[A-Za-z0-9.\-]+(:\d+)?\.[A-Za-z]{2,}(/|$)", s):
+        return "https://" + s.lstrip("/")
+
+    # 'static/...'
+    if s.startswith("static/"):
+        return url_for("static", filename=s[len("static/"):])
 
     # Qualquer outro relativo cai em /static/<relativo>
-    return url_for('static', filename=s)
-# app/utils.py
-from flask import url_for
+    return url_for("static", filename=s)
 
-def imgsrc(value: str | None) -> str:
-    """Normaliza caminhos de imagem:
-    - URL absoluta (http/https) => retorna como está
-    - Caminho começando por /static/ => retorna como está
-    - Qualquer outro caminho => trata como arquivo dentro de /static
-    """
-    if not value:
-        return url_for('static', filename='img/placeholder_car.jpg')
-
-    v = str(value).strip()
-
-    # URL absoluta: devolve direto
-    if v.startswith('http://') or v.startswith('https://'):
-        return v
-
-    # Se já vier com /static/... mantém
-    if v.startswith('/static/'):
-        return v
-
-    # Remove barras à esquerda para evitar // ao concatenar
-    v = v.lstrip('/')
-
-    # Se o valor já vier com "static/...", garante uma única / no início
-    if v.startswith('static/'):
-        return '/' + v
-
-    # Caso padrão: caminho relativo dentro do diretório static
-    return url_for('static', filename=v)
-# app/utils.py
-from flask import url_for
-
-ABS_PREFIXES = ("http://", "https://", "data:")
-
-def imgsrc(path: str | None) -> str:
-    if not path:
-        return ""
-    p = str(path).strip()
-    if p.startswith(ABS_PREFIXES):
-        return p
-    if p.startswith("/static/"):
-        return p
-    return url_for("static", filename=p.lstrip("/"))
 
 # -------------------------------------------------------------
-# Key Vault helpers (como você já tinha)
+# Key Vault helpers (mantidos)
 # -------------------------------------------------------------
-# app/utils/keyvault.py (mantido aqui por compatibilidade)
-from functools import lru_cache
-from azure.identity import DefaultAzureCredential
-from azure.keyvault.secrets import SecretClient
-
-# Carrega .env em dev (não quebra se não existir)
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except Exception:
     pass
 
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
 
 @lru_cache(maxsize=1)
 def _client() -> SecretClient:
@@ -162,15 +112,12 @@ def _client() -> SecretClient:
     cred = DefaultAzureCredential()
     return SecretClient(vault_url=vault_url, credential=cred)
 
-
 def kv_set_secret(name: str, value: str, tags: dict | None = None):
     # NUNCA faça print/log do value!
     return _client().set_secret(name=name, value=value, tags=tags or {})
 
-
 def kv_get_secret(name: str) -> str:
     return _client().get_secret(name).value
-
 
 def kv_secret_exists(name: str) -> bool:
     try:

@@ -76,22 +76,13 @@
           <div class="col-md-6 d-flex align-items-end">
             <div>
               <div class="text-muted small mb-1">Pré-visualização atual:</div>
-              <div class="col-md-6 d-flex align-items-end">
-            <div>
-              <div class="text-muted small mb-1">Pré-visualização atual:</div>
-
-              {# pega na ordem: brand_logo_url -> logo_url -> logo_path #}
               {% set _preview = t.brand_logo_url or t.logo_url or t.logo_path %}
-
               {% if _preview %}
                 <img src="{{ _preview | imgsrc }}" alt="Logo" style="max-height:40px">
                 <div class="small text-muted mt-1 text-break"><code>{{ _preview }}</code></div>
               {% else %}
                 <span class="text-muted">Nenhum logo definido.</span>
               {% endif %}
-            </div>
-          </div>
-
             </div>
           </div>
 
@@ -102,7 +93,6 @@
       </div>
     </div>
   </div>
-
   <!-- PAYMENTS -->
   <div class="tab-pane fade" id="pane-payments" role="tabpanel" aria-labelledby="tab-payments">
     <div class="card">
