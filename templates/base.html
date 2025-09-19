@@ -51,14 +51,19 @@
       {% endif %}
 
      <a class="navbar-brand fw-bold letter-wide d-flex align-items-center gap-2"
-      href="{{ url_for('admin.dashboard', tenant_slug=tenant.slug) if tenant else url_for('site.landing') }}">
-      {% if tenant and tenant.logo_url %}
-        <img class="brand-logo" src="{{ tenant.logo_url | imgsrc }}" alt="{{ tenant.name or 'Logo' }}">
-      {% else %}
-        <img class="brand-logo" src="{{ 'img/4ufleet-logo.png' | imgsrc }}" alt="Logo">
-      {% endif %}
-      <span>{{ tenant.name if tenant else 'CAR RENTAL' }}</span>
-    </a>
+   href="{{ url_for('admin.dashboard', tenant_slug=tenant.slug) if tenant else url_for('site.landing') }}">
+  {% if tenant %}
+    {% set _logo = tenant.logo_url or tenant.brand_logo_url or tenant.logo_path %}
+    {% if _logo %}
+      <img class="brand-logo" src="{{ _logo | imgsrc }}" alt="{{ tenant.name or 'Logo' }}">
+    {% else %}
+      <img class="brand-logo" src="{{ 'img/4ufleet-logo.png' | imgsrc }}" alt="Logo">
+    {% endif %}
+  {% else %}
+    <img class="brand-logo" src="{{ 'img/4ufleet-logo.png' | imgsrc }}" alt="Logo">
+  {% endif %}
+  <span>{{ tenant.name if tenant else 'CAR RENTAL' }}</span>
+</a>
 
     </div>
 

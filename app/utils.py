@@ -50,6 +50,49 @@ def absolute_url_for(endpoint: str, **values) -> str:
     # fallback: usa o domínio do próprio servidor (localhost em dev)
     return url_for(endpoint, _external=True, **values)
 
+# app/utils.py
+
+from flask import url_for
+
+def imgsrc(path: str | None) -> str:
+    """
+    Resolve URLs de imagem para uso no <img src="...">.
+
+    - URLs absolutas ('https://', 'http://', ou '//') são retornadas como estão.
+    - Corrige 'https:/' -> 'https://', 'http:/' -> 'http://' se aparecer.
+    - Caminhos começando com 'static/' ou relativos viram url_for('static', filename=...).
+    - Se vier vazio, usa placeholder.
+    """
+    placeholder = url_for('static', filename='img/placeholder-car.jpg')
+
+    if not path:
+        return placeholder
+
+    s = str(path).strip()
+
+    # Correções de esquemas malformados vindos do storage
+    if s.startswith('https:/') and not s.startswith('https://'):
+        s = s.replace('https:/', 'https://', 1)
+        return s
+    if s.startswith('http:/') and not s.startswith('http://'):
+        s = s.replace('http:/', 'http://', 1)
+        return s
+
+    # URLs absolutas (inclui protocolo omitido com '//')
+    if s.startswith('https://') or s.startswith('http://') or s.startswith('//'):
+        return s
+
+    # Se alguém salvou já com prefixo '/static/', normalize
+    if s.startswith('/static/'):
+        return s  # já é caminho absoluto do app
+
+    # Se veio 'static/...', transforme corretamente
+    if s.startswith('static/'):
+        return url_for('static', filename=s[len('static/'):])
+
+    # Qualquer outro relativo cai em /static/<relativo>
+    return url_for('static', filename=s)
+
 
 # -------------------------------------------------------------
 # Key Vault helpers (como você já tinha)
