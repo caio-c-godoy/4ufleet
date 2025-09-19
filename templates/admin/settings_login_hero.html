@@ -14,7 +14,8 @@
   <div class="row g-4">
     <!-- Coluna: Formulário -->
     <div class="col-lg-7">
-      <form method="post" enctype="multipart/form-data" class="card shadow-sm">
+      <!-- FORM PRINCIPAL -->
+      <form id="heroMainForm" method="post" enctype="multipart/form-data" class="card shadow-sm">
         <div class="card-body">
           <div class="form-check form-switch mb-4">
             <input class="form-check-input" type="checkbox" id="login_hero_enabled"
@@ -44,10 +45,19 @@
             </div>
 
             <div class="col-12">
-              <label class="form-label">Imagem (opcional)</label>
+              <label class="form-label">Imagem (upload — opcional)</label>
               <input class="form-control" type="file" name="login_hero_image" accept=".jpg,.jpeg,.png,.webp,.gif">
               <div class="form-text">
                 Recomendado: ≥ 1600×1000 (≤ 1.5 MB). Formatos: JPG/PNG/WEBP/GIF.
+              </div>
+
+              <!-- NOVO: URL direta (CDN/Blob) -->
+              <div class="mt-3">
+                <label class="form-label">ou URL (CDN/Blob)</label>
+                <input class="form-control" type="url" name="login_hero_image_url"
+                       placeholder="https://st4ufleetprd.blob.core.windows.net/branding/{{ tenant.slug }}/login-hero.jpg"
+                       value="{% if tenant.login_hero_image and tenant.login_hero_image.startswith('http') %}{{ tenant.login_hero_image }}{% endif %}">
+                <div class="form-text">Se preencher a URL, ela será usada no lugar do arquivo enviado.</div>
               </div>
 
               {% if tenant.login_hero_image %}
@@ -62,11 +72,10 @@
                 <div class="d-flex align-items-center gap-3 mt-3">
                   <img src="{{ thumb_url }}" alt="Imagem atual"
                        style="height:56px;width:auto;object-fit:cover;border-radius:.5rem;">
-                  <form method="post" action="{{ url_for('admin.settings_login_hero_remove_image', tenant_slug=tenant.slug) }}">
-                    <button type="submit" class="btn btn-outline-danger btn-sm">
-                      <i class="bi bi-trash"></i> Remover imagem
-                    </button>
-                  </form>
+                  <!-- Botão que submete o form de remoção externo -->
+                  <button type="submit" class="btn btn-outline-danger btn-sm" form="rmHeroForm">
+                    <i class="bi bi-trash"></i> Remover imagem
+                  </button>
                   <a class="btn btn-outline-secondary btn-sm" target="_blank" href="{{ thumb_url }}">Abrir</a>
                 </div>
               {% endif %}
@@ -83,6 +92,10 @@
           </a>
         </div>
       </form>
+
+      <!-- FORM SEPARADO para REMOVER (evita formulário aninhado) -->
+      <form id="rmHeroForm" method="post"
+            action="{{ url_for('admin.settings_login_hero_remove_image', tenant_slug=tenant.slug) }}"></form>
     </div>
 
     <!-- Coluna: Pré-visualização -->
@@ -134,8 +147,8 @@
       </div>
 
       <div class="alert alert-info mt-3">
-        Dica: pode salvar um caminho relativo (ex.: <code>uploads/tenant/{{ tenant.slug }}/login-hero.jpg</code>)
-        ou uma URL externa (CDN/Blob).
+        Dica: você pode salvar um caminho relativo (ex.: <code>uploads/tenant/{{ tenant.slug }}/login-hero.jpg</code>)
+        ou uma URL externa (CDN/Blob). Em produção (Azure), prefira URL do Blob para persistir entre reinícios.
       </div>
     </div>
   </div>

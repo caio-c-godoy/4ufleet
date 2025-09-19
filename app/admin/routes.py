@@ -4,6 +4,7 @@ import os
 import re
 import unicodedata
 from uuid import uuid4
+from urllib.parse import urlparse
 from pathlib import Path
 from . import admin_bp
 from sqlalchemy.exc import IntegrityError
@@ -360,6 +361,20 @@ def settings_login_hero():
         tenant.login_hero_title   = (request.form.get("login_hero_title") or "").strip() or None
         tenant.login_hero_desc    = (request.form.get("login_hero_desc") or "").strip() or None
 
+        # -------- URL direta (Blob/CDN) tem prioridade se preenchida --------
+        url_val = (request.form.get("login_hero_image_url") or "").strip()
+        if url_val:
+            tenant.login_hero_image = url_val
+            # se antes era arquivo local, apaga o antigo
+            try:
+                parsed_old = urlparse((tenant.login_hero_image or "").strip())
+                # nada a fazer aqui; já apontamos para URL
+            except Exception:
+                pass
+            db.session.commit()
+            flash("Configurações atualizadas.", "success")
+            return redirect(url_for("admin.settings_login_hero", tenant_slug=tenant.slug))
+
         # -------- upload de imagem (opcional) --------
         file = request.files.get("login_hero_image")
         if file and file.filename:
@@ -367,33 +382,29 @@ def settings_login_hero():
                 flash("Formato de imagem inválido. Use JPG, PNG, WEBP ou GIF.", "warning")
             else:
                 try:
-                    # nome seguro + extensão normalizada
                     filename = secure_filename(file.filename)
-                    ext = filename.rsplit(".", 1)[1].lower()
+                    ext = (filename.rsplit(".", 1)[1] if "." in filename else "jpg").lower()
 
-                    # caminho relativo ao /static: uploads/tenant/<slug>/login-hero.<ext>
-                    rel_dir = Path("uploads") / "tenant" / tenant.slug
+                    # caminho relativo ao /static
+                    rel_dir  = Path("uploads") / "tenant" / tenant.slug
                     rel_path = rel_dir / f"login-hero.{ext}"
 
-                    # diretório absoluto no disco
-                    static_folder = Path(current_app.static_folder)  # ex.: <root>/static
+                    static_folder = Path(current_app.static_folder)
                     dst_dir = static_folder / rel_dir
                     dst_dir.mkdir(parents=True, exist_ok=True)
 
                     # apaga versões antigas de outros formatos
                     for old in dst_dir.glob("login-hero.*"):
-                        try:
-                            old.unlink()
-                        except Exception:
-                            pass
+                        try: old.unlink()
+                        except Exception: pass
 
-                    # salva arquivo novo
+                    # salva novo
                     file.save(dst_dir / rel_path.name)
 
-                    # grava o caminho RELATIVO (compatível com url_for('static', filename=...))
+                    # grava o caminho RELATIVO (servido por /static)
                     tenant.login_hero_image = str(rel_path).replace("\\", "/")
                     flash("Imagem enviada com sucesso.", "success")
-                except Exception as e:
+                except Exception:
                     current_app.logger.exception("Falha ao salvar imagem do login hero")
                     flash("Não foi possível salvar a imagem agora.", "warning")
 
@@ -401,12 +412,11 @@ def settings_login_hero():
         flash("Configurações atualizadas.", "success")
         return redirect(url_for("admin.settings_login_hero", tenant_slug=tenant.slug))
 
+    # GET
     return render_template("admin/settings_login_hero.html", tenant=tenant)
 
 
-from urllib.parse import urlparse
-
-@admin_bp.post("/settings/login-hero/remove-image")
+@admin_bp.post("/settings/login-hero/remove-image", endpoint="settings_login_hero_remove_image")
 @login_required
 def settings_login_hero_remove_image():
     tenant: Tenant = g.tenant
@@ -415,32 +425,25 @@ def settings_login_hero_remove_image():
         flash("Não há imagem configurada.", "info")
         return redirect(url_for("admin.settings_login_hero", tenant_slug=tenant.slug))
 
-    # Se for URL externa (http/https), apenas limpa o campo (não temos como apagar na origem)
     parsed = urlparse(img)
     is_external = parsed.scheme in {"http", "https"}
 
     try:
         if not is_external:
-            # caminho local relativo ao static: ex. "uploads/tenant/<slug>/login-hero.jpg"
-            from pathlib import Path
-            from flask import current_app
-
-            static_folder = Path(current_app.static_folder)
-            file_path = static_folder / img
-            # segurança: garante que está dentro do /static
-            file_path = file_path.resolve()
-            if static_folder.resolve() in file_path.parents and file_path.exists():
+            # arquivo local dentro de /static
+            static_folder = Path(current_app.static_folder).resolve()
+            file_path = (static_folder / img).resolve()
+            if static_folder in file_path.parents and file_path.exists():
                 file_path.unlink(missing_ok=True)
 
         tenant.login_hero_image = None
         db.session.commit()
         flash("Imagem removida.", "success")
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("Falha ao remover imagem do login hero")
         flash("Não foi possível remover a imagem agora.", "warning")
 
     return redirect(url_for("admin.settings_login_hero", tenant_slug=tenant.slug))
-
 # =============================================================================
 # Helpers multitenant: captura <tenant_slug> e injeta automaticamente no url_for
 # =============================================================================
