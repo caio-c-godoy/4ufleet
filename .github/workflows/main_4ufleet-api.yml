@@ -10,14 +10,20 @@ permissions:
   contents: read
 
 env:
+  # Azure OIDC / Sub
   AZURE_CLIENT_ID:        ${{ vars.AZURE_CLIENT_ID }}
   AZURE_TENANT_ID:        ${{ vars.AZURE_TENANT_ID }}
   AZURE_SUBSCRIPTION_ID:  ${{ vars.AZURE_SUBSCRIPTION_ID }}
-  ACR_NAME:               ${{ vars.ACR_NAME }}
-  ACR_LOGIN_SERVER:       ${{ vars.ACR_LOGIN_SERVER }}
-  IMAGE_NAME:             ${{ vars.IMAGE_NAME }}
-  RESOURCE_GROUP:         ${{ vars.RESOURCE_GROUP }}
-  WEBAPP_NAME:            ${{ vars.WEBAPP_NAME }}
+
+  # Infra
+  ACR_NAME:               ${{ vars.ACR_NAME }}                # ex: 4ufleetacr
+  ACR_LOGIN_SERVER:       ${{ vars.ACR_LOGIN_SERVER }}        # ex: 4ufleetacr.azurecr.io
+  IMAGE_NAME:             ${{ vars.IMAGE_NAME }}              # ex: 4ufleet-api
+  RESOURCE_GROUP:         ${{ vars.RESOURCE_GROUP }}          # ex: RG_RENT_CAR
+  WEBAPP_NAME:            ${{ vars.WEBAPP_NAME }}             # ex: 4ufleet-api
+
+  # IMPORTANTE: tag que o WebApp está usando
+  TAG_STABLE:             v2025-09-20-acs
 
 jobs:
   build-and-deploy:
@@ -33,15 +39,33 @@ jobs:
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Log in to ACR
-        run: az acr login -n $ACR_NAME
+      - name: Log in to ACR (AAD)
+        run: az acr login -n "$ACR_NAME"
 
-      - name: Build & push image to ACR
+      - name: Build & push image to ACR (stable + latest + sha)
+        env:
+          IMAGE: ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}
+          SHA_TAG: ${{ github.sha }}
         run: |
-          IMAGE="$ACR_LOGIN_SERVER/$IMAGE_NAME"
-          docker build -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
-          docker push "$IMAGE:${{ github.sha }}"
-          docker push "$IMAGE:latest"
+          echo "Building $IMAGE with tags: $TAG_STABLE, latest, $SHA_TAG"
+          docker build \
+            -t "$IMAGE:$TAG_STABLE" \
+            -t "$IMAGE:latest" \
+            -t "$IMAGE:$SHA_TAG" \
+            .
 
-      - name: Restart App Service
+          docker push "$IMAGE:$TAG_STABLE"
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:$SHA_TAG"
+
+      - name: Show ACR tags (sanity check)
+        run: az acr repository show-tags -n "$ACR_NAME" --repository "$IMAGE_NAME" -o table | tail -n +1
+
+      # Mantemos o WebApp apontando para a tag estável (já configurada)
+      # Reiniciar força o pull da MESMA tag com a camada nova.
+      - name: Restart App Service (pull new layers for stable tag)
         run: az webapp restart -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME"
+
+      # Opcional: imprimir qual imagem o WebApp está usando (deve ser v2025-09-20-acs)
+      - name: Show WebApp container config
+        run: az webapp config container show -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" -o jsonc
