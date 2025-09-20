@@ -19,7 +19,7 @@ from flask import (
 from sqlalchemy import and_
 from itsdangerous import URLSafeSerializer, BadSignature
 from app import utils  
-
+import secrets
 
 from app.extensions import db
 from app.models import (
@@ -550,12 +550,6 @@ def checkout(reservation_id):
     creds = _tenant_pay_creds()
     pl_ready = bool((creds.get("public_key") or "").strip() or (creds.get("token") or "").strip())
 
-    # >>> PRE-FILL cidade/UF no template, evitando |split no Jinja
-    ciu = (getattr(r, 'customer_city_uf', '') or '').replace(' ', '')
-    parts = ciu.split('/') if ciu else []
-    saved_city = parts[0] if parts else ''
-    saved_state = parts[1] if len(parts) > 1 else ''
-
     return render_template(
         'public/checkout.html',
         reservation=r, reservation_id=r.id, vehicle=v,
@@ -574,9 +568,6 @@ def checkout(reservation_id):
         contract_view_url=contract_view_url,
         contract_sign_url=contract_sign_url,
         contract_download_url=contract_download_url,
-        # novos campos usados pelo JS do template
-        saved_city=saved_city,
-        saved_state=saved_state,
     )
 
 
@@ -1405,20 +1396,41 @@ def _sign_conf() -> dict:
 # ---------- VIEW: abre assinado se existir; senão base ----------
 @public_bp.get("/contrato/<int:reserva_id>/view")
 def view_contract(reserva_id):
-    # em produção: exige token; em DEBUG permite sem (para não quebrar fluxo local)
-    require_contract_token(reserva_id, strict=not current_app.debug)
+    from sqlalchemy import select
+    from flask import request, redirect, url_for
+    import secrets
+    from app.extensions import db
+    from app.models import Reservation  # ajuste o nome do modelo
 
+    # carrega a reserva já validando tenant
     reserva = _res_by_tenant_or_404(reserva_id)
 
+    token = request.args.get("t", "").strip()
+    strict = not current_app.debug
+
+    if strict:
+      # garante que a reserva tenha token
+      if not getattr(reserva, "contract_token", None):
+          reserva.contract_token = secrets.token_urlsafe(24)
+          db.session.commit()
+      # se o link veio sem ?t=, redireciona para a mesma rota com o token
+      if not token or token != reserva.contract_token:
+          return redirect(url_for(
+              request.endpoint,
+              reserva_id=reserva.id,
+              t=reserva.contract_token
+          ))
+
+    # segue igual ao seu código
     paths = _resolve_paths(reserva.id)
     pdf = (
         (paths["signed"] if paths["signed"].exists() else None)
         or (paths["legacy_signed"] if paths["legacy_signed"].exists() else None)
         or (_ensure_base_pdf(reserva))
     )
-
     resp = make_response(send_file(str(pdf), mimetype="application/pdf", conditional=False))
     return _no_cache(resp)
+
 
 # ---------- página de assinatura ----------
 @public_bp.get("/contrato/<int:reserva_id>/sign", endpoint="sign_contract")
