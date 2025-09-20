@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json, os, smtplib, ssl
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 from typing import Optional
 from flask import current_app, has_app_context
 
@@ -120,7 +121,14 @@ def _send_via_acs(*, subject: str, html: str, text: str, to: str, reply_to: str 
     except Exception as e:
         raise RuntimeError(f"Erro inesperado ao enviar e-mail (ACS): {e}") from e
 
-# ---------------- SMTP baixo nível (inalterado) ----------------
+# ---------------- SMTP baixo nível ----------------
+def _stamp_headers(msg: EmailMessage, from_domain_hint: str | None = None):
+    # Cabeçalhos que ajudam reputação
+    if "Date" not in msg:
+        msg["Date"] = formatdate(localtime=True)
+    if "Message-ID" not in msg:
+        msg["Message-ID"] = make_msgid(domain=from_domain_hint)
+
 def _smtp_send(cfg: dict, msg: EmailMessage):
     host = (cfg.get("host") or "").strip()
     port = int(cfg.get("port") or 0)
@@ -129,6 +137,14 @@ def _smtp_send(cfg: dict, msg: EmailMessage):
     use_tls = bool(cfg.get("use_tls"))
     use_ssl = bool(cfg.get("use_ssl"))
     if not host: raise RuntimeError("SMTP host vazio.")
+    # aplica Date e Message-ID se faltar
+    from_domain = None
+    try:
+        from_domain = (msg.get("From") or "").split("<")[-1].split(">")[0].split("@")[-1].strip() or None
+    except Exception:
+        from_domain = None
+    _stamp_headers(msg, from_domain)
+
     if use_ssl:
         ctx = ssl.create_default_context()
         with smtplib.SMTP_SSL(host, port or 465, context=ctx, timeout=25) as s:
@@ -146,8 +162,10 @@ def _smtp_send(cfg: dict, msg: EmailMessage):
 def send_platform_mail_html(*, subject: str, html: str, to: str, text_alt: str = "") -> bool:
     if _acs_enabled():
         try:
-            _send_via_acs(subject=subject, html=html, text=text_alt, to=to,
-                          reply_to=_getenv("PLATFORM_REPLY_TO", "support@4ufleet.com"))
+            _send_via_acs(
+                subject=subject, html=html, text=text_alt, to=to,
+                reply_to=_getenv("PLATFORM_REPLY_TO", "support@4ufleet.com")
+            )
             return True
         except Exception as e:
             _log("error", "Falha no envio via ACS; caindo para SMTP. Err=%s", e)
@@ -159,20 +177,25 @@ def send_platform_mail_html(*, subject: str, html: str, to: str, text_alt: str =
 
     from_name  = _getenv("PLATFORM_MAIL_FROM_NAME", _getenv("APP_NAME", "Car Rental SaaS"))
     from_email = _getenv("EMAIL_FROM") or _getenv("PLATFORM_MAIL_FROM_EMAIL") or cfg.get("user") or "no-reply@example.com"
+
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = f"{from_name} <{from_email}>"
     msg["To"] = to
-    if text_alt: msg.set_content(text_alt)
+    if text_alt:
+        msg.set_content(text_alt)
     msg.add_alternative(html, subtype="html")
+
     _smtp_send(cfg, msg)
     _log("info", "[PLATFORM EMAIL/SMTP] To=%s Subject=%s", to, subject)
     return True
 
-# ---------------- Utilitários/tenant/compat (inalterados) ----------------
+# ---------------- Utilitários/tenant/compat ----------------
 def send_test_mail(*, cfg: dict, subject: str, body: str, from_name: str, from_email: str, to_email: str):
     msg = EmailMessage()
-    msg["Subject"] = subject; msg["From"] = f"{from_name} <{from_email}>"; msg["To"] = to_email
+    msg["Subject"] = subject
+    msg["From"] = f"{from_name} <{from_email}>"
+    msg["To"] = to_email
     msg.set_content(body)
     _smtp_send(cfg, msg)
 
@@ -181,12 +204,18 @@ def send_tenant_mail_html(*, tenant, subject: str, html: str, to: str, text_alt:
     if not cfg:
         _log("info", "[EMAIL MOCK] (tenant=%s) To=%s Subject=%s", getattr(tenant, 'slug','?'), to, subject)
         return False
+
     from_name  = getattr(tenant, "mail_from_name", None) or getattr(tenant, "name", None) or "Locadora"
     from_email = getattr(tenant, "mail_from_email", None) or cfg.get("user") or _getenv("EMAIL_FROM") or "no-reply@example.com"
+
     msg = EmailMessage()
-    msg["Subject"] = subject; msg["From"] = f"{from_name} <{from_email}>"; msg["To"] = to
-    if text_alt: msg.set_content(text_alt)
+    msg["Subject"] = subject
+    msg["From"] = f"{from_name} <{from_email}>"
+    msg["To"] = to
+    if text_alt:
+        msg.set_content(text_alt)
     msg.add_alternative(html, subtype="html")
+
     _smtp_send(cfg, msg)
     _log("info", "[TENANT EMAIL/SMTP] tenant=%s To=%s Subject=%s", getattr(tenant,'slug','?'), to, subject)
     return True
