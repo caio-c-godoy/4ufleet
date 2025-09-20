@@ -550,6 +550,7 @@ def checkout(reservation_id):
     creds = _tenant_pay_creds()
     pl_ready = bool((creds.get("public_key") or "").strip() or (creds.get("token") or "").strip())
 
+
     return render_template(
         'public/checkout.html',
         reservation=r, reservation_id=r.id, vehicle=v,
