@@ -10,19 +10,17 @@ permissions:
   contents: read
 
 env:
-  # Azure OIDC / Subscription
   AZURE_CLIENT_ID:        ${{ vars.AZURE_CLIENT_ID }}
   AZURE_TENANT_ID:        ${{ vars.AZURE_TENANT_ID }}
   AZURE_SUBSCRIPTION_ID:  ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-  # Infra
-  ACR_NAME:               ${{ vars.ACR_NAME }}           # ex: 4ufleetacr
-  ACR_LOGIN_SERVER:       ${{ vars.ACR_LOGIN_SERVER }}   # ex: 4ufleetacr.azurecr.io
-  IMAGE_NAME:             ${{ vars.IMAGE_NAME }}         # ex: 4ufleet-api
-  RESOURCE_GROUP:         ${{ vars.RESOURCE_GROUP }}     # ex: RG_RENT_CAR
-  WEBAPP_NAME:            ${{ vars.WEBAPP_NAME }}        # ex: 4ufleet-api
+  ACR_NAME:               ${{ vars.ACR_NAME }}
+  ACR_LOGIN_SERVER:       ${{ vars.ACR_LOGIN_SERVER }}
+  IMAGE_NAME:             ${{ vars.IMAGE_NAME }}
+  RESOURCE_GROUP:         ${{ vars.RESOURCE_GROUP }}
+  WEBAPP_NAME:            ${{ vars.WEBAPP_NAME }}
 
-  # Tag que o WebApp usa (garante que é ela que recebe o build)
+  # Tag estável em uso no WebApp
   TAG_STABLE:             v2025-09-20-acs
 
 jobs:
@@ -38,6 +36,13 @@ jobs:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Ensure jq (just in case)
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y jq
+          fi
 
       - name: Log in to ACR (AAD)
         run: az acr login -n "$ACR_NAME"
@@ -64,32 +69,39 @@ jobs:
       - name: Show ACR tags (sanity check)
         run: az acr repository show-tags -n "$ACR_NAME" --repository "$IMAGE_NAME" -o table | tail -n +1
 
-      - name: Assert WebApp is configured to use TAG_STABLE
-        id: assert-tag
+      # Lê linuxFxVersion (ex.: DOCKER|4ufleetacr.azurecr.io/4ufleet-api:v2025-09-20-acs)
+      # e garante que o WebApp aponte para TAG_STABLE; se não, ajusta automaticamente.
+      - name: Ensure WebApp uses TAG_STABLE (auto-fix if needed)
+        env:
+          IMAGE: ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}
         run: |
           set -euo pipefail
-          CFG=$(az webapp config container show -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" -o json)
-          IMG=$(echo "$CFG" | jq -r '.DOCKER_CUSTOM_IMAGE_NAME // .dockerCustomImageName // ""')
-          if [ -z "$IMG" ]; then
-            echo "❌ WebApp não possui DOCKER_CUSTOM_IMAGE_NAME configurado."
-            echo "$CFG" | jq .
+          FX=$(az webapp config container show -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" --query linuxFxVersion -o tsv || echo "")
+          if [ -z "$FX" ]; then
+            echo "❌ linuxFxVersion vazio no WebApp. Verifique se é Linux/Container."
+            az webapp config container show -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" -o jsonc || true
             exit 1
           fi
 
-          echo "WebApp image atual: $IMG"
-          if echo "$IMG" | grep -q ":$TAG_STABLE$"; then
-            echo "✅ WebApp já está apontando para a tag $TAG_STABLE"
+          CURR_IMG="${FX#DOCKER|}"
+          echo "linuxFxVersion atual: $FX"
+          echo "Imagem atual: $CURR_IMG"
+
+          TARGET_IMG="$IMAGE:$TAG_STABLE"
+
+          if [ "$CURR_IMG" = "$TARGET_IMG" ]; then
+            echo "✅ WebApp já aponta para $TARGET_IMG"
           else
-            echo "❌ WebApp NÃO está apontando para $TAG_STABLE"
-            echo "   Ajuste manualmente (ou via CLI) antes do deploy:"
-            echo "   az webapp config container set -g \"$RESOURCE_GROUP\" -n \"$WEBAPP_NAME\" --docker-custom-image-name \"$ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG_STABLE\" --docker-registry-server-url \"https://$ACR_LOGIN_SERVER\""
-            exit 1
+            echo "⚠️ WebApp aponta para $CURR_IMG — ajustando para $TARGET_IMG ..."
+            az webapp config container set \
+              -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" \
+              --docker-custom-image-name "$TARGET_IMG" \
+              --docker-registry-server-url "https://$ACR_LOGIN_SERVER"
+            echo "✅ Ajustado para $TARGET_IMG"
           fi
 
-      - name: Restart App Service (pull new layers for stable tag)
-        if: steps.assert-tag.outcome == 'success'
+      - name: Restart App Service (pull layers)
         run: az webapp restart -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME"
 
       - name: Show WebApp container config (post-restart)
-        if: steps.assert-tag.outcome == 'success'
         run: az webapp config container show -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" -o jsonc
