@@ -10,32 +10,20 @@ from typing import Optional
 
 from flask import current_app, has_app_context
 
-# --- Azure Communication Services (usado se variáveis estiverem setadas) ---
+# =============================================================================
+# Azure Communication Services (compat 1.0.x)
+#   - NESTA VERSÃO NÃO existem EmailContent / EmailMessage (ACS) / EmailAddress
+#   - O payload é um dict: {"senderAddress": "...", "recipients": {...}, "content": {...}}
+# =============================================================================
+_ACS_AVAILABLE: bool = False
+_ACS_IMPORT_ERR: str = ""
 try:
-    from azure.communication.email import (
-        EmailClient,
-        EmailContent,
-        EmailMessage as ACSEmailMessage,
-        EmailAddress,
-    )
-    from azure.core.exceptions import HttpResponseError
+    from azure.communication.email import EmailClient  # type: ignore
+    from azure.core.exceptions import HttpResponseError  # type: ignore
     _ACS_AVAILABLE = True
-except Exception:
+except Exception as e:  # mantém info p/ rota de debug
     _ACS_AVAILABLE = False
-
-
-# --- Azure Communication Services (opcional) ---
-_ACS_IMPORT_ERR = ""  # <--- NOVO
-try:
-    from azure.communication.email import (
-        EmailClient, EmailContent, EmailMessage as ACSEmailMessage, EmailAddress
-    )
-    from azure.core.exceptions import HttpResponseError
-    _ACS_AVAILABLE = True
-except Exception as e:
-    _ACS_AVAILABLE = False
-    _ACS_IMPORT_ERR = repr(e)  # <--- NOVO
-
+    _ACS_IMPORT_ERR = repr(e)
 
 # =============================================================================
 # Logging / utils
@@ -138,12 +126,13 @@ def get_platform_mail_creds() -> dict | None:
         "provider": "platform-smtp",
     }
 
-# -------------- ACS helpers (novo) --------------
+# -------------- ACS helpers --------------
 _ACS_CONN: Optional[str] = None
 _EMAIL_FROM: Optional[str] = None
-_ACS_CLIENT: Optional["EmailClient"] = None
+_ACS_CLIENT: Optional["EmailClient"] = None  # type: ignore
 
 def _acs_enabled() -> bool:
+    """True se pacote foi importado e variáveis ACS_EMAIL_CONNECTION_STRING + EMAIL_FROM estão setadas."""
     global _ACS_CONN, _EMAIL_FROM
     if not _ACS_AVAILABLE:
         return False
@@ -153,7 +142,7 @@ def _acs_enabled() -> bool:
         _EMAIL_FROM = (_getenv("EMAIL_FROM") or "").strip()
     return bool(_ACS_CONN and _EMAIL_FROM)
 
-def _acs_client() -> "EmailClient":
+def _acs_client() -> "EmailClient":  # type: ignore
     global _ACS_CLIENT
     if _ACS_CLIENT is None:
         if not _acs_enabled():
@@ -161,30 +150,36 @@ def _acs_client() -> "EmailClient":
         _ACS_CLIENT = EmailClient.from_connection_string(_ACS_CONN)  # type: ignore
     return _ACS_CLIENT
 
-def _normalize_recipients(to: str) -> list[EmailAddress]:
-    # aceita "a@x.com" ou "a@x.com,b@y.com"
+def _normalize_recipients_list(to: str) -> list[dict]:
+    """
+    Aceita "a@x.com" ou "a@x.com,b@y.com" e retorna
+    [{"email": "a@x.com"}, {"email": "b@y.com"}]
+    """
     emails = [e.strip() for e in (to or "").split(",") if e.strip()]
-    return [EmailAddress(email=e) for e in emails]  # type: ignore
+    return [{"email": e} for e in emails]
 
 def _send_via_acs(*, subject: str, html: str, text: str, to: str, reply_to: str | None = None) -> str:
     """
     Envia via Azure Communication Services e retorna message_id.
+    Compatível com azure-communication-email 1.0.x (payload como dict).
     Lança exceção em erro.
     """
     client = _acs_client()
 
-    content = EmailContent(subject=subject)
-    content.html = html or ""
-    content.plain_text = text or ""
+    message = {
+        "senderAddress": _EMAIL_FROM,
+        "recipients": {"to": _normalize_recipients_list(to)},
+        "content": {
+            "subject": subject,
+            "html": html or "",
+            "plainText": text or "",
+        },
+    }
+    if reply_to:
+        message["replyTo"] = [{"email": reply_to}]
 
-    msg = ACSEmailMessage(  # type: ignore
-        sender=_EMAIL_FROM,
-        content=content,
-        recipients={"to": _normalize_recipients(to)},
-        reply_to=([EmailAddress(email=reply_to)] if reply_to else None),  # type: ignore
-    )
     try:
-        poller = client.begin_send(msg)
+        poller = client.begin_send(message)
         result = poller.result()
         msg_id = getattr(result, "message_id", "") or ""
         _log("info", "[PLATFORM EMAIL/ACS] To=%s Subject=%s MsgId=%s", to, subject, msg_id)
