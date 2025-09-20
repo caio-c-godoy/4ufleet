@@ -239,12 +239,17 @@
     <i class="bi bi-gear me-2"></i> <span>Configurações</span>
   </a>
 
+
+  <!-- desativar o botão
+   
   {# Botão do Construtor de Sites #}
   <a class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.site_builder_') %}active{% endif %}"
      href="{{ url_for('admin.site_builder_home', tenant_slug=tenant.slug) }}">
     <i class="bi bi-brush me-2"></i> <span>Construtor de Sites</span>
   </a>
 {% endif %}
+
+fim do desativar botão-->
 
 </div>
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
