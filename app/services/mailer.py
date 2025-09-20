@@ -10,16 +10,21 @@ from typing import Optional
 
 from flask import current_app, has_app_context
 
-# --- Azure Communication Services (opcional - usado se variáveis estiverem setadas) ---
+# --- Azure Communication Services (usado se variáveis estiverem setadas) ---
 try:
-    from azure.communication.email import EmailClient, EmailContent, EmailMessage as ACSEmailMessage, EmailAddress
+    from azure.communication.email import (
+        EmailClient,
+        EmailContent,
+        EmailMessage as ACSEmailMessage,
+        EmailAddress,
+    )
     from azure.core.exceptions import HttpResponseError
     _ACS_AVAILABLE = True
 except Exception:
     _ACS_AVAILABLE = False
 
 # =============================================================================
-# Logging util
+# Logging / utils
 # =============================================================================
 def _log(level: str, msg: str, *args):
     """Log seguro (não quebra fora de app context)."""
@@ -142,6 +147,11 @@ def _acs_client() -> "EmailClient":
         _ACS_CLIENT = EmailClient.from_connection_string(_ACS_CONN)  # type: ignore
     return _ACS_CLIENT
 
+def _normalize_recipients(to: str) -> list[EmailAddress]:
+    # aceita "a@x.com" ou "a@x.com,b@y.com"
+    emails = [e.strip() for e in (to or "").split(",") if e.strip()]
+    return [EmailAddress(email=e) for e in emails]  # type: ignore
+
 def _send_via_acs(*, subject: str, html: str, text: str, to: str, reply_to: str | None = None) -> str:
     """
     Envia via Azure Communication Services e retorna message_id.
@@ -156,7 +166,7 @@ def _send_via_acs(*, subject: str, html: str, text: str, to: str, reply_to: str 
     msg = ACSEmailMessage(  # type: ignore
         sender=_EMAIL_FROM,
         content=content,
-        recipients={"to": [EmailAddress(email=to)]},  # type: ignore
+        recipients={"to": _normalize_recipients(to)},
         reply_to=([EmailAddress(email=reply_to)] if reply_to else None),  # type: ignore
     )
     try:
@@ -201,7 +211,7 @@ def _smtp_send(cfg: dict, msg: EmailMessage):
             s.send_message(msg)
 
 # =============================================================================
-# Plataforma: função pública (compat) — agora tenta ACS -> SMTP
+# Plataforma: função pública (compat) — ACS -> SMTP -> MOCK
 # =============================================================================
 def send_platform_mail_html(*, subject: str, html: str, to: str, text_alt: str = "") -> bool:
     """
@@ -215,7 +225,13 @@ def send_platform_mail_html(*, subject: str, html: str, to: str, text_alt: str =
     # 1) ACS
     if _acs_enabled():
         try:
-            _send_via_acs(subject=subject, html=html, text=text_alt, to=to, reply_to=_getenv("PLATFORM_REPLY_TO", "support@4ufleet.com"))
+            _send_via_acs(
+                subject=subject,
+                html=html,
+                text=text_alt,
+                to=to,
+                reply_to=_getenv("PLATFORM_REPLY_TO", "support@4ufleet.com"),
+            )
             return True
         except Exception as e:
             _log("error", "Falha no envio via ACS; tentando SMTP da plataforma. Err=%s", e)
@@ -257,7 +273,7 @@ def send_test_mail(
     _smtp_send(cfg, msg)
 
 # =============================================================================
-# Envio por TENANT (mantido)
+# Envio por TENANT (mantido: sempre SMTP do tenant)
 # =============================================================================
 def send_tenant_mail_html(
     *, tenant, subject: str, html: str, to: str, text_alt: str = ""
@@ -269,7 +285,6 @@ def send_tenant_mail_html(
     """
     cfg = get_tenant_mail_creds(tenant)
     if not cfg:
-        # Sem alias → modo mock (quem chama pode tentar a plataforma)
         _log("info", "[EMAIL MOCK] (tenant=%s) To=%s Subject=%s", getattr(tenant, 'slug', '?'), to, subject)
         return False
 
@@ -289,7 +304,7 @@ def send_tenant_mail_html(
     return True
 
 # =============================================================================
-# Roteador automático (mantido) — Tenant → Plataforma(ACS/SMTP) → MOCK
+# Roteador automático — Tenant → Plataforma(ACS/SMTP) → MOCK
 # =============================================================================
 def send_mail_auto(
     *, tenant, subject: str, html: str, to: str, text_alt: str = ""
@@ -316,7 +331,6 @@ def send_mail_auto(
     except Exception as e:
         _log("error", "Falha no envio via plataforma. Err=%s", e)
 
-    # Nenhum configurado → MOCK já foi logado
     return False
 
 # =============================================================================
