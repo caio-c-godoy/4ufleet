@@ -130,29 +130,14 @@
           <p class="small text-muted mb-2">Para prosseguir, visualize e assine o contrato.</p>
 
           <div class="d-flex gap-2">
-            {# --- Ver contrato (público) --- #}
-{% set view_url = (
-  contract_urls.view
-  if contract_urls is defined and contract_urls and contract_urls.view
-  else (
-    url_for('public.view_contract',
-            tenant_slug=g.tenant.slug,
-            reserva_id=reservation.id,
-            t=reservation.contract_token)
-    if reservation.contract_token
-    else url_for('public.view_contract',
-                 tenant_slug=g.tenant.slug,
-                 reserva_id=reservation.id)
-  )
-) %}
-
-<!-- Ver contrato -->
-<a href="{{ view_url }}"
-   target="_blank"
-   class="btn btn-outline-secondary btn-sm flex-fill">
-  📄 Ver contrato
-</a>
-
+            <!-- Ver contrato -->
+            <a href="{{ (contract_urls.view
+              if contract_urls is defined and contract_urls and contract_urls.view
+              else url_for('public.view_contract', reserva_id=reservation.id, tenant_slug=g.tenant.slug)) }}"
+            target="_blank"
+            class="btn btn-outline-secondary btn-sm flex-fill">
+            📄 Ver contrato
+          </a>
 
             <!-- Baixar assinado (apenas quando assinado) -->
             {% if is_signed %}

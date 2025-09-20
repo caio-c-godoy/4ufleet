@@ -6,32 +6,12 @@
   <h3 class="mb-1">Contrato de Locação</h3>
   <p class="text-muted">Visualize o contrato e assine dentro da área destacada.</p>
 
-  {# ----------------------------------------------------------------------
-     URL do PDF:
-     - Se a rota "sign" passou view_url (recomendado), usa direto.
-     - Caso contrário, monta a URL para /view com:
-         • tenant_slug
-         • reserva_id (de reservation.id OU de reserva_id)
-         • t = reservation.contract_token (se existir) OU request.args.t (fallback)
-     ---------------------------------------------------------------------- #}
-  {% set _rid = (reservation.id if reservation is defined else reserva_id) %}
-  {% set _tok = (
-        (reservation.contract_token if reservation is defined and reservation.contract_token else None)
-        or (request.args.get('t') if request is defined else None)
-      ) %}
-  {% set _view_fallback = url_for('public.view_contract',
-                                  tenant_slug=g.tenant.slug,
-                                  reserva_id=_rid,
-                                  t=_tok) %}
-  {% set _view_url = (view_url if view_url is defined and view_url else _view_fallback) %}
-
   <!-- Visualização do PDF (sempre exibe o assinado se já existir) -->
   <div class="border rounded bg-light p-2 mb-3" style="max-height:65vh; overflow:auto;">
     <iframe
       id="pdf-frame"
       title="Contrato PDF"
-      src="{{ _view_url }}#toolbar=0&navpanes=0&view=FitH"
-      loading="lazy"
+      src="{{ url_for('public.view_contract', tenant_slug=g.tenant.slug, reserva_id=reserva_id) }}#toolbar=0&navpanes=0&view=FitH"
       style="display:block; width:100%; height:62vh; border:0;">
     </iframe>
   </div>
@@ -62,9 +42,7 @@
       id="save-signature"
       type="button"
       class="btn btn-success btn-sm"
-      data-post-url="{{ url_for('public.apply_signature',
-                                tenant_slug=g.tenant.slug,
-                                reserva_id=_rid) }}">
+      data-post-url="{{ url_for('public.apply_signature', tenant_slug=g.tenant.slug, reserva_id=reserva_id) }}">
       ✅ Confirmar assinatura
     </button>
   </div>
