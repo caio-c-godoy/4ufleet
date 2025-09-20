@@ -73,10 +73,11 @@ def load_confirm_token(token: str, max_age_seconds: int = 60 * 60 * 24 * 3) -> d
     return _email_serializer().loads(token, max_age=max_age_seconds)
 
 
-def _send_confirmation_email(tenant: Tenant, user: User) -> None:
+def _send_confirmation_email(tenant: Tenant, user: User) -> bool:
     """
-    Envia e-mail de boas-vindas/ativação SEMPRE pelo SMTP da PLATAFORMA (.env).
-    O link é gerado com EXTERNAL_BASE_URL (se existir).
+    Envia o e-mail de boas-vindas/ativação **pela PLATAFORMA**.
+    Retorna True se o envio foi realizado (ACS/SMTP); False se ficou em modo MOCK.
+    Lança exceção apenas em erro real de envio.
     """
     token = make_confirm_token(user)
     confirm_url = absolute_url_for(
@@ -94,12 +95,14 @@ def _send_confirmation_email(tenant: Tenant, user: User) -> None:
     )
     text_alt = f"Bem-vindo(a)! Confirme seu e-mail para ativar seu acesso: {confirm_url}"
 
-    # plataforma (não depende do SMTP do tenant)
-    send_platform_mail_html(
-        subject=subject,
-        html=html,
-        to=user.email,
-        text_alt=text_alt,
+    # Retorna o bool do mailer (True= enviado; False = mock / não configurado)
+    return bool(
+        send_platform_mail_html(
+            subject=subject,
+            html=html,
+            to=user.email,
+            text_alt=text_alt,
+        )
     )
 
 
@@ -211,7 +214,6 @@ def verify_email():
     return render_template("auth/verified.html", tenant=g.tenant)
 
 
-# /app/auth/route.py
 @auth_bp.post("/resend-confirmation")
 def resend_confirmation():
     email = _get_email_from_request()
@@ -226,16 +228,14 @@ def resend_confirmation():
         return jsonify(ok=True, already=True)
 
     try:
-        # use o mesmo helper que monta o e-mail de confirmação
-        # e FAÇA ele retornar bool de envio real
-        sent = _send_confirmation_email(tenant, user)  # <- deve devolver True/False
+        sent = _send_confirmation_email(tenant, user)  # agora retorna bool
         if not sent:
+            # Sem ACS/SMTP configurado → modo mock: avisa o front
             return jsonify(ok=False, error="Serviço de e-mail não configurado."), 500
         return jsonify(ok=True)
     except Exception as e:
         current_app.logger.exception("Falha ao reenviar confirmação")
         return jsonify(ok=False, error=str(e)), 500
-
 
 
 # -----------------------------------------------------------------------------#
@@ -290,7 +290,7 @@ def _send_email(to_email: str, subject: str, html: str):
 
 
 # -----------------------------------------------------------------------------#
-# ESQUECI A SENHA (FORGOT)  |  URL final: /<tenant_slug>/auth/forgot
+# ESQUECI A SENHA (FORGOT)
 # -----------------------------------------------------------------------------#
 @auth_bp.route("/forgot", methods=["GET", "POST"], endpoint="forgot_password")
 def forgot_password():
@@ -326,7 +326,7 @@ def forgot_password():
 
 
 # -----------------------------------------------------------------------------#
-# REDEFINIR SENHA (RESET)  |  URL final: /<tenant_slug>/auth/reset/<token>
+# REDEFINIR SENHA (RESET)
 # -----------------------------------------------------------------------------#
 @auth_bp.route("/reset/<token>", methods=["GET", "POST"], endpoint="reset_password")
 def reset_password(token):
