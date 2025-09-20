@@ -7,7 +7,7 @@ from email.utils import formatdate, make_msgid
 from typing import Optional
 from flask import current_app, has_app_context
 
-# ---------------- ACS (sem EmailContent/ACSEmailMessage) ----------------
+# ---------------- ACS (client simples, sem EmailContent/ACSEmailMessage) ----------------
 _ACS_IMPORT_ERR = ""
 try:
     from azure.communication.email import EmailClient
@@ -17,10 +17,13 @@ except Exception as e:
     _ACS_AVAILABLE = False
     _ACS_IMPORT_ERR = repr(e)
 
+# =============================================================================
+# Utils de log e env
+# =============================================================================
 def _log(level: str, msg: str, *args):
     if has_app_context():
         lg = current_app.logger
-        getattr(lg, {"info":"info","warning":"warning","error":"error"}.get(level,"debug"))(msg, *args)
+        getattr(lg, {"info": "info", "warning": "warning", "error": "error"}.get(level, "debug"))(msg, *args)
 
 def _getenv(key: str, default=None):
     if has_app_context():
@@ -30,13 +33,16 @@ def _getenv(key: str, default=None):
     return os.getenv(key, default)
 
 def _as_bool(v) -> bool:
-    return str(v).strip().lower() in ("1","true","yes","on")
+    return str(v).strip().lower() in ("1", "true", "yes", "on")
 
-# ---------------- Cofre DEV (inalterado) ----------------
+# =============================================================================
+# Cofre DEV (arquivo) — mantido
+# =============================================================================
 _DEV_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dev_secrets"))
 os.makedirs(_DEV_DIR, exist_ok=True)
+
 def _path(alias: str) -> str:
-    return os.path.join(_DEV_DIR, f"{alias.replace('/','_')}.json")
+    return os.path.join(_DEV_DIR, f"{alias.replace('/', '_')}.json")
 
 def save_tenant_mail_creds(*, tenant, host, port, user, password, use_tls, use_ssl, provider="custom-smtp") -> str:
     alias = tenant.mail_secret_id or f"mail/{tenant.slug}"
@@ -49,16 +55,21 @@ def save_tenant_mail_creds(*, tenant, host, port, user, password, use_tls, use_s
 
 def get_tenant_mail_creds(tenant) -> dict | None:
     alias = getattr(tenant, "mail_secret_id", None)
-    if not alias: return None
+    if not alias:
+        return None
     p = _path(alias)
-    if not os.path.isfile(p): return None
+    if not os.path.isfile(p):
+        return None
     with open(p, "r", encoding="utf-8") as f:
         return json.load(f)
 
-# ---------------- Plataforma SMTP (inalterado) ----------------
+# =============================================================================
+# Plataforma SMTP (mantido)
+# =============================================================================
 def get_platform_mail_creds() -> dict | None:
     host = _getenv("PLATFORM_SMTP_HOST")
-    if not host: return None
+    if not host:
+        return None
     port = int(_getenv("PLATFORM_SMTP_PORT", 0) or 0)
     user = _getenv("PLATFORM_SMTP_USER") or ""
     password = (_getenv("PLATFORM_SMTP_PASS") or "").replace(" ", "")
@@ -69,14 +80,17 @@ def get_platform_mail_creds() -> dict | None:
         "use_tls": bool(use_tls and not use_ssl), "use_ssl": bool(use_ssl), "provider": "platform-smtp",
     }
 
-# ---------------- ACS helpers ----------------
+# =============================================================================
+# ACS helpers
+# =============================================================================
 _ACS_CONN: Optional[str] = None
 _EMAIL_FROM: Optional[str] = None
 _ACS_CLIENT: Optional["EmailClient"] = None
 
 def _acs_enabled() -> bool:
     global _ACS_CONN, _EMAIL_FROM
-    if not _ACS_AVAILABLE: return False
+    if not _ACS_AVAILABLE:
+        return False
     if _ACS_CONN is None:
         _ACS_CONN = (_getenv("ACS_EMAIL_CONNECTION_STRING") or "").strip()
     if _EMAIL_FROM is None:
@@ -87,25 +101,42 @@ def _acs_client() -> "EmailClient":
     global _ACS_CLIENT
     if _ACS_CLIENT is None:
         if not _acs_enabled():
-            raise RuntimeError("ACS não configurado (ACS_EMAIL_CONNECTION_STRING/EMAIL_FROM).")
+            raise RuntimeError("Serviço de e-mail não está configurado (ACS_EMAIL_CONNECTION_STRING/EMAIL_FROM).")
         _ACS_CLIENT = EmailClient.from_connection_string(_ACS_CONN)  # type: ignore
     return _ACS_CLIENT
 
 def _normalize_emails(to: str) -> list[dict]:
     return [{"address": e.strip()} for e in (to or "").split(",") if e.strip()]
 
+def _friendly_acs_error(err: Exception) -> str:
+    """
+    Converte erros do ACS para mensagens claras para o usuário.
+    """
+    s = repr(err)
+    # códigos comuns vistos em logs do ACS
+    if "EmailDroppedAllRecipientsSuppressed" in s:
+        return ("Não conseguimos enviar para este destinatário porque ele recusou/denunciou mensagens anteriores. "
+                "Peça para revisar a pasta de spam e autorizar o remetente, ou informe outro e-mail.")
+    if "DomainNotLinked" in s:
+        return ("O domínio remetente ainda não está vinculado ao serviço de e-mail. "
+                "Finalize a verificação do domínio no Azure Communication Services.")
+    if "FromAddressNotAuthorized" in s or "SenderNotEnabled" in s:
+        return ("O endereço do remetente não está autorizado para este domínio. "
+                "Inclua o endereço em MailFrom addresses e aguarde a propagação.")
+    if "InvalidToAddress" in s or "InvalidEmailAddress" in s:
+        return ("Endereço de destinatário inválido. Verifique se o e-mail foi digitado corretamente.")
+    # fallback
+    msg = getattr(err, "message", None) or str(err)
+    return f"Falha ao enviar e-mail: {msg}"
+
 def _send_via_acs(*, subject: str, html: str, text: str, to: str, reply_to: str | None = None) -> str:
     """
-    Envia por ACS (SDK 1.0.x): payload em dict.
+    Envia por ACS (SDK 1.0.x) com payload em dict e mensagens de erro amigáveis.
     """
     client = _acs_client()
     message = {
         "senderAddress": _EMAIL_FROM,
-        "content": {
-            "subject": subject or "",
-            "plainText": text or "",
-            "html": html or "",
-        },
+        "content": {"subject": subject or "", "plainText": text or "", "html": html or ""},
         "recipients": {"to": _normalize_emails(to)},
     }
     if reply_to:
@@ -117,13 +148,15 @@ def _send_via_acs(*, subject: str, html: str, text: str, to: str, reply_to: str 
         _log("info", "[PLATFORM EMAIL/ACS] To=%s Subject=%s MsgId=%s", to, subject, msg_id)
         return msg_id
     except HttpResponseError as e:  # type: ignore
-        raise RuntimeError(f"Falha ao enviar e-mail (ACS): {getattr(e, 'message', str(e))}") from e
+        raise RuntimeError(_friendly_acs_error(e)) from e
     except Exception as e:
-        raise RuntimeError(f"Erro inesperado ao enviar e-mail (ACS): {e}") from e
+        raise RuntimeError(_friendly_acs_error(e)) from e
 
-# ---------------- SMTP baixo nível ----------------
+# =============================================================================
+# SMTP baixo nível
+# =============================================================================
 def _stamp_headers(msg: EmailMessage, from_domain_hint: str | None = None):
-    # Cabeçalhos que ajudam reputação
+    # Cabeçalhos que ajudam reputação/entregabilidade
     if "Date" not in msg:
         msg["Date"] = formatdate(localtime=True)
     if "Message-ID" not in msg:
@@ -136,8 +169,10 @@ def _smtp_send(cfg: dict, msg: EmailMessage):
     password = (cfg.get("password") or "").strip()
     use_tls = bool(cfg.get("use_tls"))
     use_ssl = bool(cfg.get("use_ssl"))
-    if not host: raise RuntimeError("SMTP host vazio.")
-    # aplica Date e Message-ID se faltar
+    if not host:
+        raise RuntimeError("SMTP host vazio.")
+
+    # aplica Date/Message-ID se faltar
     from_domain = None
     try:
         from_domain = (msg.get("From") or "").split("<")[-1].split(">")[0].split("@")[-1].strip() or None
@@ -148,28 +183,41 @@ def _smtp_send(cfg: dict, msg: EmailMessage):
     if use_ssl:
         ctx = ssl.create_default_context()
         with smtplib.SMTP_SSL(host, port or 465, context=ctx, timeout=25) as s:
-            if user and password: s.login(user, password)
+            if user and password:
+                s.login(user, password)
             s.send_message(msg)
     else:
         with smtplib.SMTP(host, port or 587, timeout=25) as s:
             s.ehlo()
             if use_tls:
                 s.starttls(context=ssl.create_default_context()); s.ehlo()
-            if user and password: s.login(user, password)
+            if user and password:
+                s.login(user, password)
             s.send_message(msg)
 
-# ---------------- Plataforma pública (ACS -> SMTP -> MOCK) ----------------
+# =============================================================================
+# Envio “plataforma”: ACS → SMTP → MOCK
+#   * Se ACS falhar e NÃO houver SMTP, propaga a mensagem amigável do ACS.
+#   * Se houver SMTP, registra e faz fallback silencioso.
+# =============================================================================
 def send_platform_mail_html(*, subject: str, html: str, to: str, text_alt: str = "") -> bool:
+    # 1) ACS
     if _acs_enabled():
         try:
             _send_via_acs(
                 subject=subject, html=html, text=text_alt, to=to,
-                reply_to=_getenv("PLATFORM_REPLY_TO", "support@4ufleet.com")
+                reply_to=_getenv("PLATFORM_REPLY_TO", "support@4ufleet.com"),
             )
             return True
         except Exception as e:
-            _log("error", "Falha no envio via ACS; caindo para SMTP. Err=%s", e)
+            cfg = get_platform_mail_creds()
+            if cfg:
+                _log("error", "Falha no envio via ACS; caindo para SMTP. Err=%s", e)
+            else:
+                # Sem SMTP para cair — deixe a rota mostrar a mensagem amigável
+                raise
 
+    # 2) SMTP plataforma (se existir)
     cfg = get_platform_mail_creds()
     if not cfg:
         _log("warning", "[EMAIL MOCK] (platform) To=%s Subject=%s (sem ACS e sem PLATFORM_SMTP_HOST)", to, subject)
@@ -190,7 +238,9 @@ def send_platform_mail_html(*, subject: str, html: str, to: str, text_alt: str =
     _log("info", "[PLATFORM EMAIL/SMTP] To=%s Subject=%s", to, subject)
     return True
 
-# ---------------- Utilitários/tenant/compat ----------------
+# =============================================================================
+# Utilitários / tenant / compat
+# =============================================================================
 def send_test_mail(*, cfg: dict, subject: str, body: str, from_name: str, from_email: str, to_email: str):
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -202,7 +252,7 @@ def send_test_mail(*, cfg: dict, subject: str, body: str, from_name: str, from_e
 def send_tenant_mail_html(*, tenant, subject: str, html: str, to: str, text_alt: str = "") -> bool:
     cfg = get_tenant_mail_creds(tenant)
     if not cfg:
-        _log("info", "[EMAIL MOCK] (tenant=%s) To=%s Subject=%s", getattr(tenant, 'slug','?'), to, subject)
+        _log("info", "[EMAIL MOCK] (tenant=%s) To=%s Subject=%s", getattr(tenant, 'slug', '?'), to, subject)
         return False
 
     from_name  = getattr(tenant, "mail_from_name", None) or getattr(tenant, "name", None) or "Locadora"
@@ -217,7 +267,7 @@ def send_tenant_mail_html(*, tenant, subject: str, html: str, to: str, text_alt:
     msg.add_alternative(html, subtype="html")
 
     _smtp_send(cfg, msg)
-    _log("info", "[TENANT EMAIL/SMTP] tenant=%s To=%s Subject=%s", getattr(tenant,'slug','?'), to, subject)
+    _log("info", "[TENANT EMAIL/SMTP] tenant=%s To=%s Subject=%s", getattr(tenant, 'slug', '?'), to, subject)
     return True
 
 def send_mail_auto(*, tenant, subject: str, html: str, to: str, text_alt: str = "") -> bool:
@@ -225,13 +275,13 @@ def send_mail_auto(*, tenant, subject: str, html: str, to: str, text_alt: str = 
         if send_tenant_mail_html(tenant=tenant, subject=subject, html=html, to=to, text_alt=text_alt):
             return True
     except Exception as e:
-        _log("error","Falha SMTP do tenant; tentando plataforma. Err=%s", e)
+        _log("error", "Falha SMTP do tenant; tentando plataforma. Err=%s", e)
     try:
         return bool(send_platform_mail_html(subject=subject, html=html, to=to, text_alt=text_alt))
     except Exception as e:
-        _log("error","Falha no envio via plataforma. Err=%s", e)
+        _log("error", "Falha no envio via plataforma. Err=%s", e)
     return False
 
 def send_email_for_tenant(tenant, recipients, subject: str, html: str, text_alt: str = "") -> bool:
-    to = ", ".join(r for r in recipients if r) if isinstance(recipients,(list,tuple,set)) else recipients
+    to = ", ".join(r for r in recipients if r) if isinstance(recipients, (list, tuple, set)) else recipients
     return send_mail_auto(tenant=tenant, subject=subject, html=html, to=to, text_alt=text_alt)
