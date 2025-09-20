@@ -29,3 +29,5 @@ azure-storage-blob==12.20.0
 cffi>=1.15.1
 pycparser
 reportlab==4.4.3
+azure-communication-email>=1.0.0
+azure-core>=1.30.0
