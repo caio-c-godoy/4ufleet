@@ -994,4 +994,50 @@
     }
   });
 </script>
+<script>
+(function () {
+  const btn = document.getElementById("btnMailTest");
+  if (!btn) return;
+
+  const getCsrf = () =>
+    (document.querySelector("meta[name=csrf-token]")?.content) ||
+    (document.querySelector("input[name=csrf_token]")?.value) || "";
+
+  btn.addEventListener("click", async () => {
+    const toInput = document.getElementById("mailTestTo");
+    const to = (toInput?.value || "").trim();
+    if (!to) { alert("Informe um e-mail para o teste."); toInput?.focus(); return; }
+
+    const url = btn.dataset.url;              // /<tenant>/admin/settings/mail.test
+    const old = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = "Enviando…";
+
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCsrf(),           // Flask-WTF
+          "X-CSRF-Token": getCsrf(),
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({ to }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok && data.ok) {
+        alert(data.message || "E-mail de teste enviado!");
+      } else {
+        alert(data.error || `Falha (${r.status}). Veja o console/Network.`);
+        console.error("mail.test resp:", r.status, data);
+      }
+    } catch (e) {
+      alert("Erro de rede ao enviar o e-mail de teste.");
+      console.error(e);
+    } finally {
+      btn.disabled = false; btn.innerHTML = old;
+    }
+  });
+})();
+</script>
+
 {% endblock %}
