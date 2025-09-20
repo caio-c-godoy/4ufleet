@@ -39,10 +39,8 @@
 {% endblock %}
 
 {% block content %}
-{# mostrar coluna da direita somente se explicitamente habilitada (default: true) #}
 {% set show_hero = tenant.login_hero_enabled if tenant and tenant.login_hero_enabled is not none else true %}
 
-{# HERO: resolve URL em 3 cenários: http(s), já começa com /static/, ou caminho relativo salvo #}
 {% set hero_img = tenant.login_hero_image if tenant and tenant.login_hero_image else None %}
 {% if hero_img %}
   {% if hero_img.startswith('http') %}
@@ -54,7 +52,6 @@
   {% endif %}
 {% endif %}
 
-{# textos com fallback #}
 {% set hero_kicker = tenant.login_hero_kicker if tenant and tenant.login_hero_kicker else '4UFLEET • MULTIFROTA' %}
 {% set hero_title  = tenant.login_hero_title  if tenant and tenant.login_hero_title  else 'Carros, motos, vans, barcos e mais — tudo pronto para alugar.' %}
 {% set hero_desc   = tenant.login_hero_desc   if tenant and tenant.login_hero_desc   else 'Centralize reservas, tarifas e manutenção em um único painel. Aumente a ocupação da sua frota com automações e relatórios em tempo real.' %}
@@ -63,7 +60,6 @@
   <section class="auth-left">
     <div class="auth-card">
       <div class="brand-login">
-        {# LOGO: resolve URL em 3 cenários também #}
         {% set _logo = tenant.logo_url or tenant.brand_logo_url or tenant.logo_path %}
         {% if _logo %}
           {% if _logo.startswith('http') %}
@@ -115,7 +111,7 @@
         <button type="submit" class="btn btn-primary w-100 btn-login">Entrar</button>
       </form>
 
-      {# ---- ÁREA DE MENSAGENS E ALERTA DE CONFIRMAÇÃO COM BOTÃO ---- #}
+      {# Mensagens #}
       <div class="mt-3" id="flash-area">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
@@ -126,22 +122,21 @@
         {% endwith %}
       </div>
 
-      {# Template do alerta “Confirme seu e-mail…” com botão Reenviar #}
-      <template id="tpl-resend-alert">
-        <div class="alert alert-warning d-flex justify-content-between align-items-center py-2 mb-2">
-          <div>Confirme seu e-mail para continuar. Você pode reenviar o link.</div>
-          <form id="resend-form" method="post"
-                action="{{ url_for('auth.resend_confirmation', tenant_slug=tenant.slug) }}"
-                class="ms-3 d-inline">
-            {% if csrf_token is defined %}{{ csrf_token() }}{% endif %}
-            <input type="hidden" name="email" id="resend-email">
-            <button type="submit" class="btn btn-sm btn-link p-0 align-baseline" id="resend-btn">
-              Reenviar link
-            </button>
-          </form>
-        </div>
-        <div class="small text-muted" id="resend-feedback"></div>
-      </template>
+      {# Bloco fixo de “Reenviar link” — funciona mesmo se o aviso vier fora do flash-area #}
+      <div class="mt-3 small" id="resend-block">
+        Não recebeu o e-mail de confirmação?
+        <form id="resend-form"
+              method="post"
+              action="{{ url_for('auth.resend_confirmation', tenant_slug=tenant.slug) }}"
+              class="d-inline align-baseline">
+          {% if csrf_token is defined %}{{ csrf_token() }}{% endif %}
+          <input type="hidden" name="email" id="resend-email">
+          <button type="submit" class="btn btn-link btn-sm p-0 align-baseline" id="resend-btn">
+            Reenviar link
+          </button>
+        </form>
+        <span class="text-muted ms-2" id="resend-feedback"></span>
+      </div>
 
       <div class="text-center mt-4 muted small">
         Ambiente: <strong>{{ tenant.name if tenant else '—' }}</strong>
@@ -170,7 +165,7 @@
 
 {% block extra_js %}
 <script>
-  // olho da senha
+  // Mostrar/ocultar senha
   (function(){
     const btn = document.getElementById('togglePwd');
     const input = document.getElementById('password');
@@ -183,32 +178,21 @@
     }
   })();
 
-  // injeta botão "Reenviar link" quando houver alerta de confirmação
+  // Reenviar confirmação — sincroniza e envia
   (function(){
-    const flashArea = document.getElementById('flash-area');
-    const tpl = document.getElementById('tpl-resend-alert');
-    const emailInput = document.getElementById('email');
-
-    // critério: existe um alerta cujo texto contenha "Confirme seu e-mail"
-    const needsConfirm = Array.from(flashArea.querySelectorAll('.alert'))
-      .some(a => /confirme seu e-mail/i.test(a.textContent || ''));
-
-    if (!needsConfirm || !tpl) return;
-
-    // limpa mensagens e injeta o nosso componente
-    flashArea.innerHTML = '';
-    flashArea.appendChild(tpl.content.cloneNode(true));
-
+    const loginEmail = document.getElementById('email');
     const hiddenEmail = document.getElementById('resend-email');
-    const form  = document.getElementById('resend-form');
-    const btn   = document.getElementById('resend-btn');
-    const fb    = document.getElementById('resend-feedback');
+    const form = document.getElementById('resend-form');
+    const btn = document.getElementById('resend-btn');
+    const fb = document.getElementById('resend-feedback');
 
-    const sync = () => { if (hiddenEmail) hiddenEmail.value = (emailInput?.value || '').trim(); };
+    if (!loginEmail || !hiddenEmail || !form) return;
+
+    const sync = () => hiddenEmail.value = (loginEmail.value || '').trim();
+    loginEmail.addEventListener('input', sync);
     sync();
-    emailInput?.addEventListener('input', sync);
 
-    form?.addEventListener('submit', async (ev) => {
+    form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       sync();
       if (!hiddenEmail.value) {
@@ -232,7 +216,7 @@
         } else {
           fb.textContent = data.error || 'Não foi possível reenviar agora.';
         }
-      } catch (e) {
+      } catch {
         fb.textContent = 'Falha de rede. Tente novamente.';
       } finally {
         btn.disabled = false;
