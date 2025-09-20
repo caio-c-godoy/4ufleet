@@ -6,13 +6,18 @@ from datetime import datetime
 from pathlib import Path
 
 from flask import (
-    render_template, request, redirect, url_for, flash, current_app
+    render_template, request, redirect, url_for, flash, current_app, jsonify
 )
 from werkzeug.utils import secure_filename
+from urllib.parse import quote
 
 from app.extensions import db
-from app.models import Tenant, User, Prospect  # <-- Prospects para CRM
+from app.models import Tenant, User, Prospect  # Prospects para CRM
 from . import site_bp  # blueprint criado em app/site/__init__.py
+
+# helper que monta e envia o e-mail de confirmação (plataforma: ACS/SMTP)
+from app.auth.routes import _send_confirmation_email
+from app.services.mailer import send_platform_mail_html
 
 
 # -------------------- Utils locais --------------------
@@ -96,9 +101,8 @@ def signup_submit():
             "Centralize reservas, tarifas e manutenção em um único painel. "
             "Aumente a ocupação da sua frota com automações e relatórios em tempo real."
         ),
-        # caminho padrão relativo (será servido por /static). Caso use CDN/Blob, troque aqui.
-        login_hero_image = f"https://st4ufleetprd.blob.core.windows.net/branding/{slug}/login-hero.jpg",
-
+        # caminho padrão (se tiver CDN/Blob, ajuste aqui)
+        login_hero_image=f"https://st4ufleetprd.blob.core.windows.net/branding/{slug}/login-hero.jpg",
     )
     db.session.add(t)
     db.session.flush()  # t.id disponível
@@ -124,6 +128,25 @@ def signup_submit():
     db.session.add(u)
     db.session.commit()
 
+    # === dispara e-mail de confirmação imediatamente ===
+    try:
+        # _send_confirmation_email pode retornar True/False/None.
+        sent = _send_confirmation_email(t, u)
+        status = "SENT" if (sent is True or sent is None) else "NOT_SENT"
+        current_app.logger.info(
+            "signup: confirmation email %s tenant=%s user=%s",
+            status, t.slug, u.email
+        )
+        if sent is False:
+            # plataforma ficou em MOCK: avisa de forma amigável sem quebrar o fluxo
+            flash("Ambiente criado. O e-mail de confirmação será enviado em instantes.", "info")
+    except Exception as e:
+        # não quebra o fluxo do signup; apenas registra
+        current_app.logger.exception(
+            "signup: confirmation email FAILED tenant=%s user=%s error=%s",
+            t.slug, u.email, e
+        )
+
     flash("Ambiente criado! Verifique seu e-mail para confirmar e depois faça login.", "success")
     return redirect(url_for("auth.login", tenant_slug=slug))
 
@@ -139,10 +162,6 @@ def privacy():
 
 
 # --- CTA da landing: capta nome/telefone/email e envia e-mail com link de signup
-from urllib.parse import quote
-from flask import jsonify
-from app.services.mailer import send_platform_mail_html
-
 @site_bp.post("/pre-signup")
 def pre_signup():
     """
@@ -171,17 +190,13 @@ def pre_signup():
         current_app.logger.info("[pre-signup] prospect saved id=%s email=%s", p.id, p.email)
     except Exception:
         current_app.logger.exception("Falha ao salvar Prospect (pre-signup)")
-        # Mesmo se falhar ao gravar, seguimos tentando enviar e-mail — mas reportamos erro final.
-        # Para não interromper o UX, você pode optar por não retornar erro aqui.
-        # Vamos seguir o fluxo padrão e só retornar erro se o e-mail também falhar.
+        # segue para e-mail mesmo assim
 
-    # 2) Link de signup com campos pré-preenchidos na querystring (não exige token)
-    signup_url = url_for(
-        "site.signup_form",
-        _external=True
-    ) + f"?name={quote(name)}&email={quote(email)}&phone={quote(phone)}"
+    # 2) Link de signup com campos pré-preenchidos
+    signup_url = url_for("site.signup_form", _external=True) + \
+                 f"?name={quote(name)}&email={quote(email)}&phone={quote(phone)}"
 
-    # 3) E-mail de boas-vindas (sempre via SMTP da plataforma)
+    # 3) E-mail de boas-vindas (sempre via plataforma)
     subject = "Bem-vindo à 4uFleet — crie sua locadora em minutos"
     html = render_template(
         "emails/welcome_presignup.html",
