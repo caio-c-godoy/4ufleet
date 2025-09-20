@@ -42,6 +42,11 @@
           </td>
           <td class="text-end">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('superadmin.tenant_detail', tenant_id=t.id) }}">Detalhes</a>
+
+            <form method="post" action="{{ url_for('superadmin.tenant_activate', tenant_id=t.id) }}" class="d-inline">
+              <button class="btn btn-sm btn-outline-success">Ativar</button>
+            </form>
+
             {% if t.is_blocked %}
             <form method="post" action="{{ url_for('superadmin.tenant_unblock', tenant_id=t.id) }}" class="d-inline">
               <button class="btn btn-sm btn-success">Desbloquear</button>
@@ -51,6 +56,7 @@
               <button class="btn btn-sm btn-warning">Bloquear</button>
             </form>
             {% endif %}
+
             <form method="post" action="{{ url_for('superadmin.tenant_delete', tenant_id=t.id) }}" class="d-inline"
                   onsubmit="return confirm('Tem certeza? Isso apaga tudo do tenant.');">
               <button class="btn btn-sm btn-outline-danger">Excluir</button>

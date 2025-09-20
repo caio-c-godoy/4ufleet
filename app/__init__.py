@@ -7,7 +7,7 @@ from datetime import date, datetime
 from flask import Flask, redirect, url_for, g, request
 from dotenv import load_dotenv, find_dotenv
 from flask_migrate import Migrate
-
+from . import models_site
 from .config import Config
 from .extensions import db, login_manager
 
@@ -29,7 +29,7 @@ def create_app() -> Flask:
     )
     app.config.from_object(Config())
     app.config.setdefault("TEMPLATES_AUTO_RELOAD", True)
-    
+
     from .filters import imgsrc
     app.jinja_env.filters['imgsrc'] = imgsrc
     # --------- Filtros Jinja ----------

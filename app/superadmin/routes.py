@@ -132,6 +132,25 @@ def tenant_unblock(tenant_id: int):
     flash("Tenant desbloqueado.", "success")
     return redirect(url_for("superadmin.tenant_detail", tenant_id=t.id))
 
+@superadmin_bp.post("/tenants/<int:tenant_id>/activate")
+def tenant_activate(tenant_id: int):
+    tenant = Tenant.query.get_or_404(tenant_id)
+
+    # Marca o tenant como ativo (se tiver coluna de bloqueio)
+    if hasattr(tenant, "is_blocked"):
+        tenant.is_blocked = False
+
+    # Marca todos os usuários como confirmados
+    from datetime import datetime, timezone
+    for user in tenant.users:  # assumindo relação Tenant.users
+        if not getattr(user, "email_confirmed_at", None):
+            user.email_confirmed_at = datetime.now(timezone.utc)
+
+    db.session.commit()
+    flash("Tenant e usuários ativados com sucesso.", "success")
+    return redirect(url_for("superadmin.tenant_detail", tenant_id=tenant.id))
+
+
 @superadmin_bp.post("/tenants/<int:tenant_id>/delete")
 @require_superadmin
 def tenant_delete(tenant_id: int):

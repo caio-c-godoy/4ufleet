@@ -24,3 +24,4 @@ def ping_tenant_activity():
 
 # Carrega as rotas (que importam admin_bp daqui)
 from . import routes  # noqa: E402,F401
+from . import routes_sitebuilder  # noqa: F401

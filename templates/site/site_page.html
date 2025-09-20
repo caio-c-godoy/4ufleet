@@ -1,0 +1,149 @@
+{% extends "base_public.html" %}
+{# se tiver base_public.html, troque 'if false' por 'if true' #}
+
+{% block title %}{{ site.site_title or (g.tenant.name ~ " — Site") }}{% endblock %}
+
+{% block content %}
+{% set app_name = (g.tenant.name if g and g.tenant and g.tenant.name else "4uFleet") %}
+{% set updated_at = (site.updated_at.strftime('%d/%m/%Y %H:%M') if site and site.updated_at else "—") %}
+{% set raw_logo = (
+  site.logo_url or (g.tenant.brand_logo_url if g and g.tenant and g.tenant.brand_logo_url else url_for('static', filename='img/4ufleet-logo.svg'))
+) %}
+
+<div class="container py-4">
+
+  <!-- Header do microsite -->
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <div class="d-flex align-items-center gap-3">
+      <img
+        src="{{ raw_logo }}"
+        alt="{{ app_name }}"
+        height="36"
+        onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/4ufleet-logo.svg') }}';"
+        style="object-fit:contain"
+      />
+      <div>
+        <h3 class="mb-0">{{ site.site_title or app_name }}</h3>
+        {% if site.site_description %}<div class="text-muted small">{{ site.site_description }}</div>{% endif %}
+      </div>
+    </div>
+    <span class="text-muted small">Última atualização: {{ updated_at }}</span>
+  </div>
+
+  <hr class="my-3">
+
+  {# ---------- RENDERIZAÇÃO DE BLOCOS ---------- #}
+  {% for b in blocks %}
+    {# ===== HERO ===== #}
+    {% if b.block_type == "HERO" %}
+      {% set h = b.payload or {} %}
+      <section class="mb-4 position-relative rounded-3 overflow-hidden"
+               style="background: {% if h.bg_image %}url('{{ h.bg_image }}') center/cover no-repeat{% else %}linear-gradient(120deg, {{ site.primary_color or '#0d6efd' }}, {{ site.secondary_color or '#6c757d' }}){% endif %};">
+        <div class="p-5" style="backdrop-filter: brightness(0.95);">
+          <div class="text-{{ h.align or 'center' }}">
+            <h1 class="display-6 fw-bold text-white">{{ h.headline or "Sua Locadora de Confiança" }}</h1>
+            {% if h.subline %}<p class="lead text-white-50 mb-4">{{ h.subline }}</p>{% endif %}
+            {% if h.cta_text %}
+              {% set cta_url = h.cta_url or ('/' ~ g.tenant.slug ~ '/site#frota') %}
+              <a href="{{ cta_url }}" class="btn btn-light btn-lg">{{ h.cta_text }}</a>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+    {# ===== ABOUT ===== #}
+    {% elif b.block_type == "ABOUT" %}
+      {% set a = b.payload or {} %}
+      <section class="mb-4">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h4 class="mb-3">{{ a.title or "Sobre nós" }}</h4>
+            {% if a.html %}
+              <div class="mb-3">{{ a.html|safe }}</div>
+            {% endif %}
+            {% if a.features %}
+              <div class="row g-3">
+                {% for feat in a.features %}
+                  <div class="col-md-4">
+                    <div class="d-flex align-items-start">
+                      <i class="bi {{ feat.icon or 'bi-check2-circle' }} fs-4 me-2 text-primary"></i>
+                      <div>{{ feat.text }}</div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+    {# ===== FLEET_SEARCH ===== #}
+    {% elif b.block_type == "FLEET_SEARCH" %}
+      {% set f = b.payload or {} %}
+      {% set anchor = f.anchor or 'frota' %}
+
+      {# URL fixa para a busca pública #}
+      {% set search_url = '/' ~ g.tenant.slug ~ '/search' %}
+
+      <section id="{{ anchor }}" class="mb-4">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h4 class="mb-0">{{ f.title or "Encontre seu carro" }}</h4>
+              {% if f.cta_book_text %}
+                <a href="{{ search_url }}" class="btn btn-primary">{{ f.cta_book_text }}</a>
+              {% endif %}
+            </div>
+
+            <form class="row g-3" action="{{ search_url }}" method="get">
+              {% if f.show_dates %}
+                <div class="col-md-3">
+                  <label class="form-label">Retirada</label>
+                  <input type="date" name="pickup_date" class="form-control">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Devolução</label>
+                  <input type="date" name="dropoff_date" class="form-control">
+                </div>
+              {% endif %}
+
+              {% if f.show_filters %}
+                <div class="col-md-3">
+                  <label class="form-label">Categoria</label>
+                  <select class="form-select" name="category">
+                    <option value="">Todas</option>
+                    {% for c in (f.categories or []) %}
+                      <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Ordenar</label>
+                  <select class="form-select" name="sort">
+                    <option value="price_asc" {{ 'selected' if (f.default_sort or '') == 'price_asc' else '' }}>Menor preço</option>
+                    <option value="price_desc" {{ 'selected' if (f.default_sort or '') == 'price_desc' else '' }}>Maior preço</option>
+                    <option value="name_asc" {{ 'selected' if (f.default_sort or '') == 'name_asc' else '' }}>Nome A→Z</option>
+                  </select>
+                </div>
+              {% endif %}
+
+              <div class="col-12 d-flex justify-content-end">
+                <button class="btn btn-primary" type="submit">Buscar</button>
+              </div>
+            </form>
+
+            <div class="text-muted small mt-2">
+              Dica: ajuste as datas para ver disponibilidade em tempo real.
+            </div>
+          </div>
+        </div>
+      </section>
+
+    {% endif %}
+  {% endfor %}
+
+  <footer class="mt-4 text-center text-muted small">
+    {{ app_name }} — Microsite
+  </footer>
+</div>
+{% endblock %}

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Car Rental{% endblock %}</title>
@@ -229,18 +230,26 @@
           {% endif %}
         {% endif %}
 
-        {# ---------- CONFIGURAÇÕES (apenas admin) ---------- #}
-        {% if current_user.is_admin %}
-          <div class="sidebar-section mt-3">CONFIGURAÇÕES</div>
-          <a class="nav-link {% if request.endpoint=='admin.settings' %}active{% endif %}"
-             href="{{ url_for('admin.settings', tenant_slug=tenant.slug) }}">
-            <i class="bi bi-gear me-2"></i> <span>Configurações</span>
-          </a>
-        {% endif %}
-      </div>
-      <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-    </aside>
-    {% endif %}
+       {# ---------- CONFIGURAÇÕES (apenas admin) ---------- #}
+{% if current_user.is_admin %}
+  <div class="sidebar-section mt-3">CONFIGURAÇÕES</div>
+
+  <a class="nav-link {% if request.endpoint=='admin.settings' %}active{% endif %}"
+     href="{{ url_for('admin.settings', tenant_slug=tenant.slug) }}">
+    <i class="bi bi-gear me-2"></i> <span>Configurações</span>
+  </a>
+
+  {# Botão do Construtor de Sites #}
+  <a class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.site_builder_') %}active{% endif %}"
+     href="{{ url_for('admin.site_builder_home', tenant_slug=tenant.slug) }}">
+    <i class="bi bi-brush me-2"></i> <span>Construtor de Sites</span>
+  </a>
+{% endif %}
+
+</div>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+</aside>
+{% endif %}
 
     <main class="app-main">
       <div class="container-fluid py-4">

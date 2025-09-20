@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+{% block title %}Construtor de Sites{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="mb-0">Construtor de Sites</h3>
+    <div class="d-flex align-items-center gap-2">
+      {# abre em modo público (sem chrome do admin) se seu base checar ?view=public #}
+      <a class="btn btn-outline-secondary"
+   href="{{ url_for('public.site_home', tenant_slug=g.tenant.slug) }}"
+   target="_blank" rel="noopener">
+  Ver microsite
+</a>
+
+      {% if site.is_published %}
+        <form method="post" action="{{ url_for('admin.site_builder_publish', tenant_slug=g.tenant.slug) }}" class="d-inline">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <input type="hidden" name="action" value="unpublish">
+          <button class="btn btn-warning">Despublicar</button>
+        </form>
+      {% else %}
+        <form method="post" action="{{ url_for('admin.site_builder_publish', tenant_slug=g.tenant.slug) }}" class="d-inline">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <input type="hidden" name="action" value="publish">
+          <button class="btn btn-success">Publicar</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="alert {{ 'alert-success' if site.is_published else 'alert-secondary' }} small" role="alert">
+    Status: <strong>{{ 'Publicado' if site.is_published else 'Rascunho' }}</strong>
+    {% if site.published_at %} — Publicado em {{ site.published_at.strftime('%d/%m/%Y %H:%M') }}{% endif %}
+  </div>
+
+  <!-- Criar página -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Criar nova página</h5>
+      <form class="row g-3" method="post" action="{{ url_for('admin.site_builder_page_create', tenant_slug=g.tenant.slug) }}">
+        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+        <div class="col-md-4">
+          <label class="form-label">Título</label>
+          <input type="text" name="title" class="form-control" placeholder="Ex.: Início, Sobre, Contato" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Slug</label>
+          <input type="text" name="slug" class="form-control" placeholder="/sobre (deixe / para homepage)">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="1" name="is_home" id="is_home">
+            <label class="form-check-label" for="is_home">Marcar como Home</label>
+          </div>
+        </div>
+        <div class="col-md-2 d-flex align-items-end justify-content-end">
+          <button class="btn btn-primary">Criar página</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lista de páginas -->
+  {% for p in pages %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div>
+            <h5 class="mb-0">
+              {{ p.title }}
+              {% if p.is_home %}<span class="badge bg-primary">Home</span>{% endif %}
+            </h5>
+            <div class="text-muted small">Slug: <code>{{ p.slug }}</code> • Ordem: {{ p.order }}</div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <!-- Definir como Home -->
+            <form method="post" action="{{ url_for('admin.site_builder_page_set_home', tenant_slug=g.tenant.slug) }}" class="d-inline">
+              {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+              <input type="hidden" name="page_id" value="{{ p.id }}">
+              <button class="btn btn-sm {{ 'btn-outline-secondary' if p.is_home else 'btn-outline-primary' }}"
+                      {% if p.is_home %}disabled{% endif %}>
+                {{ 'Home atual' if p.is_home else 'Definir como Home' }}
+              </button>
+            </form>
+
+            {% if not p.is_home %}
+              <form method="post" action="{{ url_for('admin.site_builder_page_delete', tenant_slug=g.tenant.slug) }}"
+                    onsubmit="return confirm('Excluir página {{ p.title }}?');" class="d-inline">
+                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                <input type="hidden" name="page_id" value="{{ p.id }}">
+                <button class="btn btn-outline-danger btn-sm">Excluir página</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+
+        <hr class="my-3">
+
+        <!-- Cabeçalho blocos -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h6 class="mb-0">Blocos</h6>
+
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-dark" type="button" data-page="{{ p.id }}" onclick="toggleSort(this)">
+              Reordenar
+            </button>
+
+            <form class="d-flex gap-2" method="post" action="{{ url_for('admin.site_builder_block_add', tenant_slug=g.tenant.slug) }}">
+              {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+              <input type="hidden" name="page_id" value="{{ p.id }}">
+              <select class="form-select form-select-sm w-auto" name="block_type" required>
+                <option value="HERO">HERO (capa)</option>
+                <option value="ABOUT">ABOUT (sobre)</option>
+                <option value="FLEET_SEARCH">FLEET_SEARCH (busca da frota)</option>
+              </select>
+              <button class="btn btn-sm btn-primary">Adicionar bloco</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Lista de blocos -->
+        {% if p.blocks_sorted|length == 0 %}
+          <div class="text-muted small">Nenhum bloco nesta página.</div>
+        {% else %}
+          <ul class="list-group" id="block-list-{{ p.id }}" data-page="{{ p.id }}">
+            {% for b in p.blocks_sorted %}
+              <li class="list-group-item d-flex align-items-center justify-content-between" draggable="false" data-block="{{ b.id }}">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="drag-handle" title="Arraste para reordenar" style="cursor:grab; user-select:none;">⋮⋮</span>
+                  <div>
+                    <strong>{{ b.block_type }}</strong>
+                    <span class="text-muted small"> • ordem {{ b.order }}</span>
+                    {% if b.block_type == 'HERO' and b.payload.headline %}
+                      <div class="small text-muted">“{{ b.payload.headline }}”</div>
+                    {% elif b.block_type == 'ABOUT' and b.payload.title %}
+                      <div class="small text-muted">{{ b.payload.title }}</div>
+                    {% elif b.block_type == 'FLEET_SEARCH' and b.payload.title %}
+                      <div class="small text-muted">{{ b.payload.title }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                  <button class="btn btn-sm btn-outline-primary"
+                          data-bs-toggle="modal"
+                          data-bs-target="#editBlockModal"
+                          data-blockid="{{ b.id }}"
+                          data-pageid="{{ p.id }}"
+                          data-type="{{ b.block_type }}"
+                          data-payload='{{ b.payload | tojson }}'>
+                    Editar
+                  </button>
+
+                  <form method="post" action="{{ url_for('admin.site_builder_block_delete', tenant_slug=g.tenant.slug) }}"
+                        onsubmit="return confirm('Excluir bloco {{ b.block_type }}?');" class="m-0">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <input type="hidden" name="page_id" value="{{ p.id }}">
+                    <input type="hidden" name="block_id" value="{{ b.id }}">
+                    <button class="btn btn-outline-danger btn-sm">Excluir</button>
+                  </form>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- MODAL: Editar Bloco -->
+<div class="modal fade" id="editBlockModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <form class="modal-content" method="post" action="{{ url_for('admin.site_builder_block_update', tenant_slug=g.tenant.slug) }}">
+      {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+      <div class="modal-header">
+        <h5 class="modal-title">Editar bloco</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="block_id" id="eb_block_id">
+        <input type="hidden" name="page_id"  id="eb_page_id">
+        <input type="hidden" name="type"     id="eb_type">
+
+        <!-- HERO -->
+        <div data-kind="HERO" class="edit-kind d-none">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Headline</label>
+              <input name="headline" id="eb_headline" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Subline</label>
+              <input name="subline" id="eb_subline" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">CTA Texto</label>
+              <input name="cta_text" id="eb_cta_text" class="form-control">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">CTA URL</label>
+              <input name="cta_url" id="eb_cta_url" class="form-control">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Imagem de fundo (URL)</label>
+              <input name="bg_image" id="eb_bg_image" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Alinhamento</label>
+              <select name="align" id="eb_align" class="form-select">
+                <option value="start">Esquerda</option>
+                <option value="center">Centro</option>
+                <option value="end">Direita</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- ABOUT -->
+        <div data-kind="ABOUT" class="edit-kind d-none">
+          <div class="mb-3">
+            <label class="form-label">Título</label>
+            <input name="title" id="ab_title" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">HTML (descrição)</label>
+            <textarea name="html" id="ab_html" class="form-control" rows="5"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Features (1 por linha)</label>
+            <textarea name="features" id="ab_features" class="form-control" rows="4"></textarea>
+          </div>
+        </div>
+
+        <!-- FLEET_SEARCH -->
+        <div data-kind="FLEET_SEARCH" class="edit-kind d-none">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Título</label>
+              <input name="title" id="fs_title" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Texto do botão</label>
+              <input name="cta_book_text" id="fs_cta_book_text" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Categorias (separadas por vírgula)</label>
+              <input name="categories" id="fs_categories" class="form-control">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Âncora (id da seção)</label>
+              <input name="anchor" id="fs_anchor" class="form-control" placeholder="frota">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Ordenação padrão</label>
+              <select name="default_sort" id="fs_default_sort" class="form-select">
+                <option value="price_asc">Menor preço</option>
+                <option value="price_desc">Maior preço</option>
+                <option value="name_asc">Nome A→Z</option>
+              </select>
+            </div>
+            <div class="col-md-6 d-flex align-items-center gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fs_show_dates" name="show_dates">
+                <label class="form-check-label" for="fs_show_dates">Mostrar datas</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fs_show_filters" name="show_filters">
+                <label class="form-check-label" for="fs_show_filters">Mostrar filtros</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary">Salvar</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Modal de edição
+  const editModal = document.getElementById('editBlockModal');
+  if (editModal) {
+    editModal.addEventListener('show.bs.modal', (ev) => {
+      const btn = ev.relatedTarget;
+      const blockId = btn.getAttribute('data-blockid');
+      const pageId  = btn.getAttribute('data-pageid');
+      const type    = btn.getAttribute('data-type');
+      const payload = JSON.parse(btn.getAttribute('data-payload') || '{}');
+
+      // reset kinds
+      editModal.querySelectorAll('.edit-kind').forEach(el => el.classList.add('d-none'));
+      const kind = editModal.querySelector(`[data-kind="${type}"]`);
+      if (kind) kind.classList.remove('d-none');
+
+      // hidden inputs
+      editModal.querySelector('#eb_block_id').value = blockId;
+      editModal.querySelector('#eb_page_id').value  = pageId;
+      editModal.querySelector('#eb_type').value     = type;
+
+      // preencher por tipo
+      if (type === 'HERO') {
+        editModal.querySelector('#eb_headline').value = payload.headline || '';
+        editModal.querySelector('#eb_subline').value = payload.subline || '';
+        editModal.querySelector('#eb_cta_text').value = payload.cta_text || '';
+        editModal.querySelector('#eb_cta_url').value = payload.cta_url || '';
+        editModal.querySelector('#eb_bg_image').value = payload.bg_image || '';
+        editModal.querySelector('#eb_align').value = payload.align || 'center';
+      } else if (type === 'ABOUT') {
+        editModal.querySelector('#ab_title').value = payload.title || '';
+        editModal.querySelector('#ab_html').value = payload.html || '';
+        const feats = (payload.features || []).map(f => f.text).join('\n');
+        editModal.querySelector('#ab_features').value = feats;
+      } else if (type === 'FLEET_SEARCH') {
+        editModal.querySelector('#fs_title').value = payload.title || '';
+        editModal.querySelector('#fs_cta_book_text').value = payload.cta_book_text || '';
+        editModal.querySelector('#fs_categories').value = (payload.categories || []).join(', ');
+        editModal.querySelector('#fs_anchor').value = payload.anchor || 'frota';
+        editModal.querySelector('#fs_default_sort').value = payload.default_sort || 'price_asc';
+        editModal.querySelector('#fs_show_dates').checked = !!payload.show_dates;
+        editModal.querySelector('#fs_show_filters').checked = !!payload.show_filters;
+      }
+    });
+  }
+
+  // Drag & Drop para reordenar
+  function toggleSort(btn) {
+    const pageId = btn.getAttribute('data-page');
+    const list = document.getElementById('block-list-' + pageId);
+    const sorting = list.getAttribute('data-sorting') === '1';
+    if (!sorting) {
+      list.setAttribute('data-sorting', '1');
+      list.querySelectorAll('li').forEach(li => {
+        li.setAttribute('draggable', 'true');
+        li.classList.add('bg-light');
+        li.addEventListener('dragstart', onDragStart);
+        li.addEventListener('dragover', onDragOver);
+        li.addEventListener('drop', onDrop);
+      });
+      btn.textContent = 'Salvar ordem';
+    } else {
+      const ids = Array.from(list.querySelectorAll('li')).map(li => li.getAttribute('data-block'));
+      const formData = new FormData();
+      formData.append('page_id', pageId);
+      ids.forEach(id => formData.append('order[]', id));
+
+      fetch("{{ url_for('admin.site_builder_block_reorder', tenant_slug=g.tenant.slug) }}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+          {% if csrf_token %}"X-CSRFToken": "{{ csrf_token() }}"{% endif %}
+        }
+      }).then(() => {
+        list.removeAttribute('data-sorting');
+        list.querySelectorAll('li').forEach(li => {
+          li.setAttribute('draggable', 'false');
+          li.classList.remove('bg-light');
+          li.removeEventListener('dragstart', onDragStart);
+          li.removeEventListener('dragover', onDragOver);
+          li.removeEventListener('drop', onDrop);
+        });
+        btn.textContent = 'Reordenar';
+        btn.classList.add('btn-success');
+        setTimeout(() => btn.classList.remove('btn-success'), 800);
+      });
+    }
+  }
+
+  let dragged;
+  function onDragStart(e) {
+    dragged = e.currentTarget;
+    e.dataTransfer.effectAllowed = 'move';
+  }
+  function onDragOver(e) {
+    e.preventDefault();
+    const target = e.currentTarget;
+    if (target === dragged) return;
+    const list = target.parentNode;
+    const children = Array.from(list.children);
+    const draggedIndex = children.indexOf(dragged);
+    const targetIndex = children.indexOf(target);
+    if (draggedIndex < targetIndex) {
+      list.insertBefore(dragged, target.nextSibling);
+    } else {
+      list.insertBefore(dragged, target);
+    }
+  }
+  function onDrop(e) { e.preventDefault(); }
+</script>
+{% endblock %}

@@ -4,6 +4,11 @@
 {% block page_actions %}
   <a class="ff-chip ff-link me-2" href="{{ url_for('superadmin.tenants') }}"><i class="bi bi-arrow-left"></i> Voltar</a>
   <a class="ff-chip ff-link me-2" href="{{ url_for('superadmin.chat', tenant_id=tenant.id) }}"><i class="bi bi-chat-dots"></i> Chat</a>
+
+  <form method="post" action="{{ url_for('superadmin.tenant_activate', tenant_id=tenant.id) }}" class="d-inline">
+    <button class="btn btn-outline-success btn-sm">Ativar</button>
+  </form>
+
   {% if tenant.is_blocked %}
     <form method="post" action="{{ url_for('superadmin.tenant_unblock', tenant_id=tenant.id) }}" class="d-inline">
       <button class="btn btn-success btn-sm">Desbloquear</button>
