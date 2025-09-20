@@ -10,6 +10,7 @@ from flask_migrate import Migrate
 from . import models_site
 from .config import Config
 from .extensions import db, login_manager
+from app.admin.routes_email_test import emailtest_bp
 
 migrate = Migrate()
 
@@ -127,6 +128,7 @@ def create_app() -> Flask:
     app.register_blueprint(auth_bp,    url_prefix="/<tenant_slug>/auth")
     app.register_blueprint(admin_bp,   url_prefix="/<tenant_slug>/admin")
     app.register_blueprint(superadmin_bp)
+    app.register_blueprint(emailtest_bp, url_prefix="/")
 
     # --------- Home -> landing ----------
     @app.get("/")
