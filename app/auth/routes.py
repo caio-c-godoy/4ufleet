@@ -211,42 +211,31 @@ def verify_email():
     return render_template("auth/verified.html", tenant=g.tenant)
 
 
+# /app/auth/route.py
 @auth_bp.post("/resend-confirmation")
 def resend_confirmation():
-    """
-    Reenvia o e-mail de confirmação — também pela PLATAFORMA (.env).
-    Aceita email via form, JSON ou query string.
-    """
     email = _get_email_from_request()
-
-    current_app.logger.info(
-        "resend-confirmation: tenant=%s email_in='%s' form=%s json=%s args=%s",
-        g.tenant.slug if hasattr(g, "tenant") and g.tenant else "?",
-        email,
-        dict(request.form),
-        (request.get_json(silent=True) or {}),
-        dict(request.args),
-    )
-
     if not email:
         return jsonify(ok=False, error="Informe o e-mail."), 400
 
     tenant = g.tenant
     user = User.query.filter_by(email=email, tenant_id=tenant.id).first()
     if not user:
-        # Mantém contrato atual (404) para não “quebrar” seu front.
         return jsonify(ok=False, error="Usuário não encontrado."), 404
-
     if getattr(user, "email_confirmed_at", None):
         return jsonify(ok=True, already=True)
 
     try:
-        _send_confirmation_email(tenant, user)
-        current_app.logger.info("resend-confirmation: sent tenant=%s email=%s", tenant.slug, email)
+        # use o mesmo helper que monta o e-mail de confirmação
+        # e FAÇA ele retornar bool de envio real
+        sent = _send_confirmation_email(tenant, user)  # <- deve devolver True/False
+        if not sent:
+            return jsonify(ok=False, error="Serviço de e-mail não configurado."), 500
         return jsonify(ok=True)
     except Exception as e:
         current_app.logger.exception("Falha ao reenviar confirmação")
         return jsonify(ok=False, error=str(e)), 500
+
 
 
 # -----------------------------------------------------------------------------#
