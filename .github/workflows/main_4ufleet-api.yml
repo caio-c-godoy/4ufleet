@@ -2,7 +2,7 @@ name: Build & Deploy 4uFleet (Container)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -10,19 +10,19 @@ permissions:
   contents: read
 
 env:
-  # Azure OIDC / Sub
+  # Azure OIDC / Subscription
   AZURE_CLIENT_ID:        ${{ vars.AZURE_CLIENT_ID }}
   AZURE_TENANT_ID:        ${{ vars.AZURE_TENANT_ID }}
   AZURE_SUBSCRIPTION_ID:  ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
   # Infra
-  ACR_NAME:               ${{ vars.ACR_NAME }}                # ex: 4ufleetacr
-  ACR_LOGIN_SERVER:       ${{ vars.ACR_LOGIN_SERVER }}        # ex: 4ufleetacr.azurecr.io
-  IMAGE_NAME:             ${{ vars.IMAGE_NAME }}              # ex: 4ufleet-api
-  RESOURCE_GROUP:         ${{ vars.RESOURCE_GROUP }}          # ex: RG_RENT_CAR
-  WEBAPP_NAME:            ${{ vars.WEBAPP_NAME }}             # ex: 4ufleet-api
+  ACR_NAME:               ${{ vars.ACR_NAME }}           # ex: 4ufleetacr
+  ACR_LOGIN_SERVER:       ${{ vars.ACR_LOGIN_SERVER }}   # ex: 4ufleetacr.azurecr.io
+  IMAGE_NAME:             ${{ vars.IMAGE_NAME }}         # ex: 4ufleet-api
+  RESOURCE_GROUP:         ${{ vars.RESOURCE_GROUP }}     # ex: RG_RENT_CAR
+  WEBAPP_NAME:            ${{ vars.WEBAPP_NAME }}        # ex: 4ufleet-api
 
-  # IMPORTANTE: tag que o WebApp está usando
+  # Tag que o WebApp usa (garante que é ela que recebe o build)
   TAG_STABLE:             v2025-09-20-acs
 
 jobs:
@@ -46,8 +46,11 @@ jobs:
         env:
           IMAGE: ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}
           SHA_TAG: ${{ github.sha }}
+          DOCKER_BUILDKIT: 1
         run: |
+          set -euo pipefail
           echo "Building $IMAGE with tags: $TAG_STABLE, latest, $SHA_TAG"
+
           docker build \
             -t "$IMAGE:$TAG_STABLE" \
             -t "$IMAGE:latest" \
@@ -61,11 +64,32 @@ jobs:
       - name: Show ACR tags (sanity check)
         run: az acr repository show-tags -n "$ACR_NAME" --repository "$IMAGE_NAME" -o table | tail -n +1
 
-      # Mantemos o WebApp apontando para a tag estável (já configurada)
-      # Reiniciar força o pull da MESMA tag com a camada nova.
+      - name: Assert WebApp is configured to use TAG_STABLE
+        id: assert-tag
+        run: |
+          set -euo pipefail
+          CFG=$(az webapp config container show -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" -o json)
+          IMG=$(echo "$CFG" | jq -r '.DOCKER_CUSTOM_IMAGE_NAME // .dockerCustomImageName // ""')
+          if [ -z "$IMG" ]; then
+            echo "❌ WebApp não possui DOCKER_CUSTOM_IMAGE_NAME configurado."
+            echo "$CFG" | jq .
+            exit 1
+          fi
+
+          echo "WebApp image atual: $IMG"
+          if echo "$IMG" | grep -q ":$TAG_STABLE$"; then
+            echo "✅ WebApp já está apontando para a tag $TAG_STABLE"
+          else
+            echo "❌ WebApp NÃO está apontando para $TAG_STABLE"
+            echo "   Ajuste manualmente (ou via CLI) antes do deploy:"
+            echo "   az webapp config container set -g \"$RESOURCE_GROUP\" -n \"$WEBAPP_NAME\" --docker-custom-image-name \"$ACR_LOGIN_SERVER/$IMAGE_NAME:$TAG_STABLE\" --docker-registry-server-url \"https://$ACR_LOGIN_SERVER\""
+            exit 1
+          fi
+
       - name: Restart App Service (pull new layers for stable tag)
+        if: steps.assert-tag.outcome == 'success'
         run: az webapp restart -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME"
 
-      # Opcional: imprimir qual imagem o WebApp está usando (deve ser v2025-09-20-acs)
-      - name: Show WebApp container config
+      - name: Show WebApp container config (post-restart)
+        if: steps.assert-tag.outcome == 'success'
         run: az webapp config container show -g "$RESOURCE_GROUP" -n "$WEBAPP_NAME" -o jsonc

@@ -23,6 +23,20 @@ try:
 except Exception:
     _ACS_AVAILABLE = False
 
+
+# --- Azure Communication Services (opcional) ---
+_ACS_IMPORT_ERR = ""  # <--- NOVO
+try:
+    from azure.communication.email import (
+        EmailClient, EmailContent, EmailMessage as ACSEmailMessage, EmailAddress
+    )
+    from azure.core.exceptions import HttpResponseError
+    _ACS_AVAILABLE = True
+except Exception as e:
+    _ACS_AVAILABLE = False
+    _ACS_IMPORT_ERR = repr(e)  # <--- NOVO
+
+
 # =============================================================================
 # Logging / utils
 # =============================================================================
