@@ -131,9 +131,10 @@
 
           <div class="d-flex gap-2">
             <!-- Ver contrato -->
-            <a href="{{ (contract_urls.view
-              if contract_urls is defined and contract_urls and contract_urls.view
-              else url_for('public.view_contract', reserva_id=reservation.id, tenant_slug=g.tenant.slug)) }}"
+          <a href="{{ url_for('public.view_contract',
+                              tenant_slug=g.tenant.slug,
+                              reserva_id=reservation.id,
+                              t=reservation.contract_token) }}"
             target="_blank"
             class="btn btn-outline-secondary btn-sm flex-fill">
             📄 Ver contrato
