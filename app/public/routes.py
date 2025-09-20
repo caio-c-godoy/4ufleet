@@ -34,6 +34,151 @@ from PIL import Image
 from markupsafe import escape
 
 
+# ====== EMAIL: enviar cópia do contrato assinado ao cliente (thread) ======
+from threading import Thread
+from pathlib import Path
+import mimetypes
+
+from flask import current_app, url_for
+from sqlalchemy import select
+from app.extensions import db
+from app.services import mailer as mailer_service  # usa seu services/mailer.py
+
+# Se existir um helper de URL absoluta no seu utils, usamos; se não, caímos no url_for(_external=True)
+try:
+    from app.utils import absolute_url_for as _abs_url
+except Exception:
+    _abs_url = None
+
+def _email_contract_async(reserva_id: int):
+    """
+    Envia o contrato assinado para o e-mail do cliente.
+    - Tenta anexar o PDF; se não conseguir, envia só o link.
+    - Roda em thread para não atrasar a resposta do POST.
+    """
+    with current_app.app_context():
+        # 1) Carrega reserva + tenant
+        from app.models import Reservation  # ajuste se o nome do modelo for diferente
+        reserva = db.session.execute(
+            select(Reservation).where(Reservation.id == reserva_id)
+        ).scalar_one_or_none()
+        if not reserva:
+            current_app.logger.warning("MAIL skip: reserva %s não encontrada", reserva_id)
+            return
+
+        tenant = getattr(reserva, "tenant", None)
+        if not tenant:
+            current_app.logger.warning("MAIL skip: tenant não encontrado para reserva %s", reserva_id)
+            return
+
+        # 2) E-mail do cliente
+        to_addr = (getattr(reserva, "email", None) or getattr(reserva, "customer_email", None) or "").strip()
+        if not to_addr:
+            current_app.logger.warning("MAIL skip: reserva %s sem e-mail do cliente", reserva_id)
+            return
+
+        # 3) Localiza o PDF assinado
+        #    Você já tem helpers para isso no mesmo arquivo:
+        try:
+            paths = _resolve_paths(reserva.id)
+            signed_path: Path | None = None
+            if paths.get("signed") and paths["signed"].exists():
+                signed_path = paths["signed"]
+            elif paths.get("legacy_signed") and paths["legacy_signed"].exists():
+                signed_path = paths["legacy_signed"]
+            else:
+                # fallback: caminho direto se precisar
+                signed_path = _signed_pdf_path(reserva.id)
+                if not signed_path.exists():
+                    signed_path = None
+        except Exception:
+            signed_path = None
+
+        # 4) Assunto / corpo
+        tenant_name = getattr(tenant, "name", "Locadora")
+        subject = f"Seu contrato de locação #{reserva.id} — {tenant_name}"
+
+        # Gera link absoluto para o contrato (caso não dê para anexar)
+        try:
+            if _abs_url:
+                view_link = _abs_url("public.view_contract",
+                                     tenant_slug=getattr(tenant, "slug", None),
+                                     reserva_id=reserva.id)
+            else:
+                view_link = url_for("public.view_contract",
+                                    tenant_slug=getattr(tenant, "slug", None),
+                                    reserva_id=reserva.id,
+                                    _external=True)
+        except Exception:
+            # Se der qualquer erro, manda relativo mesmo (último recurso)
+            view_link = url_for("public.view_contract",
+                                tenant_slug=getattr(tenant, "slug", None),
+                                reserva_id=reserva.id)
+
+        customer_name = (
+            getattr(reserva, "customer_name", None)
+            or getattr(reserva, "name", None)
+            or ""
+        )
+
+        text_body = (
+            f"Olá {customer_name},\n\n"
+            f"Segue a cópia do seu contrato de locação #{reserva.id}.\n"
+            f"Se preferir, você pode abrir pelo link: {view_link}\n\n"
+            f"Obrigado!\n{tenant_name}"
+        )
+        html_body = (
+            f"<p>Olá {customer_name},</p>"
+            f"<p>Segue a cópia do seu contrato de locação <strong>#{reserva.id}</strong>.</p>"
+            f"<p><a href='{view_link}' target='_blank' rel='noopener'>Abrir contrato</a></p>"
+            f"<p>Obrigado!<br>{tenant_name}</p>"
+        )
+
+        # 5) Envia com anexo (se possível) ou sem anexo (fallback)
+        sent = False
+
+        # Tenta função com anexo (se você a tiver implementado no services/mailer.py)
+        if signed_path and signed_path.exists():
+            try:
+                pdf_bytes = signed_path.read_bytes()
+                mtype = mimetypes.guess_type(str(signed_path))[0] or "application/pdf"
+                filename = f"Contrato_{reserva.id}.pdf"
+
+                if hasattr(mailer_service, "send_email_for_tenant_with_attachments"):
+                    sent = mailer_service.send_email_for_tenant_with_attachments(
+                        tenant=tenant,
+                        recipients=to_addr,
+                        subject=subject,
+                        html=html_body,
+                        text_alt=text_body,
+                        attachments=[(filename, pdf_bytes, mtype)],
+                    )
+            except Exception as e:
+                current_app.logger.error("MAIL attach error rid=%s: %s", reserva.id, e, exc_info=True)
+
+        # Fallback: sem anexo (usa o que você já tem no services/mailer.py)
+        if not sent:
+            try:
+                if hasattr(mailer_service, "send_email_for_tenant"):
+                    mailer_service.send_email_for_tenant(
+                        tenant=tenant,
+                        recipients=to_addr,
+                        subject=subject,
+                        html=html_body,
+                        text_alt=text_body,
+                    )
+                    sent = True
+            except Exception as e:
+                current_app.logger.error("MAIL basic send error rid=%s: %s", reserva.id, e, exc_info=True)
+
+        current_app.logger.info(
+            "MAIL dispatched rid=%s -> %s (attached=%s, ok=%s)",
+            reserva.id, to_addr, bool(signed_path), sent
+        )
+# ====== /EMAIL ===============================================================
+
+
+
 # =========================
 # MULTITENANT (slug no prefix)
 # =========================
@@ -1568,11 +1713,19 @@ def apply_signature(reserva_id):
     contrato.signature_hash = sha256(sign_bytes).hexdigest()
     contrato.signed_at = signed_at
     db.session.commit()
+    # dispara envio de e-mail em background (não trava a resposta)
+    try:
+        Thread(target=_email_contract_async, args=(reserva_id,), daemon=True).start()
+    except Exception as e:
+        current_app.logger.error("MAIL thread error rid=%s: %s", reserva_id, e, exc_info=True)
 
     return jsonify(
         ok=True,
         redirect_url=url_for("public.checkout", tenant_slug=_tenant_slug(), reservation_id=reserva_id)
     )
+
+
+
 
 # ---------- download do assinado ----------
 @public_bp.get("/contrato/<int:reserva_id>/download")

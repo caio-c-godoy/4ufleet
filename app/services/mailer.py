@@ -6,6 +6,7 @@ from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from typing import Optional
 from flask import current_app, has_app_context
+from email.message import EmailMessage
 
 # ---------------- ACS (client simples, sem EmailContent/ACSEmailMessage) ----------------
 _ACS_IMPORT_ERR = ""
@@ -34,6 +35,50 @@ def _getenv(key: str, default=None):
 
 def _as_bool(v) -> bool:
     return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+def send_email_for_tenant_with_attachments(
+    *,
+    tenant,
+    recipients,
+    subject: str,
+    html: str,
+    text_alt: str = "",
+    attachments: list[tuple[str, bytes, str]] | None = None,  # [(filename, content_bytes, mimetype)]
+) -> bool:
+    """
+    Tenta enviar pelo SMTP do tenant com anexos.
+    Se o tenant não tiver SMTP configurado, cai no fluxo automático (plataforma),
+    que envia sem anexos (mas você pode incluir um link no corpo do e-mail).
+    """
+    to = ", ".join(r for r in recipients if r) if isinstance(recipients, (list, tuple, set)) else recipients
+    cfg = get_tenant_mail_creds(tenant)
+    if not cfg:
+        # Sem SMTP do tenant -> usa caminho automático (ACS/SMTP plataforma) sem anexos
+        return send_mail_auto(tenant=tenant, subject=subject, html=html, to=to, text_alt=text_alt)
+
+    from_name  = getattr(tenant, "mail_from_name", None) or getattr(tenant, "name", None) or "Locadora"
+    from_email = getattr(tenant, "mail_from_email", None) or cfg.get("user") or _getenv("EMAIL_FROM") or "no-reply@example.com"
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = f"{from_name} <{from_email}>"
+    msg["To"] = to
+
+    if text_alt:
+        msg.set_content(text_alt)
+    msg.add_alternative(html, subtype="html")
+
+    for filename, content, mtype in (attachments or []):
+        try:
+            maintype, subtype = (mtype.split("/", 1) if (mtype and "/" in mtype) else ("application", "octet-stream"))
+        except Exception:
+            maintype, subtype = ("application", "octet-stream")
+        msg.add_attachment(content, maintype=maintype, subtype=subtype, filename=filename)
+
+    _smtp_send(cfg, msg)
+    _log("info", "[TENANT EMAIL/SMTP] (with attachments) tenant=%s To=%s Subject=%s Attachments=%d",
+         getattr(tenant, 'slug', '?'), to, subject, len(attachments or []))
+    return True
 
 # =============================================================================
 # Cofre DEV (arquivo) — mantido
