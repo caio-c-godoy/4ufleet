@@ -1396,32 +1396,23 @@ def _sign_conf() -> dict:
 # ---------- VIEW: abre assinado se existir; senão base ----------
 @public_bp.get("/contrato/<int:reserva_id>/view")
 def view_contract(reserva_id):
-    from sqlalchemy import select
-    from flask import request, redirect, url_for
-    import secrets
-    from app.extensions import db
-    from app.models import Reservation  # ajuste o nome do modelo
+    from flask import request, abort, redirect, url_for
 
-    # carrega a reserva já validando tenant
+    strict = not current_app.debug
     reserva = _res_by_tenant_or_404(reserva_id)
 
-    token = request.args.get("t", "").strip()
-    strict = not current_app.debug
+    saved_token = getattr(reserva, "contract_token", None)
+    req_token = (request.args.get("t") or "").strip()
 
     if strict:
-      # garante que a reserva tenha token
-      if not getattr(reserva, "contract_token", None):
-          reserva.contract_token = secrets.token_urlsafe(24)
-          db.session.commit()
-      # se o link veio sem ?t=, redireciona para a mesma rota com o token
-      if not token or token != reserva.contract_token:
-          return redirect(url_for(
-              request.endpoint,
-              reserva_id=reserva.id,
-              t=reserva.contract_token
-          ))
+        if not saved_token:
+            abort(403)  # sem token salvo não deve chegar aqui
+        if not req_token:
+            # só redireciona UMA vez para acrescentar o token correto
+            return redirect(url_for(request.endpoint, reserva_id=reserva.id, t=saved_token))
+        if req_token != saved_token:
+            abort(403)  # token errado -> sem redirect (evita loop)
 
-    # segue igual ao seu código
     paths = _resolve_paths(reserva.id)
     pdf = (
         (paths["signed"] if paths["signed"].exists() else None)
@@ -1431,21 +1422,49 @@ def view_contract(reserva_id):
     resp = make_response(send_file(str(pdf), mimetype="application/pdf", conditional=False))
     return _no_cache(resp)
 
+ 
 
 # ---------- página de assinatura ----------
 @public_bp.get("/contrato/<int:reserva_id>/sign", endpoint="sign_contract")
 def sign_contract(reserva_id):
-    # mesma lógica de tolerância em DEBUG
-    require_contract_token(reserva_id, strict=not current_app.debug)
+    """
+    Tela de assinatura pública:
+    - Pode validar um JWT próprio (query param t) APENAS para autorizar a exibição da página.
+    - Para EMBED do PDF, sempre usar o contract_token persistido da reserva.
+    """
+    from flask import request, abort
+    import jwt  # se estiver usando; senão remova
+
+    strict = not current_app.debug
     reserva = _res_by_tenant_or_404(reserva_id)
-    _ensure_base_pdf(reserva)  # garante PDF base
 
-    # se veio token na query, deixa registrado na sessão pro POST subsequente
-    qt = request.args.get("t")
-    if qt:
-        session[f"ctok:{reserva_id}"] = qt
+    # token persistido para o /view
+    saved_token = getattr(reserva, "contract_token", None)
+    if strict and not saved_token:
+        abort(403)
 
-    return render_template("public/contrato_sign.html", reserva_id=reserva.id, cache_ts=int(time.time()))
+    # (opcional) validação do JWT recebido em ?t= para controlar acesso à tela de assinatura
+    jwt_token = request.args.get("t", "").strip()
+    if strict:
+        # se você usa JWT, valide aqui; caso não use, pode só exigir que exista o saved_token
+        if hasattr(current_app.config, "CONTRACT_JWT_SECRET") and current_app.config.get("CONTRACT_JWT_SECRET"):
+            secret = current_app.config["CONTRACT_JWT_SECRET"]
+            try:
+                payload = jwt.decode(jwt_token, secret, algorithms=["HS256"])
+                if int(payload.get("rid", 0)) != int(reserva.id):
+                    abort(403)
+            except Exception:
+                abort(403)
+        # se não usa JWT, remova todo o bloco acima
+
+    # NÃO redirecione para /view aqui. Renderize a página de assinatura
+    # e dentro dela use o /view com o saved_token para o iframe.
+    return render_template(
+        "public/contract_sign.html",
+        tenant=g.tenant,
+        reservation=reserva,
+        view_url=url_for("public.view_contract", reserva_id=reserva.id, t=saved_token),
+    )
 
 # ---------- POST: recebe desenho e assina ----------
 @public_bp.post("/contrato/<int:reserva_id>/apply-signature", endpoint="apply_signature")
