@@ -1,5 +1,5 @@
-﻿{% extends "base_public.html" %}
-{% block title %}Buscar carro â€” {{ g.tenant.name if g.tenant else "" }}{% endblock %}
+{% extends "base_public.html" %}
+{% block title %}Buscar carro  {{ g.tenant.name if g.tenant else "" }}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -21,7 +21,7 @@
             </div>
 
             <div class="col-12 col-lg-6">
-              <label class="form-label">DevoluÃ§Ã£o (aeroporto)</label>
+              <label class="form-label">Devolução (aeroporto)</label>
               <input class="form-control"
                      id="dropoff-airport"
                      name="dropoff_airport"
@@ -40,11 +40,11 @@
               <input type="time" name="pickup_time" class="form-control" value="10:00" required>
             </div>
             <div class="col-6 col-lg-3">
-              <label class="form-label">Data de devoluÃ§Ã£o</label>
+              <label class="form-label">Data de devolução</label>
               <input type="date" name="dropoff_date" class="form-control" required>
             </div>
             <div class="col-6 col-lg-3">
-              <label class="form-label">Hora de devoluÃ§Ã£o</label>
+              <label class="form-label">Hora de devolução</label>
               <input type="time" name="dropoff_time" class="form-control" value="10:00" required>
             </div>
 
@@ -52,10 +52,24 @@
               <label class="form-label">Nome completo</label>
               <input name="name" class="form-control" placeholder="Seu nome" required>
             </div>
+
+            <!-- Telefone com DDI -->
             <div class="col-12 col-lg-4">
               <label class="form-label">Telefone</label>
-              <div class="d-flex gap-2">                 <select name="ddi" id="ddi" class="form-control" style="max-width:120px" required>                   <option value="1">+1 (US)</option>                   <option value="55">+55 (BR)</option>                   <option value="351">+351 (PT)</option>                   <option value="34">+34 (ES)</option>                   <option value="44">+44 (UK)</option>                   <option value="33">+33 (FR)</option>                 </select>                 <input type="tel" id="local_phone" class="form-control" placeholder="(11) 98888-7777" minlength="8" required>               </div>               <input type="hidden" name="phone" id="full_phone" value="{{ request.args.get('phone','') }}">
+              <div class="d-flex gap-2">
+                <select name="ddi" id="ddi" class="form-control" style="max-width:120px" required>
+                  <option value="1">+1 (US)</option>
+                  <option value="55">+55 (BR)</option>
+                  <option value="351">+351 (PT)</option>
+                  <option value="34">+34 (ES)</option>
+                  <option value="44">+44 (UK)</option>
+                  <option value="33">+33 (FR)</option>
+                </select>
+                <input type="tel" id="local_phone" class="form-control" placeholder="(11) 98888-7777" minlength="8" required>
+              </div>
+              <input type="hidden" name="phone" id="full_phone" value="{{ request.args.get('phone','') }}">
             </div>
+
             <div class="col-12 col-lg-4">
               <label class="form-label">Email</label>
               <input type="email" name="email" class="form-control" placeholder="voce@exemplo.com" required>
@@ -66,62 +80,57 @@
                 <i class="bi bi-search me-2"></i>Ver ofertas
               </button>
             </div>
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const form = document.querySelector("form");
-        const ddi = document.getElementById("ddi");
-        const local = document.getElementById("local_phone");
-        const phoneHidden = document.getElementById("full_phone");
-        const email = document.querySelector('input[name="email"]');
-
-        // Se já veio um phone completo (+DDI...), tentar decompor para pré-preencher
-        if (phoneHidden && phoneHidden.value && phoneHidden.value.startsWith("+")) {
-          const compact = phoneHidden.value.replace(/\s+/g, "");
-          const m = compact.match(/^\+(\d{1,3})(.*)$/);
-          if (m) {
-            ddi.value = m[1];
-            local.value = m[2].replace(/[^\d]/g, "");
-          }
-        }
-
-        form.addEventListener("submit", function (e) {
-          const digits = (local.value || "").replace(/[^\d]/g, "");
-          if (!digits) {
-            e.preventDefault();
-            local.reportValidity();
-            return;
-          }
-          // Monta o E.164 simples: +DDI + dígitos
-          if (digits.length < 8) {
-            e.preventDefault();
-            local.setCustomValidity("Digite ao menos 8 dígitos do número.");
-            local.reportValidity();
-            setTimeout(() => local.setCustomValidity(""), 2000);
-            return;
-          }
-          if (digits.length < 8) {
-            e.preventDefault();
-            local.setCustomValidity("Digite ao menos 8 dígitos do número.");
-            local.reportValidity();
-            setTimeout(() => local.setCustomValidity(""), 2000);
-            return;
-          }
-          phoneHidden.value = `+${ddi.value}${digits}`;
-
-          // Normaliza email: trim + lowercase (HTML5 type=email já valida formato)
-          if (email && email.value) {
-            email.value = email.value.trim().toLowerCase();
-          }
-        });
-      });
-    </script>
           </div>
+
+          <!-- JS do DDI/telefone -->
+          <script>
+            document.addEventListener("DOMContentLoaded", function () {
+              const form = document.querySelector("form");
+              const ddi = document.getElementById("ddi");
+              const local = document.getElementById("local_phone");
+              const phoneHidden = document.getElementById("full_phone");
+              const email = document.querySelector('input[name="email"]');
+
+              // Se já veio um phone completo (+DDI...), tentar decompor para pré-preencher
+              if (phoneHidden && phoneHidden.value && phoneHidden.value.startsWith("+")) {
+                const compact = phoneHidden.value.replace(/\s+/g, "");
+                const m = compact.match(/^\+(\d{1,3})(.*)$/);
+                if (m) {
+                  ddi.value = m[1];
+                  local.value = m[2].replace(/[^\d]/g, "");
+                }
+              }
+
+              form.addEventListener("submit", function (e) {
+                const digits = (local.value || "").replace(/[^\d]/g, "");
+                if (!digits) {
+                  e.preventDefault();
+                  local.reportValidity();
+                  return;
+                }
+                // Monta o E.164 simples: +DDI + dígitos
+                if (digits.length < 8) {
+                  e.preventDefault();
+                  local.setCustomValidity("Digite ao menos 8 dígitos do número.");
+                  local.reportValidity();
+                  setTimeout(() => local.setCustomValidity(""), 2000);
+                  return;
+                }
+                phoneHidden.value = `+${ddi.value}${digits}`;
+
+                // Normaliza email: trim + lowercase (HTML5 type=email já valida formato)
+                if (email && email.value) {
+                  email.value = email.value.trim().toLowerCase();
+                }
+              });
+            });
+          </script>
         </form>
       </div>
     </div>
 
     <p class="text-muted small mt-3 mb-0">
-      Dica: digite o nome do aeroporto ou o cÃ³digo IATA (ex.: <strong>MCO</strong>, <strong>LAX</strong>, <strong>JFK</strong>).
+      Dica: digite o nome do aeroporto ou o código IATA (ex.: <strong>MCO</strong>, <strong>LAX</strong>, <strong>JFK</strong>).
     </p>
   </div>
 </div>
@@ -131,7 +140,7 @@
 
 {% block extra_js %}
 <script>
-/* seu JS de autocomplete permanece idÃªntico */
+/* seu JS de autocomplete permanece idêntico */
 (function () {
   const DL_ID = 'us-airports';
   const dl = document.getElementById(DL_ID);
@@ -173,10 +182,3 @@
 })();
 </script>
 {% endblock %}
-
-
-
-
-
-
-
