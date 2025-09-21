@@ -1,3 +1,4 @@
+
 # app/public/routes.py
 from __future__ import annotations
 
@@ -453,6 +454,36 @@ def results():
         except ValueError:
             pass
 
+        # Excluir veículos com sobreposição de reserva confirmada
+        if q.get('pickup_date') and q.get('dropoff_date'):
+            conflict = (Reservation.query
+                        .filter_by(tenant_id=g.tenant.id, vehicle_id=v.id)
+                        .filter(Reservation.pickup_dt < do,
+                                Reservation.dropoff_dt > pu,
+                                Reservation.status.in_(('confirmed',)))
+                        .first())
+            if conflict:
+                continue
+        # Excluir veículos com sobreposição de reserva confirmada
+        if q.get('pickup_date') and q.get('dropoff_date'):
+            conflict = (Reservation.query
+                        .filter_by(tenant_id=g.tenant.id, vehicle_id=v.id)
+                        .filter(Reservation.pickup_dt < do,
+                                Reservation.dropoff_dt > pu,
+                                Reservation.status.in_(('confirmed',)))
+                        .first())
+            if conflict:
+                continue
+        # Excluir veículos com sobreposição de reserva confirmada
+        if q.get('pickup_date') and q.get('dropoff_date'):
+            conflict = (Reservation.query
+                        .filter_by(tenant_id=g.tenant.id, vehicle_id=v.id)
+                        .filter(Reservation.pickup_dt < do,
+                                Reservation.dropoff_dt > pu,
+                                Reservation.status.in_(('confirmed',)))
+                        .first())
+            if conflict:
+                continue
         results_list.append(item)
 
     if q['sort'] == 'price_asc':
@@ -506,6 +537,15 @@ def reserve_modal():
         pu = do = None
         days = 1
 
+    # server-side: bloquear sobreposição com reservas confirmadas
+    conflict = (Reservation.query
+                .filter_by(tenant_id=g.tenant.id, vehicle_id=vehicle.id)
+                .filter(Reservation.pickup_dt < do,
+                        Reservation.dropoff_dt > pu,
+                        Reservation.status.in_(("confirmed",)))
+                .first())
+    if conflict:
+        abort(409, "Veiculo indisponivel no periodo selecionado.")
     rate = Rate.query.filter_by(tenant_id=g.tenant.id, category_id=vehicle.category_id).first()
     if not rate:
         abort(400, "Categoria sem tarifa")
@@ -1764,3 +1804,4 @@ def public_contract_start():
         "public.contract_sign", tenant_slug=g.tenant.slug, reservation_id=res.id
     )
     return jsonify(ok=True, next_url=next_url)
+

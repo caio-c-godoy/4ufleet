@@ -1608,7 +1608,7 @@ def calendar():
     )
     for r in reservations:
         d = r.pickup_dt.date()
-        while d < r.dropoff_dt.date():
+        while d <= r.dropoff_dt.date():
             if start <= d < end:
                 booked[(r.vehicle_id, d)] = True
             d += timedelta(days=1)

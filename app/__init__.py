@@ -134,5 +134,6 @@ def create_app() -> Flask:
     @app.get("/")
     def index():
         return redirect(url_for("site.landing"))
+    
 
     return app
