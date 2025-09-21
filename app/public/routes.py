@@ -1,5 +1,4 @@
-﻿
-# app/public/routes.py
+﻿# app/public/routes.py
 from __future__ import annotations
 
 import os
@@ -19,8 +18,7 @@ from flask import (
 )
 from sqlalchemy import and_
 from itsdangerous import URLSafeSerializer, BadSignature
-from app import utils  
-
+from app import utils
 
 from app.extensions import db
 from app.models import (
@@ -34,28 +32,26 @@ from reportlab.pdfgen import canvas as rl_canvas
 from PIL import Image
 from markupsafe import escape
 
-
-# ====== EMAIL: enviar cÃ³pia do contrato assinado ao cliente (thread) ======
+# ====== EMAIL: enviar cópia do contrato assinado ao cliente (thread) ======
 from threading import Thread
-from pathlib import Path
 import mimetypes
 
 from flask import current_app, url_for
 from sqlalchemy import select
-from app.extensions import db
 from app.services import mailer as mailer_service  # usa seu services/mailer.py
 
-# Se existir um helper de URL absoluta no seu utils, usamos; se nÃ£o, caÃ­mos no url_for(_external=True)
+# Se existir um helper de URL absoluta no seu utils, usamos; se não, caímos no url_for(_external=True)
 try:
     from app.utils import absolute_url_for as _abs_url
 except Exception:
     _abs_url = None
 
+
 def _email_contract_async(reserva_id: int):
     """
     Envia o contrato assinado para o e-mail do cliente.
-    - Tenta anexar o PDF; se nÃ£o conseguir, envia sÃ³ o link.
-    - Roda em thread para nÃ£o atrasar a resposta do POST.
+    - Tenta anexar o PDF; se não conseguir, envia só o link.
+    - Roda em thread para não atrasar a resposta do POST.
     """
     with current_app.app_context():
         # 1) Carrega reserva + tenant
@@ -64,12 +60,12 @@ def _email_contract_async(reserva_id: int):
             select(Reservation).where(Reservation.id == reserva_id)
         ).scalar_one_or_none()
         if not reserva:
-            current_app.logger.warning("MAIL skip: reserva %s nÃ£o encontrada", reserva_id)
+            current_app.logger.warning("MAIL skip: reserva %s não encontrada", reserva_id)
             return
 
         tenant = getattr(reserva, "tenant", None)
         if not tenant:
-            current_app.logger.warning("MAIL skip: tenant nÃ£o encontrado para reserva %s", reserva_id)
+            current_app.logger.warning("MAIL skip: tenant não encontrado para reserva %s", reserva_id)
             return
 
         # 2) E-mail do cliente
@@ -79,7 +75,7 @@ def _email_contract_async(reserva_id: int):
             return
 
         # 3) Localiza o PDF assinado
-        #    VocÃª jÃ¡ tem helpers para isso no mesmo arquivo:
+        #    Você já tem helpers para isso no mesmo arquivo:
         try:
             paths = _resolve_paths(reserva.id)
             signed_path: Path | None = None
@@ -97,24 +93,30 @@ def _email_contract_async(reserva_id: int):
 
         # 4) Assunto / corpo
         tenant_name = getattr(tenant, "name", "Locadora")
-        subject = f"Seu contrato de locaÃ§Ã£o #{reserva.id} â€” {tenant_name}"
+        subject = f"Seu contrato de locação #{reserva.id} - {tenant_name}"
 
-        # Gera link absoluto para o contrato (caso nÃ£o dÃª para anexar)
+        # Gera link absoluto para o contrato (caso não dê para anexar)
         try:
             if _abs_url:
-                view_link = _abs_url("public.view_contract",
-                                     tenant_slug=getattr(tenant, "slug", None),
-                                     reserva_id=reserva.id)
+                view_link = _abs_url(
+                    "public.view_contract",
+                    tenant_slug=getattr(tenant, "slug", None),
+                    reserva_id=reserva.id
+                )
             else:
-                view_link = url_for("public.view_contract",
-                                    tenant_slug=getattr(tenant, "slug", None),
-                                    reserva_id=reserva.id,
-                                    _external=True)
+                view_link = url_for(
+                    "public.view_contract",
+                    tenant_slug=getattr(tenant, "slug", None),
+                    reserva_id=reserva.id,
+                    _external=True
+                )
         except Exception:
-            # Se der qualquer erro, manda relativo mesmo (Ãºltimo recurso)
-            view_link = url_for("public.view_contract",
-                                tenant_slug=getattr(tenant, "slug", None),
-                                reserva_id=reserva.id)
+            # Se der qualquer erro, manda relativo mesmo (último recurso)
+            view_link = url_for(
+                "public.view_contract",
+                tenant_slug=getattr(tenant, "slug", None),
+                reserva_id=reserva.id
+            )
 
         customer_name = (
             getattr(reserva, "customer_name", None)
@@ -123,22 +125,22 @@ def _email_contract_async(reserva_id: int):
         )
 
         text_body = (
-            f"OlÃ¡ {customer_name},\n\n"
-            f"Segue a cÃ³pia do seu contrato de locaÃ§Ã£o #{reserva.id}.\n"
-            f"Se preferir, vocÃª pode abrir pelo link: {view_link}\n\n"
+            f"Olá {customer_name},\n\n"
+            f"Segue a cópia do seu contrato de locação #{reserva.id}.\n"
+            f"Se preferir, você pode abrir pelo link: {view_link}\n\n"
             f"Obrigado!\n{tenant_name}"
         )
         html_body = (
-            f"<p>OlÃ¡ {customer_name},</p>"
-            f"<p>Segue a cÃ³pia do seu contrato de locaÃ§Ã£o <strong>#{reserva.id}</strong>.</p>"
+            f"<p>Olá {customer_name},</p>"
+            f"<p>Segue a cópia do seu contrato de locação <strong>#{reserva.id}</strong>.</p>"
             f"<p><a href='{view_link}' target='_blank' rel='noopener'>Abrir contrato</a></p>"
             f"<p>Obrigado!<br>{tenant_name}</p>"
         )
 
-        # 5) Envia com anexo (se possÃ­vel) ou sem anexo (fallback)
+        # 5) Envia com anexo (se possível) ou sem anexo (fallback)
         sent = False
 
-        # Tenta funÃ§Ã£o com anexo (se vocÃª a tiver implementado no services/mailer.py)
+        # Tenta função com anexo (se você a tiver implementado no services/mailer.py)
         if signed_path and signed_path.exists():
             try:
                 pdf_bytes = signed_path.read_bytes()
@@ -157,7 +159,7 @@ def _email_contract_async(reserva_id: int):
             except Exception as e:
                 current_app.logger.error("MAIL attach error rid=%s: %s", reserva.id, e, exc_info=True)
 
-        # Fallback: sem anexo (usa o que vocÃª jÃ¡ tem no services/mailer.py)
+        # Fallback: sem anexo (usa o que você já tem no services/mailer.py)
         if not sent:
             try:
                 if hasattr(mailer_service, "send_email_for_tenant"):
@@ -179,7 +181,6 @@ def _email_contract_async(reserva_id: int):
 # ====== /EMAIL ===============================================================
 
 
-
 # =========================
 # MULTITENANT (slug no prefix)
 # =========================
@@ -189,11 +190,13 @@ def _pull_tenant(endpoint, values):
         return
     g.tenant_slug = values.pop("tenant_slug", None)
 
+
 @public_bp.url_defaults
 def _add_tenant_slug(endpoint, values):
     if "tenant_slug" in values or not getattr(g, "tenant_slug", None):
         return
     values["tenant_slug"] = g.tenant_slug
+
 
 @public_bp.before_request
 def _load_tenant():
@@ -208,7 +211,7 @@ def _load_tenant():
 # =========================
 @public_bp.app_context_processor
 def _inject_public_ctx():
-    # expÃµe tenant e helper de token nos templates renderizados por este blueprint
+    # expõe tenant e helper de token nos templates renderizados por este blueprint
     return {
         "tenant": getattr(g, "tenant", None),
         "make_contract_token": make_contract_token,  # definido mais abaixo
@@ -220,7 +223,8 @@ def _inject_public_ctx():
 # =========================
 def _bool_cfg(key: str, default=False) -> bool:
     v = str(_cfg_str(key, "true" if default else "false")).strip().lower()
-    return v in ("1","true","t","yes","y","on")
+    return v in ("1", "true", "t", "yes", "y", "on")
+
 
 def _cfg(key: str, default=None):
     val = current_app.config.get(key)
@@ -229,9 +233,11 @@ def _cfg(key: str, default=None):
         val = env_val if env_val not in (None, "") else default
     return val.strip() if isinstance(val, str) else val
 
+
 def _cfg_str(key: str, default: str = "") -> str:
     v = _cfg(key, default)
     return "" if v is None else str(v).strip()
+
 
 def _cfg_float(key: str, default: float = 0.0) -> float:
     v = _cfg(key, default)
@@ -239,13 +245,15 @@ def _cfg_float(key: str, default: float = 0.0) -> float:
         return float(v)
     except (TypeError, ValueError):
         return float(default)
+
+
 def _tenant_pay_creds() -> dict:
     """
     Tenta carregar as credenciais do tenant a partir do Key Vault usando
     tenant.payment_secret_id (ex.: 'gpay-locadora1-dev').
     Formato esperado do segredo (JSON):
       { "public_key": "...", "merchant_code": "...", "token": "", "env": "dev", ... }
-    Se nÃ£o existir, cai para variÃ¡veis de ambiente/config (_cfg).
+    Se não existir, cai para variáveis de ambiente/config (_cfg).
     """
     alias = getattr(getattr(g, "tenant", None), "payment_secret_id", None)
     if alias:
@@ -261,7 +269,7 @@ def _tenant_pay_creds() -> dict:
         except Exception:
             current_app.logger.exception("Falha ao ler segredo do KV para %s", alias)
 
-    # fallback: variÃ¡veis
+    # fallback: variáveis
     return {
         "public_key": _cfg_str("GP_PUB_KEY"),
         "merchant_code": _cfg_str("GP_MERCHANT_CODE"),
@@ -276,25 +284,30 @@ def _tenant_pay_creds() -> dict:
 def _digits(s: str) -> str:
     return "".join(ch for ch in (s or "") if ch.isdigit())
 
+
 def _calc_days(pu, do):
     if not pu or not do:
         return 1
     d = (do - pu).days
     return d if d >= 1 else 1
 
+
 def _external_url(endpoint: str, **values) -> str:
-    """Gera URL externa (Ãºtil para callback/return com ngrok)."""
+    """Gera URL externa (útil para callback/return com ngrok)."""
     url = url_for(endpoint, _external=True, **values)
     base = _cfg_str("EXTERNAL_BASE_URL", "")
     if not base:
         return url
     from urllib.parse import urlsplit, urlunsplit
-    parts = urlsplit(url); ext = urlsplit(base)
+    parts = urlsplit(url)
+    ext = urlsplit(base)
     return urlunsplit((ext.scheme or "https", ext.netloc, parts.path, parts.query, parts.fragment))
+
 
 def _gval(args, k, default=None):
     v = (args.get(k) or '').strip()
     return v or default
+
 
 def _parse_query(args):
     q = {
@@ -321,6 +334,7 @@ def _parse_query(args):
         q['page'] = 1
     return q
 
+
 def _overlap_clause(start_dt, end_dt):
     # conflito quando: inicio_existente < novo_fim  E  fim_existente > novo_inicio
     return and_(
@@ -337,11 +351,12 @@ def _overlap_clause(start_dt, end_dt):
 def search():
     return render_template('public/search.html')
 
+
 @public_bp.get('/results')
 def results():
     q = _parse_query(request.args)
 
-    # dias (mÃ­nimo 1)
+    # dias (mínimo 1)
     try:
         pu = datetime.strptime(f"{q['pickup_date']} {q['pickup_time']}", '%Y-%m-%d %H:%M')
         do = datetime.strptime(f"{q['dropoff_date']} {q['dropoff_time']}", '%Y-%m-%d %H:%M')
@@ -385,11 +400,13 @@ def results():
             else:
                 existing.pickup_airport = q.get("pickup_airport") or existing.pickup_airport
                 existing.dropoff_airport = q.get("dropoff_airport") or existing.dropoff_airport
-                if pu: existing.pickup_dt = pu
+                if pu:
+                    existing.pickup_dt = pu
                 existing.name = q.get("name") or existing.name
                 existing.email = q.get("email") or existing.email
                 existing.phone = q.get("phone") or existing.phone
-                if do: existing.dropoff_dt = do
+                if do:
+                    existing.dropoff_dt = do
                 db.session.commit()
     except Exception:
         current_app.logger.exception("CRM lead capture failed")
@@ -445,7 +462,7 @@ def results():
             'small_bags': v.category.small_bags if v.category else 1,
             'mileage_text': v.category.mileage_text if v.category else 'Unlimited mileage',
         }
-        # filtros de preÃ§o
+        # filtros de preço
         try:
             if q['min_price'] and item['daily'] < float(q['min_price']):  # noqa: SIM108
                 continue
@@ -467,26 +484,7 @@ def results():
                         .first())
             if conflict:
                 continue
-        # Excluir veículos com sobreposição de reserva confirmada
-        if q.get('pickup_date') and q.get('dropoff_date'):
-            conflict = (Reservation.query
-                        .filter_by(tenant_id=g.tenant.id, vehicle_id=v.id)
-                        .filter(Reservation.pickup_dt < do,
-                                Reservation.dropoff_dt > pu,
-                                Reservation.status.in_(('confirmed',)))
-                        .first())
-            if conflict:
-                continue
-        # Excluir veículos com sobreposição de reserva confirmada
-        if q.get('pickup_date') and q.get('dropoff_date'):
-            conflict = (Reservation.query
-                        .filter_by(tenant_id=g.tenant.id, vehicle_id=v.id)
-                        .filter(Reservation.pickup_dt < do,
-                                Reservation.dropoff_dt > pu,
-                                Reservation.status.in_(('confirmed',)))
-                        .first())
-            if conflict:
-                continue
+
         results_list.append(item)
 
     if q['sort'] == 'price_asc':
@@ -494,11 +492,12 @@ def results():
     elif q['sort'] == 'price_desc':
         results_list.sort(key=lambda x: -x['daily'])
 
-    # paginaÃ§Ã£o em memÃ³ria
+    # paginação em memória
     total = len(results_list)
     pages = max((total + q['per_page'] - 1) // q['per_page'], 1)
     page = min(q['page'], pages) if pages else 1
-    start = (page - 1) * q['per_page']; end = start + q['per_page']
+    start = (page - 1) * q['per_page']
+    end = start + q['per_page']
     results_paged = results_list[start:end]
 
     pagination = {
@@ -568,6 +567,7 @@ def reserve_modal():
         currency=rate.currency or "USD",
     )
 
+
 @public_bp.post('/reserve')
 def reserve():
     q = _parse_query(request.form)
@@ -578,7 +578,7 @@ def reserve():
         pu_dt = datetime.strptime(f"{q['pickup_date']} {q['pickup_time']}", '%Y-%m-%d %H:%M')
         do_dt = datetime.strptime(f"{q['dropoff_date']} {q['dropoff_time']}", '%Y-%m-%d %H:%M')
     except Exception:
-        abort(400, "Datas invÃ¡lidas")
+        abort(400, "Datas inválidas")
 
     rate = Rate.query.filter_by(tenant_id=g.tenant.id, category_id=vehicle.category_id).first()
     if not rate:
@@ -587,7 +587,7 @@ def reserve():
     days = max(1, (do_dt - pu_dt).days)
     total = float(rate.daily_rate) * days
 
-    # cria prÃ©-reserva (pending)
+    # cria pré-reserva (pending)
     res = Reservation(
         tenant_id=g.tenant.id,
         vehicle_id=vehicle.id,
@@ -613,12 +613,12 @@ def reserve():
 # PAYMENT LINK / AUTH
 # =========================
 def _gp_pl_token(force: bool = False) -> str | None:
-    """Autentica e guarda token na sessÃ£o (TTL ~8min)."""
+    """Autentica e guarda token na sessão (TTL ~8min)."""
     TTL = 8 * 60
     now = int(time.time())
     if not force:
         tok = session.get("gp_pl_token")
-        ts  = session.get("gp_pl_ts", 0)
+        ts = session.get("gp_pl_ts", 0)
         if tok and (now - ts) < TTL:
             return tok
 
@@ -627,7 +627,7 @@ def _gp_pl_token(force: bool = False) -> str | None:
     mch = creds.get("merchant_code") or ""
     base = _cfg_str("GP_API_V1_BASE", "https://apihml.tryglobalpays.com/v1").rstrip("/")
 
-    # se nÃ£o tiver pub no KV, tenta token direto do KV/env
+    # se não tiver pub no KV, tenta token direto do KV/env
     env_tok = creds.get("token") or ""
     if not pub and env_tok:
         session["gp_pl_token"] = env_tok
@@ -642,7 +642,7 @@ def _gp_pl_token(force: bool = False) -> str | None:
         for payload in ({"pubKey": pub, "merchantCode": mch}, {"pubKey": pub}):
             try:
                 resp = requests.post(auth_url, data=payload, timeout=20)
-                data = resp.json() if "application/json" in resp.headers.get("content-type","") else {}
+                data = resp.json() if "application/json" in resp.headers.get("content-type", "") else {}
                 token = (
                     (data or {}).get("token")
                     or ((data or {}).get("data") or {}).get("token")
@@ -674,13 +674,15 @@ def _header_variants(tok: str):
         dict(base, **{"Token": tok}),
     ]
 
+
 def _service_charge(total: float) -> float:
     rate = _cfg_float("COMMISSION_RATE", 0.05)  # 5%
     return round(total * rate, 2)
 
+
 def _amounts_for_modes(total: float, currency: str) -> dict:
     """
-    - deposit: sÃ³ o sinal, sem taxa
+    - deposit: só o sinal, sem taxa
     - full: total + taxa
     - balance: (total + taxa) - sinal
     """
@@ -695,6 +697,7 @@ def _amounts_for_modes(total: float, currency: str) -> dict:
         "full": full_amount,
         "balance": balance_amount,
     }
+
 
 def _with_commission_split(payload: dict, commission_amount: float) -> dict:
     plat = _cfg_str("PLATFORM_MERCHANT_CODE", "")
@@ -713,9 +716,9 @@ def checkout(reservation_id):
 
     daily = float(rate.daily_rate) if rate and rate.daily_rate is not None else 0.0
     currency = (rate.currency or 'USD') if rate else 'USD'
-    pickup_dt  = getattr(r, 'pickup_dt', None)  or getattr(r, 'pickup_at', None)
+    pickup_dt = getattr(r, 'pickup_dt', None) or getattr(r, 'pickup_at', None)
     dropoff_dt = getattr(r, 'dropoff_dt', None) or getattr(r, 'dropoff_at', None)
-    days  = _calc_days(pickup_dt, dropoff_dt)
+    days = _calc_days(pickup_dt, dropoff_dt)
     total = round(daily * days, 2)
 
     seats = v.category.seats if (v.category and v.category.seats is not None) else 5
@@ -737,7 +740,6 @@ def checkout(reservation_id):
     # pronto para pagar se tiver pubKey ou token vindos do KV/env
     creds = _tenant_pay_creds()
     pl_ready = bool((creds.get("public_key") or "").strip() or (creds.get("token") or "").strip())
-
 
     return render_template(
         'public/checkout.html',
@@ -771,20 +773,20 @@ def checkout_capture_customer(reservation_id):
     if name:
         res.customer_name = name
 
-    # Documento do motorista (CNH/Passaporte) â€” usamos driver_id e mantemos compat com customer_doc
+    # Documento do motorista (CNH/Passaporte) — usamos driver_id e mantemos compat com customer_doc
     driver_id = (data.get("driver_id") or data.get("customer_doc") or "").strip()
     if driver_id:
         res.customer_doc = driver_id
 
-    # PaÃ­s (ISO-2, ex.: BR, USâ€¦)
+    # País (ISO-2, ex.: BR, US…)
     country = (data.get("customer_country") or "").strip().upper()
     if country:
         res.customer_country = country
 
-    # Cidade/UF: se BR, montamos "Cidade/UF"; caso contrÃ¡rio, aceita customer_city_uf bruto
+    # Cidade/UF: se BR, montamos "Cidade/UF"; caso contrário, aceita customer_city_uf bruto
     city_uf = (data.get("customer_city_uf") or "").strip()
     if country == "BR":
-        city  = (data.get("customer_city") or "").strip()
+        city = (data.get("customer_city") or "").strip()
         state = (data.get("customer_state") or "").strip().upper()
         city_uf = f"{city}/{state}" if (city and state) else ""
     if city_uf:
@@ -792,20 +794,21 @@ def checkout_capture_customer(reservation_id):
     else:
         res.customer_city_uf = None
 
-    # NÂº do voo (opcional)
+    # Nº do voo (opcional)
     flight_no = (data.get("flight_no") or "").strip().upper()
     res.flight_no = flight_no or None
 
     db.session.commit()
 
-    # devolvemos a URL de assinatura JÃ COM TOKEN (seguro em produÃ§Ã£o)
+    # devolvemos a URL de assinatura JÁ COM TOKEN (seguro em produção)
     ctok = make_contract_token(reservation_id)
-    redirect_url = url_for("public.sign_contract",
-                           tenant_slug=g.tenant.slug,
-                           reserva_id=reservation_id,
-                           t=ctok)
+    redirect_url = url_for(
+        "public.sign_contract",
+        tenant_slug=g.tenant.slug,
+        reserva_id=reservation_id,
+        t=ctok
+    )
     return jsonify(ok=True, redirect_url=redirect_url)
-
 
 
 @public_bp.post('/checkout/<int:reservation_id>/pay/link')
@@ -822,7 +825,7 @@ def checkout_pay_link(reservation_id):
 
     daily = float(rate.daily_rate) if rate and rate.daily_rate is not None else 0.0
     currency = (rate.currency or 'USD') if rate else 'USD'
-    pickup_dt  = getattr(r, 'pickup_dt', None)  or getattr(r, 'pickup_at', None)
+    pickup_dt = getattr(r, 'pickup_dt', None) or getattr(r, 'pickup_at', None)
     dropoff_dt = getattr(r, 'dropoff_dt', None) or getattr(r, 'dropoff_at', None)
     days = max(1, (dropoff_dt - pickup_dt).days if (pickup_dt and dropoff_dt) else 1)
     total = round(daily * days, 2)
@@ -831,34 +834,34 @@ def checkout_pay_link(reservation_id):
     if mode == "deposit":
         amount = pack["deposit"]
         commission_amount = 0.0
-        desc = f"Reserva #{r.id} â€” DepÃ³sito (sinal)"
+        desc = f"Reserva #{r.id} - Depósito (sinal)"
     elif mode == "balance":
         amount = pack["balance"]
         commission_amount = pack["service_charge"]
-        desc = f"Reserva #{r.id} â€” Saldo + ServiceCharge {currency} {pack['service_charge']:.2f}"
+        desc = f"Reserva #{r.id} - Saldo + ServiceCharge {currency} {pack['service_charge']:.2f}"
     else:
         amount = pack["full"]
         commission_amount = pack["service_charge"]
-        desc = f"Reserva #{r.id} â€” Pagamento total (inclui ServiceCharge {currency} {pack['service_charge']:.2f})"
+        desc = f"Reserva #{r.id} - Pagamento total (inclui ServiceCharge {currency} {pack['service_charge']:.2f})"
 
     if amount <= 0:
         msg = "Nada a cobrar neste modo. Verifique os valores."
-        if want_json: 
+        if want_json:
             return jsonify(ok=False, error=msg), 400
         flash(msg, "warning")
         return redirect(url_for('public.checkout', tenant_slug=g.tenant.slug, reservation_id=reservation_id))
 
     # dados do cliente
-    name  = (getattr(r, 'customer_name', "")  or getattr(r, 'name', "")  or "Cliente Teste")
+    name = (getattr(r, 'customer_name', "") or getattr(r, 'name', "") or "Cliente Teste")
     email = (getattr(r, 'customer_email', "") or getattr(r, 'email', "") or f"sandbox+{r.id}@example.com")
     phone = _digits(getattr(r, 'customer_phone', "") or getattr(r, 'phone', "") or "11999999999")
-    doc   = _digits(getattr(r, 'customer_document', "") or getattr(r, 'document', "") or "52998224725")
-    cep   = _digits(getattr(r, 'zipcode', "") or "01001000")
-    address = (getattr(r, 'address', "") or "PraÃ§a da SÃ©")
-    number  = (getattr(r, 'addr_number', "") or "1")
+    doc = _digits(getattr(r, 'customer_document', "") or getattr(r, 'document', "") or "52998224725")
+    cep = _digits(getattr(r, 'zipcode', "") or "01001000")
+    address = (getattr(r, 'address', "") or "Praça da Sé")
+    number = (getattr(r, 'addr_number', "") or "1")
     district = (getattr(r, 'district', "") or "Centro")
-    city     = (getattr(r, 'city', "") or "SÃ£o Paulo")
-    state    = (getattr(r, 'state', "") or "SP").upper()[:2]
+    city = (getattr(r, 'city', "") or "São Paulo")
+    state = (getattr(r, 'state', "") or "SP").upper()[:2]
 
     client = {
         "name": name, "email": email, "doc": doc, "phone": phone,
@@ -871,7 +874,7 @@ def checkout_pay_link(reservation_id):
     merchant_code = creds.get("merchant_code") or _cfg("GP_MERCHANT_CODE")
     tenant_ep = (creds.get("endpoint") or "").strip()
 
-    # endpoints em ordem de preferÃªncia
+    # endpoints em ordem de preferência
     base = _cfg("GP_API_V1_BASE", "https://apihml.tryglobalpays.com/v1").rstrip("/")
     endpoints = []
     if tenant_ep:
@@ -890,7 +893,7 @@ def checkout_pay_link(reservation_id):
     tok = _gp_pl_token(force=False)
     if not tok:
         msg = "Falha ao autenticar no provedor (Payment Link)."
-        if want_json: 
+        if want_json:
             return jsonify(ok=False, error=msg), 400
         flash(msg, "danger")
         return redirect(url_for('public.checkout', tenant_slug=g.tenant.slug, reservation_id=reservation_id))
@@ -911,13 +914,13 @@ def checkout_pay_link(reservation_id):
             "client": client,
         }
 
-        # aviso se houver comissÃ£o mas nÃ£o houver cÃ³digo da plataforma
+        # aviso se houver comissão mas não houver código da plataforma
         if commission_amount > 0 and not _cfg_str("PLATFORM_MERCHANT_CODE"):
             current_app.logger.warning(
-                "PLATFORM_MERCHANT_CODE nÃ£o definido â€” split de comissÃ£o serÃ¡ omitido."
+                "PLATFORM_MERCHANT_CODE não definido - split de comissão será omitido."
             )
 
-        # aplica split sÃ³ quando solicitado e houver PLATFORM_MERCHANT_CODE
+        # aplica split só quando solicitado e houver PLATFORM_MERCHANT_CODE
         if include_split and _cfg_str("PLATFORM_MERCHANT_CODE"):
             _with_commission_split(payload, commission_amount)
 
@@ -925,7 +928,7 @@ def checkout_pay_link(reservation_id):
 
     try:
         last_status = last_text = last_url = None
-        # STRICT_COMMISSION_SPLIT: se True, sÃ³ tenta com split; se False, tenta com e depois sem (fallback).
+        # STRICT_COMMISSION_SPLIT: se True, só tenta com split; se False, tenta com e depois sem (fallback).
         strict_raw = _cfg("STRICT_COMMISSION_SPLIT", False)
         strict_split = (str(strict_raw).strip().lower() in ("1", "true", "yes", "on"))
 
@@ -951,10 +954,14 @@ def checkout_pay_link(reservation_id):
                         # reauth e tenta novamente uma vez
                         tok2 = _gp_pl_token(force=True)
                         if tok2:
-                            if "token" in hdr: hdr["token"] = tok2
-                            if "Token" in hdr: hdr["Token"] = tok2
-                            if "Authorization" in hdr: hdr["Authorization"] = f"Bearer {tok2}"
-                            if "authorization" in hdr: hdr["authorization"] = f"Bearer {tok2}"
+                            if "token" in hdr:
+                                hdr["token"] = tok2
+                            if "Token" in hdr:
+                                hdr["Token"] = tok2
+                            if "Authorization" in hdr:
+                                hdr["Authorization"] = f"Bearer {tok2}"
+                            if "authorization" in hdr:
+                                hdr["authorization"] = f"Bearer {tok2}"
                             resp = requests.post(url, json=payload, headers=hdr, timeout=30)
                             ct = resp.headers.get("content-type", "")
                             try:
@@ -963,8 +970,8 @@ def checkout_pay_link(reservation_id):
                                 last_text = resp.text
                             last_status = resp.status_code
 
-                    if isinstance(data, dict) and (data.get("msg", "").lower().strip() == "rota nÃ£o encontrada"):
-                        # tenta prÃ³ximo endpoint
+                    if isinstance(data, dict) and (data.get("msg", "").lower().strip() == "rota não encontrada"):
+                        # tenta próximo endpoint
                         break
 
                     link = None
@@ -994,7 +1001,7 @@ def checkout_pay_link(reservation_id):
         current_app.logger.error(
             "payment/link error %s url=%s resp_text=%s", last_status, last_url, last_text
         )
-        msg = "NÃ£o foi possÃ­vel gerar o link de pagamento. Verifique credenciais/endpoint."
+        msg = "Não foi possível gerar o link de pagamento. Verifique credenciais/endpoint."
         if want_json:
             return jsonify(ok=False, error=msg), 400
         flash(msg, "danger")
@@ -1007,6 +1014,7 @@ def checkout_pay_link(reservation_id):
             return jsonify(ok=False, error=msg), 500
         flash(msg, "danger")
         return redirect(url_for('public.checkout', tenant_slug=g.tenant.slug, reservation_id=reservation_id))
+
 
 # =========================
 # RETORNO / WEBHOOK / THANKS
@@ -1029,12 +1037,12 @@ def _gp_consult_order(order_id: str | int) -> dict:
                 resp = requests.get(url, headers=hdr, timeout=20)
                 if resp.status_code >= 400:
                     continue
-                data = resp.json() if "application/json" in resp.headers.get("content-type","") else {}
+                data = resp.json() if "application/json" in resp.headers.get("content-type", "") else {}
             except Exception:
                 continue
 
             bloc = data.get("data") if isinstance(data.get("data"), dict) else None
-            if (data.get("msg") or "").lower().strip() == "rota nÃ£o encontrada":
+            if (data.get("msg") or "").lower().strip() == "rota não encontrada":
                 continue
 
             status = (data.get("status") or (bloc or {}).get("status") or "").lower()
@@ -1056,7 +1064,8 @@ def _gp_consult_order(order_id: str | int) -> dict:
             }
     return {}
 
-# Alias de retorno: /checkout/retorno -> reaproveita a lÃ³gica de /payments/return
+
+# Alias de retorno: /checkout/retorno -> reaproveita a lógica de /payments/return
 @public_bp.route('/checkout/retorno', methods=['GET', 'POST'])
 def checkout_retorno_alias():
     # muitos PSPs enviam orderId/order_id e status por GET ou POST (form/json)
@@ -1072,10 +1081,12 @@ def checkout_retorno_alias():
         or ""
     )
 
-    # redireciona para a rota oficial de retorno (mantÃ©m um possÃ­vel status)
+    # redireciona para a rota oficial de retorno (mantém um possível status)
     params = {}
-    if order_id: params['orderId'] = order_id
-    if status:   params['status']  = status
+    if order_id:
+        params['orderId'] = order_id
+    if status:
+        params['status'] = status
     return redirect(url_for('public.payment_return', tenant_slug=g.tenant.slug, **params), code=302)
 
 
@@ -1126,6 +1137,7 @@ def payment_return():
 
     return redirect(url_for('public.thanks', tenant_slug=g.tenant.slug))
 
+
 @public_bp.post('/payments/webhook')
 def payment_webhook():
     data = request.get_json(silent=True) or {}
@@ -1160,6 +1172,7 @@ def payment_webhook():
 
     return ("", 200)
 
+
 @public_bp.get("/thanks")
 def thanks():
     info = session.pop("last_payment", {}) or {}
@@ -1167,11 +1180,12 @@ def thanks():
         return render_template("public/thanks.html", pay=info)
     except Exception:
         order_id = escape(info.get("order_id") or "")
-        rid      = escape(info.get("reservation_id") or "")
-        status   = escape((info.get("status") or "").upper())
-        inst     = escape(str(info.get("installments") or 1))
-        amount   = info.get("amount"); curr = info.get("currency") or ""
-        total    = f"{curr} {amount}" if amount else ""
+        rid = escape(info.get("reservation_id") or "")
+        status = escape((info.get("status") or "").upper())
+        inst = escape(str(info.get("installments") or 1))
+        amount = info.get("amount")
+        curr = info.get("currency") or ""
+        total = f"{curr} {amount}" if amount else ""
         html = f"""
         <div style="max-width:680px;margin:40px auto;font-family:system-ui,Segoe UI,Arial">
           <h2>Pagamento processado</h2>
@@ -1192,7 +1206,7 @@ def thanks():
 @public_bp.get('/airports.json')
 def airports_json():
     """
-    Retorna sugestÃµes de aeroportos no formato "Nome (IATA) â€” Cidade".
+    Retorna sugestões de aeroportos no formato "Nome (IATA) - Cidade".
     Busca o arquivo em:
       - <raiz>/static/data/airports_us.json   (seu caso)
       - <app>/static/data/airports_us.json    (fallback)
@@ -1231,49 +1245,51 @@ def airports_json():
                     continue
 
                 if q and len(q) >= 2:
-                    # filtro: code comeÃ§a com q OU name/city contÃ©m q
+                    # filtro: code começa com q OU name/city contém q
                     if not (code.lower().startswith(q) or (q in name.lower()) or (city and q in city.lower())):
                         continue
 
-                city_txt = f" â€” {city}" if city else ""
+                city_txt = f" - {city}" if city else ""
                 out.append(f"{name} ({code}){city_txt}")
 
-            # se veio q, jÃ¡ limitamos; se nÃ£o veio, nÃ£o devolve tudo pra nÃ£o lotar
+            # se veio q, já limitamos; se não veio, não devolve tudo pra não lotar
             items = out[:20] if q else []
         else:
-            current_app.logger.warning("airports.json: arquivo nÃ£o encontrado em %s", candidates)
+            current_app.logger.warning("airports.json: arquivo não encontrado em %s", candidates)
 
     except Exception as e:
         current_app.logger.exception("Falha ao carregar/parsear airports JSON: %s", e)
 
-    # fallback (ainda filtrÃ¡vel) se nada deu certo
+    # fallback (ainda filtrável) se nada deu certo
     if not items:
         fallback = [
-            "Orlando International Airport (MCO) â€” Orlando",
-            "Los Angeles International Airport (LAX) â€” Los Angeles",
-            "John F. Kennedy International Airport (JFK) â€” New York",
-            "Miami International Airport (MIA) â€” Miami",
-            "San Francisco International Airport (SFO) â€” San Francisco",
+            "Orlando International Airport (MCO) - Orlando",
+            "Los Angeles International Airport (LAX) - Los Angeles",
+            "John F. Kennedy International Airport (JFK) - New York",
+            "Miami International Airport (MIA) - Miami",
+            "San Francisco International Airport (SFO) - San Francisco",
         ]
         if q and len(q) >= 2:
             ql = q.lower()
             items = [s for s in fallback if (ql in s.lower())][:20]
         else:
-            items = []  # sem q>=2 nÃ£o manda lista gigante
+            items = []  # sem q>=2 não manda lista gigante
 
+    items = [re.sub(r'[\u2010-\u2015\u2212]', ' - ', s) for s in items]
     return jsonify({"items": items})
 
 
-
 # =========================
-# CONTRATO â€” paths/helpers (tenant-aware e privados)
+# CONTRATO - paths/helpers (tenant-aware e privados)
 # =========================
-# Dica: deixe CALIBRATE_SIGNATURE_BOX=True temporariamente para ajustar a posiÃ§Ã£o,
+# Dica: deixe CALIBRATE_SIGNATURE_BOX=True temporariamente para ajustar a posição,
 # depois volte para False.
 CALIBRATE_SIGNATURE_BOX = False
 
+
 def _tenant_slug() -> str:
     return getattr(getattr(g, "tenant", None), "slug", "default")
+
 
 def _contracts_root() -> Path:
     """
@@ -1285,9 +1301,10 @@ def _contracts_root() -> Path:
     p.mkdir(parents=True, exist_ok=True)
     return p
 
+
 def _signatures_root() -> Path:
     """
-    Pasta para imagens/temporÃ¡rios de assinatura por tenant:
+    Pasta para imagens/temporários de assinatura por tenant:
     instance/uploads/signatures/<tenant_slug>/
     (fora do /static, privado)
     """
@@ -1295,23 +1312,31 @@ def _signatures_root() -> Path:
     p.mkdir(parents=True, exist_ok=True)
     return p
 
+
 # compat leitura (se houver legado em /static/contracts)
 def _legacy_base(reserva_id: int) -> Path:
     return Path(current_app.root_path) / "contracts" / f"contrato_{reserva_id}.pdf"
+
+
 def _legacy_signed(reserva_id: int) -> Path:
     return Path(current_app.root_path) / "contracts" / f"contrato_{reserva_id}_signed.pdf"
+
 
 def _base_pdf_path(reserva_id: int) -> Path:
     return _contracts_root() / f"contrato_reserva_{reserva_id}.pdf"
 
+
 def _signed_pdf_path(reserva_id: int) -> Path:
     return _contracts_root() / f"contrato_reserva_{reserva_id}_SIGNED.pdf"
+
 
 def _signature_png_path(reserva_id: int) -> Path:
     return _signatures_root() / f"assinatura_{reserva_id}.png"
 
+
 def _audit_json_path(reserva_id: int) -> Path:
     return _contracts_root() / f"contrato_reserva_{reserva_id}_audit.json"
+
 
 def _resolve_paths(reserva_id: int) -> dict:
     return {
@@ -1321,19 +1346,23 @@ def _resolve_paths(reserva_id: int) -> dict:
         "legacy_signed": _legacy_signed(reserva_id),
     }
 
-# ---------- seguranÃ§a: token assinado ----------
+
+# ---------- segurança: token assinado ----------
 CONTRACT_TOKEN_TTL_S = 3 * 24 * 60 * 60  # 3 dias
+
 
 def _signer() -> URLSafeSerializer:
     # inclui tenant no salt para isolar
     salt = f"contract-link:{_tenant_slug()}"
     return URLSafeSerializer(current_app.config["SECRET_KEY"], salt=salt)
 
+
 def make_contract_token(reserva_id: int) -> str:
     return _signer().dumps({"rid": reserva_id, "ten": getattr(g.tenant, "id", None), "ts": int(time.time())})
 
+
 def _extract_token(reserva_id: int) -> str | None:
-    # tenta query, form, JSON e por fim sessÃ£o (setada ao abrir a tela)
+    # tenta query, form, JSON e por fim sessão (setada ao abrir a tela)
     tok = (request.args.get("t") or request.form.get("t") or "").strip()
     if not tok:
         payload = request.get_json(silent=True) or {}
@@ -1342,19 +1371,20 @@ def _extract_token(reserva_id: int) -> str | None:
         tok = session.get(f"ctok:{reserva_id}")
     return tok or None
 
+
 def require_contract_token(reserva_id: int, *, strict: bool) -> bool:
     """
-    strict=True: sempre obriga token vÃ¡lido.
-    strict=False: em DEBUG sem token, permite (para nÃ£o quebrar dev),
-                  mas registra na sessÃ£o para os prÃ³ximos POSTs.
+    strict=True: sempre obriga token válido.
+    strict=False: em DEBUG sem token, permite (para não quebrar dev),
+                  mas registra na sessão para os próximos POSTs.
     """
     tok = _extract_token(reserva_id)
     if not tok:
         if not strict and current_app.debug:
-            # gera e guarda um token de sessÃ£o para fluxo local
+            # gera e guarda um token de sessão para fluxo local
             ctok = make_contract_token(reserva_id)
             session[f"ctok:{reserva_id}"] = ctok
-            current_app.logger.warning("Contract token ausente; tolerado em DEBUG e registrado na sessÃ£o.")
+            current_app.logger.warning("Contract token ausente; tolerado em DEBUG e registrado na sessão.")
             return True
         abort(403)
 
@@ -1374,12 +1404,14 @@ def require_contract_token(reserva_id: int, *, strict: bool) -> bool:
     if data.get("rid") != reserva_id or data.get("ten") != getattr(g.tenant, "id", None):
         abort(403)
 
-    # guarda o token na sessÃ£o para POST subsequentes (ex.: apply-signature)
+    # guarda o token na sessão para POST subsequentes (ex.: apply-signature)
     session[f"ctok:{reserva_id}"] = tok
     return True
 
+
 def _res_by_tenant_or_404(reserva_id: int):
     return Reservation.query.filter_by(tenant_id=g.tenant.id, id=reserva_id).first_or_404()
+
 
 # ---------- gerar/atualizar o PDF base ----------
 # --- helpers de caminho static p/ WeasyPrint
@@ -1387,8 +1419,10 @@ def _static_base_dir() -> str:
     # .../app/static
     return str(Path(current_app.root_path) / "static")
 
+
 def _tpl_env() -> SandboxedEnvironment:
     env = SandboxedEnvironment(autoescape=True, trim_blocks=True, lstrip_blocks=True)
+
     # filtros
     def money(value, currency="USD"):
         try:
@@ -1396,6 +1430,7 @@ def _tpl_env() -> SandboxedEnvironment:
             return f"{currency} {v:,.2f}"
         except Exception:
             return f"{currency} {value}"
+
     def datefmt(dt, fmt="%d/%m/%Y"):
         if not dt:
             return "-"
@@ -1405,9 +1440,11 @@ def _tpl_env() -> SandboxedEnvironment:
             except Exception:
                 return dt
         return dt.strftime(fmt)
+
     env.filters["money"] = money
     env.filters["datefmt"] = datefmt
     return env
+
 
 def _default_contract_template() -> str:
     # Template de exemplo com CSS embutido e placeholders.
@@ -1431,7 +1468,7 @@ def _default_contract_template() -> str:
   .hr { height:1px; background:#e5e5e5; margin:12px 0; }
   .page-break { page-break-before: always; }
   .small { font-size: 11px; }
-  .sign-hint { height: 110px; } /* espaÃ§o onde a assinatura serÃ¡ aplicada na Ãºltima pÃ¡gina */
+  .sign-hint { height: 110px; } /* espaço onde a assinatura será aplicada na última página */
 </style>
 </head>
 <body>
@@ -1444,42 +1481,43 @@ def _default_contract_template() -> str:
   </div>
 </div>
 
-<h1>Contrato de LocaÃ§Ã£o de VeÃ­culo</h1>
+<h1>Contrato de Locação de Veículo</h1>
 
 <div class="box">
   <table class="info">
-    <tr><td><b>LocatÃ¡rio:</b> {{ cliente_nome }}</td><td><b>Documento:</b> {{ cliente_doc }}</td></tr>
-    <tr><td><b>PerÃ­odo:</b> {{ data_inicio|datefmt }} a {{ data_fim|datefmt }}</td><td><b>Valor Total:</b> {{ valor_total|money(currency) }}</td></tr>
-    <tr><td><b>VeÃ­culo:</b> {{ carro_marca }} {{ carro_modelo }} {{ carro_ano }}</td><td><b>Cor:</b> {{ carro_cor }}</td></tr>
+    <tr><td><b>Locatário:</b> {{ cliente_nome }}</td><td><b>Documento:</b> {{ cliente_doc }}</td></tr>
+    <tr><td><b>Período:</b> {{ data_inicio|datefmt }} a {{ data_fim|datefmt }}</td><td><b>Valor Total:</b> {{ valor_total|money(currency) }}</td></tr>
+    <tr><td><b>Veículo:</b> {{ carro_marca }} {{ carro_modelo }} {{ carro_ano }}</td><td><b>Cor:</b> {{ carro_cor }}</td></tr>
   </table>
 </div>
 
-<h2>ClÃ¡usulas</h2>
+<h2>Cláusulas</h2>
 <p>
-Este Acordo define os direitos e obrigaÃ§Ãµes relativos ao aluguel do veÃ­culo. O locatÃ¡rio declara estar apto a conduzir nos termos da lei aplicÃ¡vel e concorda em devolver o veÃ­culo nas mesmas condiÃ§Ãµes em que recebeu, salvo desgaste natural de uso.
+Este Acordo define os direitos e obrigações relativos ao aluguel do veículo. O locatário declara estar apto a conduzir nos termos da lei aplicável e concorda em devolver o veículo nas mesmas condições em que recebeu, salvo desgaste natural de uso.
 </p>
 <p>
-Quilometragem, combustÃ­vel, multas, pedÃ¡gios, seguros e franquias seguem a tabela vigente do locador. Em caso de sinistro, o locatÃ¡rio se compromete com os valores de franquia e demais despesas nÃ£o cobertas.
+Quilometragem, combustível, multas, pedágios, seguros e franquias seguem a tabela vigente do locador. Em caso de sinistro, o locatário se compromete com os valores de franquia e demais despesas não cobertas.
 </p>
 <p class="muted small">
-ObservaÃ§Ãµes do locador: ____________________________
+Observações do locador: ____________________________
 </p>
 
 <div class="page-break"></div>
 
 <h2>Assinaturas</h2>
-<p class="small">Assinatura do locatÃ¡rio abaixo (serÃ¡ aplicada digitalmente neste espaÃ§o ao finalizar a assinatura):</p>
+<p class="small">Assinatura do locatário abaixo (será aplicada digitalmente neste espaço ao finalizar a assinatura):</p>
 <div class="sign-hint"></div>
 
 <p class="muted small">
-Carimbo/Auditoria: data, IP e agente do usuÃ¡rio sÃ£o registrados automaticamente.
+Carimbo/Auditoria: data, IP e agente do usuário são registrados automaticamente.
 </p>
 
 </body>
 </html>"""
 
+
 def _render_contract_html(reserva) -> str:
-    # contexto disponÃ­vel no template (somente chaves permitidas)
+    # contexto disponível no template (somente chaves permitidas)
     t = getattr(g, "tenant", None)
     currency = None
     try:
@@ -1498,26 +1536,26 @@ def _render_contract_html(reserva) -> str:
         currency=currency or "USD",
 
         # cliente (AGORA com os novos campos)
-        cliente_nome=      (getattr(reserva, "customer_name", "") or getattr(reserva, "name", "") or ""),
-        cliente_doc=       (getattr(reserva, "customer_doc", None) or getattr(reserva, "email", "") or ""),
-        cliente_pais=      (getattr(reserva, "customer_country", None) or ""),
-        cliente_cidade_uf= (getattr(reserva, "customer_city_uf", None) or ""),
-        voo_numero=        (getattr(reserva, "flight_no", None) or ""),
+        cliente_nome=(getattr(reserva, "customer_name", "") or getattr(reserva, "name", "") or ""),
+        cliente_doc=(getattr(reserva, "customer_doc", None) or getattr(reserva, "email", "") or ""),
+        cliente_pais=(getattr(reserva, "customer_country", None) or ""),
+        cliente_cidade_uf=(getattr(reserva, "customer_city_uf", None) or ""),
+        voo_numero=(getattr(reserva, "flight_no", None) or ""),
 
-        # veÃ­culo
-        carro_marca=(reserva.vehicle.brand  if reserva.vehicle else "N/D"),
+        # veículo
+        carro_marca=(reserva.vehicle.brand if reserva.vehicle else "N/D"),
         carro_modelo=(reserva.vehicle.model if reserva.vehicle else "N/D"),
-        carro_ano=(reserva.vehicle.year     if reserva.vehicle else "N/D"),
+        carro_ano=(reserva.vehicle.year if reserva.vehicle else "N/D"),
         carro_cor=((getattr(reserva.vehicle, "color", None) if reserva.vehicle else None) or "N/D"),
 
         # datas/valores
-        data_inicio=(reserva.pickup_dt  if getattr(reserva, "pickup_dt",  None) else None),
-        data_fim=   (reserva.dropoff_dt if getattr(reserva, "dropoff_dt", None) else None),
+        data_inicio=(reserva.pickup_dt if getattr(reserva, "pickup_dt", None) else None),
+        data_fim=(reserva.dropoff_dt if getattr(reserva, "dropoff_dt", None) else None),
         valor_total=getattr(reserva, "total_price", 0.0),
         data_contrato=(getattr(reserva, "created_at", None) or datetime.utcnow()),
     )
 
-    # fonte: HTML salvo no admin; se vazio, usa o padrÃ£o
+    # fonte: HTML salvo no admin; se vazio, usa o padrão
     html_src = ""
     if t and getattr(t, "contract_template_html", None):
         html_src = t.contract_template_html
@@ -1532,7 +1570,7 @@ def _render_contract_html(reserva) -> str:
 
 def _ensure_base_pdf(reserva) -> Path:
     """
-    Garante que o PDF base existe (gera se nÃ£o existir) e atualiza/insere o Contract.
+    Garante que o PDF base existe (gera se não existir) e atualiza/insere o Contract.
     Agora passamos base_url=/static para imagens funcionarem no WeasyPrint.
     """
     paths = _resolve_paths(reserva.id)
@@ -1570,11 +1608,13 @@ def _ensure_base_pdf(reserva) -> Path:
     db.session.commit()
     return out
 
+
 def _no_cache(resp):
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
     return resp
+
 
 def _sign_conf() -> dict:
     """Config de assinatura por tenant (com defaults seguros)."""
@@ -1592,10 +1632,10 @@ def _sign_conf() -> dict:
     }
 
 
-# ---------- VIEW: abre assinado se existir; senÃ£o base ----------
+# ---------- VIEW: abre assinado se existir; senão base ----------
 @public_bp.get("/contrato/<int:reserva_id>/view")
 def view_contract(reserva_id):
-    # em produÃ§Ã£o: exige token; em DEBUG permite sem (para nÃ£o quebrar fluxo local)
+    # em produção: exige token; em DEBUG permite sem (para não quebrar fluxo local)
     require_contract_token(reserva_id, strict=not current_app.debug)
 
     reserva = _res_by_tenant_or_404(reserva_id)
@@ -1610,7 +1650,8 @@ def view_contract(reserva_id):
     resp = make_response(send_file(str(pdf), mimetype="application/pdf", conditional=False))
     return _no_cache(resp)
 
-# ---------- pÃ¡gina de assinatura ----------
+
+# ---------- página de assinatura ----------
 @public_bp.get("/contrato/<int:reserva_id>/sign", endpoint="sign_contract")
 def sign_contract(reserva_id):
     # --- bypass staff sem token: se admin/operador logado abrir sem "t=", gera token e redireciona ---
@@ -1625,22 +1666,23 @@ def sign_contract(reserva_id):
                                     tenant_slug=g.tenant.slug,
                                     reserva_id=reserva_id, t=tok))
         abort(403, "Você não tem permissão para acessar esta página.")
-    # mesma lÃ³gica de tolerÃ¢ncia em DEBUG
+    # mesma lógica de tolerância em DEBUG
     require_contract_token(reserva_id, strict=not current_app.debug)
     reserva = _res_by_tenant_or_404(reserva_id)
     _ensure_base_pdf(reserva)  # garante PDF base
 
-    # se veio token na query, deixa registrado na sessÃ£o pro POST subsequente
+    # se veio token na query, deixa registrado na sessão pro POST subsequente
     qt = request.args.get("t")
     if qt:
         session[f"ctok:{reserva_id}"] = qt
 
     return render_template("public/contrato_sign.html", reserva_id=reserva.id, cache_ts=int(time.time()))
 
+
 # ---------- POST: recebe desenho e assina ----------
 @public_bp.post("/contrato/<int:reserva_id>/apply-signature", endpoint="apply_signature")
 def apply_signature(reserva_id):
-    # aqui o token Ã© sempre exigido (POST sensÃ­vel)
+    # aqui o token é sempre exigido (POST sensível)
     require_contract_token(reserva_id, strict=True)
     _ = _res_by_tenant_or_404(reserva_id)
 
@@ -1654,9 +1696,9 @@ def apply_signature(reserva_id):
     try:
         sign_bytes = base64.b64decode(b64)
     except Exception:
-        return jsonify(ok=False, error="Imagem invÃ¡lida"), 400
+        return jsonify(ok=False, error="Imagem inválida"), 400
 
-    # salva PNG bruto (auditoria) â€” privado
+    # salva PNG bruto (auditoria) — privado
     _signature_png_path(reserva_id).write_bytes(sign_bytes)
 
     # PDF base
@@ -1664,7 +1706,7 @@ def apply_signature(reserva_id):
     if not base_pdf.exists():
         legacy = _legacy_base(reserva_id)
         if not legacy.exists():
-            return jsonify(ok=False, error="Contrato nÃ£o encontrado"), 404
+            return jsonify(ok=False, error="Contrato não encontrado"), 404
         base_pdf = legacy
 
     # metadados/auditoria
@@ -1691,17 +1733,17 @@ def apply_signature(reserva_id):
     RUBRICA_ON_LAST = conf["rub_on_last"]
     AUDIT_STAMP = conf["audit"]
 
-    # abre PDF e aplica: rubrica nas anteriores + assinatura completa na Ãºltima
+    # abre PDF e aplica: rubrica nas anteriores + assinatura completa na última
     with base_pdf.open("rb") as fh:
         reader = PdfReader(fh)
         writer = PdfWriter()
 
         # prepara imagens (full e rubrica)
-        full_img   = Image.open(BytesIO(sign_bytes)).convert("RGBA").resize((SIGN_FULL_W, SIGN_FULL_H))
+        full_img = Image.open(BytesIO(sign_bytes)).convert("RGBA").resize((SIGN_FULL_W, SIGN_FULL_H))
         rubric_img = Image.open(BytesIO(sign_bytes)).convert("RGBA").resize((RUB_W, RUB_H))
 
         tmp_full = _signatures_root() / f"__tmp_full_{reserva_id}.png"
-        tmp_rub  = _signatures_root() / f"__tmp_rub_{reserva_id}.png"
+        tmp_rub = _signatures_root() / f"__tmp_rub_{reserva_id}.png"
         full_img.save(tmp_full)
         rubric_img.save(tmp_rub)
 
@@ -1715,7 +1757,7 @@ def apply_signature(reserva_id):
                 packet = BytesIO()
                 can = rl_canvas.Canvas(packet, pagesize=(w, h))
 
-                # RUBRICA (todas as pÃ¡ginas, exceto a Ãºltima se RUBRICA_ON_LAST=False)
+                # RUBRICA (todas as páginas, exceto a última se RUBRICA_ON_LAST=False)
                 if (i != last_idx) or RUBRICA_ON_LAST:
                     can.drawImage(
                         str(tmp_rub),
@@ -1726,19 +1768,19 @@ def apply_signature(reserva_id):
                         mask="auto",
                     )
 
-                # CARIMBO DE AUDITORIA (rodapÃ©)
+                # CARIMBO DE AUDITORIA (rodapé)
                 if AUDIT_STAMP:
                     can.setFont("Helvetica", 7)
-                    carimbo = f"Signed {signed_at:%Y-%m-%d %H:%M UTC} â€¢ IP {client_ip}"
+                    carimbo = f"Signed {signed_at:%Y-%m-%d %H:%M UTC} - IP {client_ip}"
                     can.drawString(24, 14, carimbo)
 
-                # ASSINATURA COMPLETA SOMENTE NA ÃšLTIMA PÃGINA
+                # ASSINATURA COMPLETA SOMENTE NA ÚLTIMA PÁGINA
                 if i == last_idx:
                     x_full = w * SIGN_FULL_X_REL
                     y_full = h * SIGN_FULL_Y_REL
 
                     if CALIBRATE_SIGNATURE_BOX:
-                        # retÃ¢ngulo magenta para ajudar a calibrar posiÃ§Ã£o/tamanho
+                        # retângulo magenta para ajudar a calibrar posição/tamanho
                         can.setStrokeColorRGB(1, 0, 1)
                         can.setLineWidth(1)
                         can.rect(x_full, y_full, SIGN_FULL_W, SIGN_FULL_H)
@@ -1762,10 +1804,14 @@ def apply_signature(reserva_id):
             with signed_path.open("wb") as out:
                 writer.write(out)
         finally:
-            try: tmp_full.unlink(missing_ok=True)
-            except Exception: pass
-            try: tmp_rub.unlink(missing_ok=True)
-            except Exception: pass
+            try:
+                tmp_full.unlink(missing_ok=True)
+            except Exception:
+                pass
+            try:
+                tmp_rub.unlink(missing_ok=True)
+            except Exception:
+                pass
 
     # persiste no DB
     contrato = Contract.query.filter_by(reservation_id=reserva_id).first()
@@ -1785,15 +1831,13 @@ def apply_signature(reserva_id):
     )
 
 
-
-
 # ---------- download do assinado ----------
 @public_bp.get("/contrato/<int:reserva_id>/download")
 def download_signed_contract(reserva_id):
     paths = _resolve_paths(reserva_id)
     pdf = paths["signed"] if paths["signed"].exists() else paths["legacy_signed"]
     if not pdf or not pdf.exists():
-        return "Contrato assinado nÃ£o encontrado", 404
+        return "Contrato assinado não encontrado", 404
     return send_file(
         str(pdf),
         as_attachment=True,
@@ -1802,32 +1846,31 @@ def download_signed_contract(reserva_id):
         conditional=True,
         max_age=0
     )
-# ======= FIM â€“ rotas de contrato =======
+# ======= FIM - rotas de contrato =======
+
 
 # Salva dados do modal e segue para assinatura
 @public_bp.post("/contract/start")
 def public_contract_start():
     res_id = request.form.get("reservation_id", type=int)
     if not res_id:
-        return jsonify(ok=False, error="Reserva invÃ¡lida"), 400
+        return jsonify(ok=False, error="Reserva inválida"), 400
 
     res = Reservation.query.filter_by(id=res_id, tenant_id=g.tenant.id).first()
     if not res:
-        return jsonify(ok=False, error="Reserva nÃ£o encontrada"), 404
+        return jsonify(ok=False, error="Reserva não encontrada"), 404
 
     # Campos do modal
-    res.customer_name    = (request.form.get("customer_name") or "").strip() or res.customer_name
-    res.customer_doc     = (request.form.get("customer_doc") or "").strip() or None
+    res.customer_name = (request.form.get("customer_name") or "").strip() or res.customer_name
+    res.customer_doc = (request.form.get("customer_doc") or "").strip() or None
     res.customer_country = (request.form.get("customer_country") or "").strip() or None
     res.customer_city_uf = (request.form.get("customer_city_uf") or "").strip() or None
-    res.flight_no        = (request.form.get("flight_no") or "").strip() or None
+    res.flight_no = (request.form.get("flight_no") or "").strip() or None
 
     db.session.commit()
 
-    # URL da sua pÃ¡gina de assinatura jÃ¡ existente
+    # URL da sua página de assinatura já existente
     next_url = request.form.get("next_url") or url_for(
-        "public.contract_sign", tenant_slug=g.tenant.slug, reservation_id=res.id
+        "public.sign_contract", tenant_slug=g.tenant.slug, reserva_id=res.id
     )
     return jsonify(ok=True, next_url=next_url)
-
-
