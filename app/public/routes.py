@@ -386,6 +386,9 @@ def results():
                 existing.pickup_airport = q.get("pickup_airport") or existing.pickup_airport
                 existing.dropoff_airport = q.get("dropoff_airport") or existing.dropoff_airport
                 if pu: existing.pickup_dt = pu
+                existing.name = q.get("name") or existing.name
+                existing.email = q.get("email") or existing.email
+                existing.phone = q.get("phone") or existing.phone
                 if do: existing.dropoff_dt = do
                 db.session.commit()
     except Exception:
