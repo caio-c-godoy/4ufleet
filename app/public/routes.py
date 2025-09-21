@@ -1,4 +1,4 @@
-
+﻿
 # app/public/routes.py
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ from PIL import Image
 from markupsafe import escape
 
 
-# ====== EMAIL: enviar cópia do contrato assinado ao cliente (thread) ======
+# ====== EMAIL: enviar cÃ³pia do contrato assinado ao cliente (thread) ======
 from threading import Thread
 from pathlib import Path
 import mimetypes
@@ -45,7 +45,7 @@ from sqlalchemy import select
 from app.extensions import db
 from app.services import mailer as mailer_service  # usa seu services/mailer.py
 
-# Se existir um helper de URL absoluta no seu utils, usamos; se não, caímos no url_for(_external=True)
+# Se existir um helper de URL absoluta no seu utils, usamos; se nÃ£o, caÃ­mos no url_for(_external=True)
 try:
     from app.utils import absolute_url_for as _abs_url
 except Exception:
@@ -54,8 +54,8 @@ except Exception:
 def _email_contract_async(reserva_id: int):
     """
     Envia o contrato assinado para o e-mail do cliente.
-    - Tenta anexar o PDF; se não conseguir, envia só o link.
-    - Roda em thread para não atrasar a resposta do POST.
+    - Tenta anexar o PDF; se nÃ£o conseguir, envia sÃ³ o link.
+    - Roda em thread para nÃ£o atrasar a resposta do POST.
     """
     with current_app.app_context():
         # 1) Carrega reserva + tenant
@@ -64,12 +64,12 @@ def _email_contract_async(reserva_id: int):
             select(Reservation).where(Reservation.id == reserva_id)
         ).scalar_one_or_none()
         if not reserva:
-            current_app.logger.warning("MAIL skip: reserva %s não encontrada", reserva_id)
+            current_app.logger.warning("MAIL skip: reserva %s nÃ£o encontrada", reserva_id)
             return
 
         tenant = getattr(reserva, "tenant", None)
         if not tenant:
-            current_app.logger.warning("MAIL skip: tenant não encontrado para reserva %s", reserva_id)
+            current_app.logger.warning("MAIL skip: tenant nÃ£o encontrado para reserva %s", reserva_id)
             return
 
         # 2) E-mail do cliente
@@ -79,7 +79,7 @@ def _email_contract_async(reserva_id: int):
             return
 
         # 3) Localiza o PDF assinado
-        #    Você já tem helpers para isso no mesmo arquivo:
+        #    VocÃª jÃ¡ tem helpers para isso no mesmo arquivo:
         try:
             paths = _resolve_paths(reserva.id)
             signed_path: Path | None = None
@@ -97,9 +97,9 @@ def _email_contract_async(reserva_id: int):
 
         # 4) Assunto / corpo
         tenant_name = getattr(tenant, "name", "Locadora")
-        subject = f"Seu contrato de locação #{reserva.id} — {tenant_name}"
+        subject = f"Seu contrato de locaÃ§Ã£o #{reserva.id} â€” {tenant_name}"
 
-        # Gera link absoluto para o contrato (caso não dê para anexar)
+        # Gera link absoluto para o contrato (caso nÃ£o dÃª para anexar)
         try:
             if _abs_url:
                 view_link = _abs_url("public.view_contract",
@@ -111,7 +111,7 @@ def _email_contract_async(reserva_id: int):
                                     reserva_id=reserva.id,
                                     _external=True)
         except Exception:
-            # Se der qualquer erro, manda relativo mesmo (último recurso)
+            # Se der qualquer erro, manda relativo mesmo (Ãºltimo recurso)
             view_link = url_for("public.view_contract",
                                 tenant_slug=getattr(tenant, "slug", None),
                                 reserva_id=reserva.id)
@@ -123,22 +123,22 @@ def _email_contract_async(reserva_id: int):
         )
 
         text_body = (
-            f"Olá {customer_name},\n\n"
-            f"Segue a cópia do seu contrato de locação #{reserva.id}.\n"
-            f"Se preferir, você pode abrir pelo link: {view_link}\n\n"
+            f"OlÃ¡ {customer_name},\n\n"
+            f"Segue a cÃ³pia do seu contrato de locaÃ§Ã£o #{reserva.id}.\n"
+            f"Se preferir, vocÃª pode abrir pelo link: {view_link}\n\n"
             f"Obrigado!\n{tenant_name}"
         )
         html_body = (
-            f"<p>Olá {customer_name},</p>"
-            f"<p>Segue a cópia do seu contrato de locação <strong>#{reserva.id}</strong>.</p>"
+            f"<p>OlÃ¡ {customer_name},</p>"
+            f"<p>Segue a cÃ³pia do seu contrato de locaÃ§Ã£o <strong>#{reserva.id}</strong>.</p>"
             f"<p><a href='{view_link}' target='_blank' rel='noopener'>Abrir contrato</a></p>"
             f"<p>Obrigado!<br>{tenant_name}</p>"
         )
 
-        # 5) Envia com anexo (se possível) ou sem anexo (fallback)
+        # 5) Envia com anexo (se possÃ­vel) ou sem anexo (fallback)
         sent = False
 
-        # Tenta função com anexo (se você a tiver implementado no services/mailer.py)
+        # Tenta funÃ§Ã£o com anexo (se vocÃª a tiver implementado no services/mailer.py)
         if signed_path and signed_path.exists():
             try:
                 pdf_bytes = signed_path.read_bytes()
@@ -157,7 +157,7 @@ def _email_contract_async(reserva_id: int):
             except Exception as e:
                 current_app.logger.error("MAIL attach error rid=%s: %s", reserva.id, e, exc_info=True)
 
-        # Fallback: sem anexo (usa o que você já tem no services/mailer.py)
+        # Fallback: sem anexo (usa o que vocÃª jÃ¡ tem no services/mailer.py)
         if not sent:
             try:
                 if hasattr(mailer_service, "send_email_for_tenant"):
@@ -208,7 +208,7 @@ def _load_tenant():
 # =========================
 @public_bp.app_context_processor
 def _inject_public_ctx():
-    # expõe tenant e helper de token nos templates renderizados por este blueprint
+    # expÃµe tenant e helper de token nos templates renderizados por este blueprint
     return {
         "tenant": getattr(g, "tenant", None),
         "make_contract_token": make_contract_token,  # definido mais abaixo
@@ -245,7 +245,7 @@ def _tenant_pay_creds() -> dict:
     tenant.payment_secret_id (ex.: 'gpay-locadora1-dev').
     Formato esperado do segredo (JSON):
       { "public_key": "...", "merchant_code": "...", "token": "", "env": "dev", ... }
-    Se não existir, cai para variáveis de ambiente/config (_cfg).
+    Se nÃ£o existir, cai para variÃ¡veis de ambiente/config (_cfg).
     """
     alias = getattr(getattr(g, "tenant", None), "payment_secret_id", None)
     if alias:
@@ -261,7 +261,7 @@ def _tenant_pay_creds() -> dict:
         except Exception:
             current_app.logger.exception("Falha ao ler segredo do KV para %s", alias)
 
-    # fallback: variáveis
+    # fallback: variÃ¡veis
     return {
         "public_key": _cfg_str("GP_PUB_KEY"),
         "merchant_code": _cfg_str("GP_MERCHANT_CODE"),
@@ -283,7 +283,7 @@ def _calc_days(pu, do):
     return d if d >= 1 else 1
 
 def _external_url(endpoint: str, **values) -> str:
-    """Gera URL externa (útil para callback/return com ngrok)."""
+    """Gera URL externa (Ãºtil para callback/return com ngrok)."""
     url = url_for(endpoint, _external=True, **values)
     base = _cfg_str("EXTERNAL_BASE_URL", "")
     if not base:
@@ -341,7 +341,7 @@ def search():
 def results():
     q = _parse_query(request.args)
 
-    # dias (mínimo 1)
+    # dias (mÃ­nimo 1)
     try:
         pu = datetime.strptime(f"{q['pickup_date']} {q['pickup_time']}", '%Y-%m-%d %H:%M')
         do = datetime.strptime(f"{q['dropoff_date']} {q['dropoff_time']}", '%Y-%m-%d %H:%M')
@@ -445,7 +445,7 @@ def results():
             'small_bags': v.category.small_bags if v.category else 1,
             'mileage_text': v.category.mileage_text if v.category else 'Unlimited mileage',
         }
-        # filtros de preço
+        # filtros de preÃ§o
         try:
             if q['min_price'] and item['daily'] < float(q['min_price']):  # noqa: SIM108
                 continue
@@ -457,7 +457,7 @@ def results():
         except ValueError:
             pass
 
-        # Excluir ve�culos com sobreposi��o de reserva confirmada
+        # Excluir veículos com sobreposição de reserva confirmada
         if q.get('pickup_date') and q.get('dropoff_date'):
             conflict = (Reservation.query
                         .filter_by(tenant_id=g.tenant.id, vehicle_id=v.id)
@@ -467,7 +467,7 @@ def results():
                         .first())
             if conflict:
                 continue
-        # Excluir ve�culos com sobreposi��o de reserva confirmada
+        # Excluir veículos com sobreposição de reserva confirmada
         if q.get('pickup_date') and q.get('dropoff_date'):
             conflict = (Reservation.query
                         .filter_by(tenant_id=g.tenant.id, vehicle_id=v.id)
@@ -477,7 +477,7 @@ def results():
                         .first())
             if conflict:
                 continue
-        # Excluir ve�culos com sobreposi��o de reserva confirmada
+        # Excluir veículos com sobreposição de reserva confirmada
         if q.get('pickup_date') and q.get('dropoff_date'):
             conflict = (Reservation.query
                         .filter_by(tenant_id=g.tenant.id, vehicle_id=v.id)
@@ -494,7 +494,7 @@ def results():
     elif q['sort'] == 'price_desc':
         results_list.sort(key=lambda x: -x['daily'])
 
-    # paginação em memória
+    # paginaÃ§Ã£o em memÃ³ria
     total = len(results_list)
     pages = max((total + q['per_page'] - 1) // q['per_page'], 1)
     page = min(q['page'], pages) if pages else 1
@@ -540,7 +540,7 @@ def reserve_modal():
         pu = do = None
         days = 1
 
-    # server-side: bloquear sobreposi��o com reservas confirmadas
+    # server-side: bloquear sobreposição com reservas confirmadas
     conflict = (Reservation.query
                 .filter_by(tenant_id=g.tenant.id, vehicle_id=vehicle.id)
                 .filter(Reservation.pickup_dt < do,
@@ -578,7 +578,7 @@ def reserve():
         pu_dt = datetime.strptime(f"{q['pickup_date']} {q['pickup_time']}", '%Y-%m-%d %H:%M')
         do_dt = datetime.strptime(f"{q['dropoff_date']} {q['dropoff_time']}", '%Y-%m-%d %H:%M')
     except Exception:
-        abort(400, "Datas inválidas")
+        abort(400, "Datas invÃ¡lidas")
 
     rate = Rate.query.filter_by(tenant_id=g.tenant.id, category_id=vehicle.category_id).first()
     if not rate:
@@ -587,7 +587,7 @@ def reserve():
     days = max(1, (do_dt - pu_dt).days)
     total = float(rate.daily_rate) * days
 
-    # cria pré-reserva (pending)
+    # cria prÃ©-reserva (pending)
     res = Reservation(
         tenant_id=g.tenant.id,
         vehicle_id=vehicle.id,
@@ -613,7 +613,7 @@ def reserve():
 # PAYMENT LINK / AUTH
 # =========================
 def _gp_pl_token(force: bool = False) -> str | None:
-    """Autentica e guarda token na sessão (TTL ~8min)."""
+    """Autentica e guarda token na sessÃ£o (TTL ~8min)."""
     TTL = 8 * 60
     now = int(time.time())
     if not force:
@@ -627,7 +627,7 @@ def _gp_pl_token(force: bool = False) -> str | None:
     mch = creds.get("merchant_code") or ""
     base = _cfg_str("GP_API_V1_BASE", "https://apihml.tryglobalpays.com/v1").rstrip("/")
 
-    # se não tiver pub no KV, tenta token direto do KV/env
+    # se nÃ£o tiver pub no KV, tenta token direto do KV/env
     env_tok = creds.get("token") or ""
     if not pub and env_tok:
         session["gp_pl_token"] = env_tok
@@ -680,7 +680,7 @@ def _service_charge(total: float) -> float:
 
 def _amounts_for_modes(total: float, currency: str) -> dict:
     """
-    - deposit: só o sinal, sem taxa
+    - deposit: sÃ³ o sinal, sem taxa
     - full: total + taxa
     - balance: (total + taxa) - sinal
     """
@@ -771,17 +771,17 @@ def checkout_capture_customer(reservation_id):
     if name:
         res.customer_name = name
 
-    # Documento do motorista (CNH/Passaporte) — usamos driver_id e mantemos compat com customer_doc
+    # Documento do motorista (CNH/Passaporte) â€” usamos driver_id e mantemos compat com customer_doc
     driver_id = (data.get("driver_id") or data.get("customer_doc") or "").strip()
     if driver_id:
         res.customer_doc = driver_id
 
-    # País (ISO-2, ex.: BR, US…)
+    # PaÃ­s (ISO-2, ex.: BR, USâ€¦)
     country = (data.get("customer_country") or "").strip().upper()
     if country:
         res.customer_country = country
 
-    # Cidade/UF: se BR, montamos "Cidade/UF"; caso contrário, aceita customer_city_uf bruto
+    # Cidade/UF: se BR, montamos "Cidade/UF"; caso contrÃ¡rio, aceita customer_city_uf bruto
     city_uf = (data.get("customer_city_uf") or "").strip()
     if country == "BR":
         city  = (data.get("customer_city") or "").strip()
@@ -792,13 +792,13 @@ def checkout_capture_customer(reservation_id):
     else:
         res.customer_city_uf = None
 
-    # Nº do voo (opcional)
+    # NÂº do voo (opcional)
     flight_no = (data.get("flight_no") or "").strip().upper()
     res.flight_no = flight_no or None
 
     db.session.commit()
 
-    # devolvemos a URL de assinatura JÁ COM TOKEN (seguro em produção)
+    # devolvemos a URL de assinatura JÃ COM TOKEN (seguro em produÃ§Ã£o)
     ctok = make_contract_token(reservation_id)
     redirect_url = url_for("public.sign_contract",
                            tenant_slug=g.tenant.slug,
@@ -831,15 +831,15 @@ def checkout_pay_link(reservation_id):
     if mode == "deposit":
         amount = pack["deposit"]
         commission_amount = 0.0
-        desc = f"Reserva #{r.id} — Depósito (sinal)"
+        desc = f"Reserva #{r.id} â€” DepÃ³sito (sinal)"
     elif mode == "balance":
         amount = pack["balance"]
         commission_amount = pack["service_charge"]
-        desc = f"Reserva #{r.id} — Saldo + ServiceCharge {currency} {pack['service_charge']:.2f}"
+        desc = f"Reserva #{r.id} â€” Saldo + ServiceCharge {currency} {pack['service_charge']:.2f}"
     else:
         amount = pack["full"]
         commission_amount = pack["service_charge"]
-        desc = f"Reserva #{r.id} — Pagamento total (inclui ServiceCharge {currency} {pack['service_charge']:.2f})"
+        desc = f"Reserva #{r.id} â€” Pagamento total (inclui ServiceCharge {currency} {pack['service_charge']:.2f})"
 
     if amount <= 0:
         msg = "Nada a cobrar neste modo. Verifique os valores."
@@ -854,10 +854,10 @@ def checkout_pay_link(reservation_id):
     phone = _digits(getattr(r, 'customer_phone', "") or getattr(r, 'phone', "") or "11999999999")
     doc   = _digits(getattr(r, 'customer_document', "") or getattr(r, 'document', "") or "52998224725")
     cep   = _digits(getattr(r, 'zipcode', "") or "01001000")
-    address = (getattr(r, 'address', "") or "Praça da Sé")
+    address = (getattr(r, 'address', "") or "PraÃ§a da SÃ©")
     number  = (getattr(r, 'addr_number', "") or "1")
     district = (getattr(r, 'district', "") or "Centro")
-    city     = (getattr(r, 'city', "") or "São Paulo")
+    city     = (getattr(r, 'city', "") or "SÃ£o Paulo")
     state    = (getattr(r, 'state', "") or "SP").upper()[:2]
 
     client = {
@@ -871,7 +871,7 @@ def checkout_pay_link(reservation_id):
     merchant_code = creds.get("merchant_code") or _cfg("GP_MERCHANT_CODE")
     tenant_ep = (creds.get("endpoint") or "").strip()
 
-    # endpoints em ordem de preferência
+    # endpoints em ordem de preferÃªncia
     base = _cfg("GP_API_V1_BASE", "https://apihml.tryglobalpays.com/v1").rstrip("/")
     endpoints = []
     if tenant_ep:
@@ -911,13 +911,13 @@ def checkout_pay_link(reservation_id):
             "client": client,
         }
 
-        # aviso se houver comissão mas não houver código da plataforma
+        # aviso se houver comissÃ£o mas nÃ£o houver cÃ³digo da plataforma
         if commission_amount > 0 and not _cfg_str("PLATFORM_MERCHANT_CODE"):
             current_app.logger.warning(
-                "PLATFORM_MERCHANT_CODE não definido — split de comissão será omitido."
+                "PLATFORM_MERCHANT_CODE nÃ£o definido â€” split de comissÃ£o serÃ¡ omitido."
             )
 
-        # aplica split só quando solicitado e houver PLATFORM_MERCHANT_CODE
+        # aplica split sÃ³ quando solicitado e houver PLATFORM_MERCHANT_CODE
         if include_split and _cfg_str("PLATFORM_MERCHANT_CODE"):
             _with_commission_split(payload, commission_amount)
 
@@ -925,7 +925,7 @@ def checkout_pay_link(reservation_id):
 
     try:
         last_status = last_text = last_url = None
-        # STRICT_COMMISSION_SPLIT: se True, só tenta com split; se False, tenta com e depois sem (fallback).
+        # STRICT_COMMISSION_SPLIT: se True, sÃ³ tenta com split; se False, tenta com e depois sem (fallback).
         strict_raw = _cfg("STRICT_COMMISSION_SPLIT", False)
         strict_split = (str(strict_raw).strip().lower() in ("1", "true", "yes", "on"))
 
@@ -963,8 +963,8 @@ def checkout_pay_link(reservation_id):
                                 last_text = resp.text
                             last_status = resp.status_code
 
-                    if isinstance(data, dict) and (data.get("msg", "").lower().strip() == "rota não encontrada"):
-                        # tenta próximo endpoint
+                    if isinstance(data, dict) and (data.get("msg", "").lower().strip() == "rota nÃ£o encontrada"):
+                        # tenta prÃ³ximo endpoint
                         break
 
                     link = None
@@ -994,7 +994,7 @@ def checkout_pay_link(reservation_id):
         current_app.logger.error(
             "payment/link error %s url=%s resp_text=%s", last_status, last_url, last_text
         )
-        msg = "Não foi possível gerar o link de pagamento. Verifique credenciais/endpoint."
+        msg = "NÃ£o foi possÃ­vel gerar o link de pagamento. Verifique credenciais/endpoint."
         if want_json:
             return jsonify(ok=False, error=msg), 400
         flash(msg, "danger")
@@ -1034,7 +1034,7 @@ def _gp_consult_order(order_id: str | int) -> dict:
                 continue
 
             bloc = data.get("data") if isinstance(data.get("data"), dict) else None
-            if (data.get("msg") or "").lower().strip() == "rota não encontrada":
+            if (data.get("msg") or "").lower().strip() == "rota nÃ£o encontrada":
                 continue
 
             status = (data.get("status") or (bloc or {}).get("status") or "").lower()
@@ -1056,7 +1056,7 @@ def _gp_consult_order(order_id: str | int) -> dict:
             }
     return {}
 
-# Alias de retorno: /checkout/retorno -> reaproveita a lógica de /payments/return
+# Alias de retorno: /checkout/retorno -> reaproveita a lÃ³gica de /payments/return
 @public_bp.route('/checkout/retorno', methods=['GET', 'POST'])
 def checkout_retorno_alias():
     # muitos PSPs enviam orderId/order_id e status por GET ou POST (form/json)
@@ -1072,7 +1072,7 @@ def checkout_retorno_alias():
         or ""
     )
 
-    # redireciona para a rota oficial de retorno (mantém um possível status)
+    # redireciona para a rota oficial de retorno (mantÃ©m um possÃ­vel status)
     params = {}
     if order_id: params['orderId'] = order_id
     if status:   params['status']  = status
@@ -1192,7 +1192,7 @@ def thanks():
 @public_bp.get('/airports.json')
 def airports_json():
     """
-    Retorna sugestões de aeroportos no formato "Nome (IATA) — Cidade".
+    Retorna sugestÃµes de aeroportos no formato "Nome (IATA) â€” Cidade".
     Busca o arquivo em:
       - <raiz>/static/data/airports_us.json   (seu caso)
       - <app>/static/data/airports_us.json    (fallback)
@@ -1231,44 +1231,44 @@ def airports_json():
                     continue
 
                 if q and len(q) >= 2:
-                    # filtro: code começa com q OU name/city contém q
+                    # filtro: code comeÃ§a com q OU name/city contÃ©m q
                     if not (code.lower().startswith(q) or (q in name.lower()) or (city and q in city.lower())):
                         continue
 
-                city_txt = f" — {city}" if city else ""
+                city_txt = f" â€” {city}" if city else ""
                 out.append(f"{name} ({code}){city_txt}")
 
-            # se veio q, já limitamos; se não veio, não devolve tudo pra não lotar
+            # se veio q, jÃ¡ limitamos; se nÃ£o veio, nÃ£o devolve tudo pra nÃ£o lotar
             items = out[:20] if q else []
         else:
-            current_app.logger.warning("airports.json: arquivo não encontrado em %s", candidates)
+            current_app.logger.warning("airports.json: arquivo nÃ£o encontrado em %s", candidates)
 
     except Exception as e:
         current_app.logger.exception("Falha ao carregar/parsear airports JSON: %s", e)
 
-    # fallback (ainda filtrável) se nada deu certo
+    # fallback (ainda filtrÃ¡vel) se nada deu certo
     if not items:
         fallback = [
-            "Orlando International Airport (MCO) — Orlando",
-            "Los Angeles International Airport (LAX) — Los Angeles",
-            "John F. Kennedy International Airport (JFK) — New York",
-            "Miami International Airport (MIA) — Miami",
-            "San Francisco International Airport (SFO) — San Francisco",
+            "Orlando International Airport (MCO) â€” Orlando",
+            "Los Angeles International Airport (LAX) â€” Los Angeles",
+            "John F. Kennedy International Airport (JFK) â€” New York",
+            "Miami International Airport (MIA) â€” Miami",
+            "San Francisco International Airport (SFO) â€” San Francisco",
         ]
         if q and len(q) >= 2:
             ql = q.lower()
             items = [s for s in fallback if (ql in s.lower())][:20]
         else:
-            items = []  # sem q>=2 não manda lista gigante
+            items = []  # sem q>=2 nÃ£o manda lista gigante
 
     return jsonify({"items": items})
 
 
 
 # =========================
-# CONTRATO — paths/helpers (tenant-aware e privados)
+# CONTRATO â€” paths/helpers (tenant-aware e privados)
 # =========================
-# Dica: deixe CALIBRATE_SIGNATURE_BOX=True temporariamente para ajustar a posição,
+# Dica: deixe CALIBRATE_SIGNATURE_BOX=True temporariamente para ajustar a posiÃ§Ã£o,
 # depois volte para False.
 CALIBRATE_SIGNATURE_BOX = False
 
@@ -1287,7 +1287,7 @@ def _contracts_root() -> Path:
 
 def _signatures_root() -> Path:
     """
-    Pasta para imagens/temporários de assinatura por tenant:
+    Pasta para imagens/temporÃ¡rios de assinatura por tenant:
     instance/uploads/signatures/<tenant_slug>/
     (fora do /static, privado)
     """
@@ -1321,7 +1321,9 @@ def _resolve_paths(reserva_id: int) -> dict:
         "legacy_signed": _legacy_signed(reserva_id),
     }
 
-# ---------- segurança: token assinado ----------
+# ---------- seguranÃ§a: token assinado ----------
+CONTRACT_TOKEN_TTL_S = 3 * 24 * 60 * 60  # 3 dias
+
 def _signer() -> URLSafeSerializer:
     # inclui tenant no salt para isolar
     salt = f"contract-link:{_tenant_slug()}"
@@ -1331,7 +1333,7 @@ def make_contract_token(reserva_id: int) -> str:
     return _signer().dumps({"rid": reserva_id, "ten": getattr(g.tenant, "id", None), "ts": int(time.time())})
 
 def _extract_token(reserva_id: int) -> str | None:
-    # tenta query, form, JSON e por fim sessão (setada ao abrir a tela)
+    # tenta query, form, JSON e por fim sessÃ£o (setada ao abrir a tela)
     tok = (request.args.get("t") or request.form.get("t") or "").strip()
     if not tok:
         payload = request.get_json(silent=True) or {}
@@ -1342,29 +1344,37 @@ def _extract_token(reserva_id: int) -> str | None:
 
 def require_contract_token(reserva_id: int, *, strict: bool) -> bool:
     """
-    strict=True: sempre obriga token válido.
-    strict=False: em DEBUG sem token, permite (para não quebrar dev),
-                  mas registra na sessão para os próximos POSTs.
+    strict=True: sempre obriga token vÃ¡lido.
+    strict=False: em DEBUG sem token, permite (para nÃ£o quebrar dev),
+                  mas registra na sessÃ£o para os prÃ³ximos POSTs.
     """
     tok = _extract_token(reserva_id)
     if not tok:
         if not strict and current_app.debug:
-            # gera e guarda um token de sessão para fluxo local
+            # gera e guarda um token de sessÃ£o para fluxo local
             ctok = make_contract_token(reserva_id)
             session[f"ctok:{reserva_id}"] = ctok
-            current_app.logger.warning("Contract token ausente; tolerado em DEBUG e registrado na sessão.")
+            current_app.logger.warning("Contract token ausente; tolerado em DEBUG e registrado na sessÃ£o.")
             return True
         abort(403)
 
     try:
         data = _signer().loads(tok)
+        # --- checagem de expiração do token ---
+        try:
+            now = int(time.time())
+            ts = int(data.get("ts", 0) or 0)
+        except Exception:
+            ts = 0
+        if not ts or (now - ts) > CONTRACT_TOKEN_TTL_S:
+            abort(403, "Link de assinatura expirado. Gere um novo link pelo checkout ou peça um novo ao atendente.")
     except BadSignature:
         abort(403)
 
     if data.get("rid") != reserva_id or data.get("ten") != getattr(g.tenant, "id", None):
         abort(403)
 
-    # guarda o token na sessão para POST subsequentes (ex.: apply-signature)
+    # guarda o token na sessÃ£o para POST subsequentes (ex.: apply-signature)
     session[f"ctok:{reserva_id}"] = tok
     return True
 
@@ -1421,7 +1431,7 @@ def _default_contract_template() -> str:
   .hr { height:1px; background:#e5e5e5; margin:12px 0; }
   .page-break { page-break-before: always; }
   .small { font-size: 11px; }
-  .sign-hint { height: 110px; } /* espaço onde a assinatura será aplicada na última página */
+  .sign-hint { height: 110px; } /* espaÃ§o onde a assinatura serÃ¡ aplicada na Ãºltima pÃ¡gina */
 </style>
 </head>
 <body>
@@ -1434,42 +1444,42 @@ def _default_contract_template() -> str:
   </div>
 </div>
 
-<h1>Contrato de Locação de Veículo</h1>
+<h1>Contrato de LocaÃ§Ã£o de VeÃ­culo</h1>
 
 <div class="box">
   <table class="info">
-    <tr><td><b>Locatário:</b> {{ cliente_nome }}</td><td><b>Documento:</b> {{ cliente_doc }}</td></tr>
-    <tr><td><b>Período:</b> {{ data_inicio|datefmt }} a {{ data_fim|datefmt }}</td><td><b>Valor Total:</b> {{ valor_total|money(currency) }}</td></tr>
-    <tr><td><b>Veículo:</b> {{ carro_marca }} {{ carro_modelo }} {{ carro_ano }}</td><td><b>Cor:</b> {{ carro_cor }}</td></tr>
+    <tr><td><b>LocatÃ¡rio:</b> {{ cliente_nome }}</td><td><b>Documento:</b> {{ cliente_doc }}</td></tr>
+    <tr><td><b>PerÃ­odo:</b> {{ data_inicio|datefmt }} a {{ data_fim|datefmt }}</td><td><b>Valor Total:</b> {{ valor_total|money(currency) }}</td></tr>
+    <tr><td><b>VeÃ­culo:</b> {{ carro_marca }} {{ carro_modelo }} {{ carro_ano }}</td><td><b>Cor:</b> {{ carro_cor }}</td></tr>
   </table>
 </div>
 
-<h2>Cláusulas</h2>
+<h2>ClÃ¡usulas</h2>
 <p>
-Este Acordo define os direitos e obrigações relativos ao aluguel do veículo. O locatário declara estar apto a conduzir nos termos da lei aplicável e concorda em devolver o veículo nas mesmas condições em que recebeu, salvo desgaste natural de uso.
+Este Acordo define os direitos e obrigaÃ§Ãµes relativos ao aluguel do veÃ­culo. O locatÃ¡rio declara estar apto a conduzir nos termos da lei aplicÃ¡vel e concorda em devolver o veÃ­culo nas mesmas condiÃ§Ãµes em que recebeu, salvo desgaste natural de uso.
 </p>
 <p>
-Quilometragem, combustível, multas, pedágios, seguros e franquias seguem a tabela vigente do locador. Em caso de sinistro, o locatário se compromete com os valores de franquia e demais despesas não cobertas.
+Quilometragem, combustÃ­vel, multas, pedÃ¡gios, seguros e franquias seguem a tabela vigente do locador. Em caso de sinistro, o locatÃ¡rio se compromete com os valores de franquia e demais despesas nÃ£o cobertas.
 </p>
 <p class="muted small">
-Observações do locador: ____________________________
+ObservaÃ§Ãµes do locador: ____________________________
 </p>
 
 <div class="page-break"></div>
 
 <h2>Assinaturas</h2>
-<p class="small">Assinatura do locatário abaixo (será aplicada digitalmente neste espaço ao finalizar a assinatura):</p>
+<p class="small">Assinatura do locatÃ¡rio abaixo (serÃ¡ aplicada digitalmente neste espaÃ§o ao finalizar a assinatura):</p>
 <div class="sign-hint"></div>
 
 <p class="muted small">
-Carimbo/Auditoria: data, IP e agente do usuário são registrados automaticamente.
+Carimbo/Auditoria: data, IP e agente do usuÃ¡rio sÃ£o registrados automaticamente.
 </p>
 
 </body>
 </html>"""
 
 def _render_contract_html(reserva) -> str:
-    # contexto disponível no template (somente chaves permitidas)
+    # contexto disponÃ­vel no template (somente chaves permitidas)
     t = getattr(g, "tenant", None)
     currency = None
     try:
@@ -1494,7 +1504,7 @@ def _render_contract_html(reserva) -> str:
         cliente_cidade_uf= (getattr(reserva, "customer_city_uf", None) or ""),
         voo_numero=        (getattr(reserva, "flight_no", None) or ""),
 
-        # veículo
+        # veÃ­culo
         carro_marca=(reserva.vehicle.brand  if reserva.vehicle else "N/D"),
         carro_modelo=(reserva.vehicle.model if reserva.vehicle else "N/D"),
         carro_ano=(reserva.vehicle.year     if reserva.vehicle else "N/D"),
@@ -1507,7 +1517,7 @@ def _render_contract_html(reserva) -> str:
         data_contrato=(getattr(reserva, "created_at", None) or datetime.utcnow()),
     )
 
-    # fonte: HTML salvo no admin; se vazio, usa o padrão
+    # fonte: HTML salvo no admin; se vazio, usa o padrÃ£o
     html_src = ""
     if t and getattr(t, "contract_template_html", None):
         html_src = t.contract_template_html
@@ -1522,7 +1532,7 @@ def _render_contract_html(reserva) -> str:
 
 def _ensure_base_pdf(reserva) -> Path:
     """
-    Garante que o PDF base existe (gera se não existir) e atualiza/insere o Contract.
+    Garante que o PDF base existe (gera se nÃ£o existir) e atualiza/insere o Contract.
     Agora passamos base_url=/static para imagens funcionarem no WeasyPrint.
     """
     paths = _resolve_paths(reserva.id)
@@ -1582,10 +1592,10 @@ def _sign_conf() -> dict:
     }
 
 
-# ---------- VIEW: abre assinado se existir; senão base ----------
+# ---------- VIEW: abre assinado se existir; senÃ£o base ----------
 @public_bp.get("/contrato/<int:reserva_id>/view")
 def view_contract(reserva_id):
-    # em produção: exige token; em DEBUG permite sem (para não quebrar fluxo local)
+    # em produÃ§Ã£o: exige token; em DEBUG permite sem (para nÃ£o quebrar fluxo local)
     require_contract_token(reserva_id, strict=not current_app.debug)
 
     reserva = _res_by_tenant_or_404(reserva_id)
@@ -1600,15 +1610,27 @@ def view_contract(reserva_id):
     resp = make_response(send_file(str(pdf), mimetype="application/pdf", conditional=False))
     return _no_cache(resp)
 
-# ---------- página de assinatura ----------
+# ---------- pÃ¡gina de assinatura ----------
 @public_bp.get("/contrato/<int:reserva_id>/sign", endpoint="sign_contract")
 def sign_contract(reserva_id):
-    # mesma lógica de tolerância em DEBUG
+    # --- bypass staff sem token: se admin/operador logado abrir sem "t=", gera token e redireciona ---
+    tok = request.args.get("t", type=str)
+    if not tok:
+        from flask_login import current_user
+        is_staff = getattr(current_user, "is_authenticated", False) and \
+                   getattr(current_user, "tenant_id", None) == getattr(g.tenant, "id", None)
+        if is_staff:
+            tok = make_contract_token(reserva_id)
+            return redirect(url_for("public.sign_contract",
+                                    tenant_slug=g.tenant.slug,
+                                    reserva_id=reserva_id, t=tok))
+        abort(403, "Você não tem permissão para acessar esta página.")
+    # mesma lÃ³gica de tolerÃ¢ncia em DEBUG
     require_contract_token(reserva_id, strict=not current_app.debug)
     reserva = _res_by_tenant_or_404(reserva_id)
     _ensure_base_pdf(reserva)  # garante PDF base
 
-    # se veio token na query, deixa registrado na sessão pro POST subsequente
+    # se veio token na query, deixa registrado na sessÃ£o pro POST subsequente
     qt = request.args.get("t")
     if qt:
         session[f"ctok:{reserva_id}"] = qt
@@ -1618,7 +1640,7 @@ def sign_contract(reserva_id):
 # ---------- POST: recebe desenho e assina ----------
 @public_bp.post("/contrato/<int:reserva_id>/apply-signature", endpoint="apply_signature")
 def apply_signature(reserva_id):
-    # aqui o token é sempre exigido (POST sensível)
+    # aqui o token Ã© sempre exigido (POST sensÃ­vel)
     require_contract_token(reserva_id, strict=True)
     _ = _res_by_tenant_or_404(reserva_id)
 
@@ -1632,9 +1654,9 @@ def apply_signature(reserva_id):
     try:
         sign_bytes = base64.b64decode(b64)
     except Exception:
-        return jsonify(ok=False, error="Imagem inválida"), 400
+        return jsonify(ok=False, error="Imagem invÃ¡lida"), 400
 
-    # salva PNG bruto (auditoria) — privado
+    # salva PNG bruto (auditoria) â€” privado
     _signature_png_path(reserva_id).write_bytes(sign_bytes)
 
     # PDF base
@@ -1642,7 +1664,7 @@ def apply_signature(reserva_id):
     if not base_pdf.exists():
         legacy = _legacy_base(reserva_id)
         if not legacy.exists():
-            return jsonify(ok=False, error="Contrato não encontrado"), 404
+            return jsonify(ok=False, error="Contrato nÃ£o encontrado"), 404
         base_pdf = legacy
 
     # metadados/auditoria
@@ -1669,7 +1691,7 @@ def apply_signature(reserva_id):
     RUBRICA_ON_LAST = conf["rub_on_last"]
     AUDIT_STAMP = conf["audit"]
 
-    # abre PDF e aplica: rubrica nas anteriores + assinatura completa na última
+    # abre PDF e aplica: rubrica nas anteriores + assinatura completa na Ãºltima
     with base_pdf.open("rb") as fh:
         reader = PdfReader(fh)
         writer = PdfWriter()
@@ -1693,7 +1715,7 @@ def apply_signature(reserva_id):
                 packet = BytesIO()
                 can = rl_canvas.Canvas(packet, pagesize=(w, h))
 
-                # RUBRICA (todas as páginas, exceto a última se RUBRICA_ON_LAST=False)
+                # RUBRICA (todas as pÃ¡ginas, exceto a Ãºltima se RUBRICA_ON_LAST=False)
                 if (i != last_idx) or RUBRICA_ON_LAST:
                     can.drawImage(
                         str(tmp_rub),
@@ -1704,19 +1726,19 @@ def apply_signature(reserva_id):
                         mask="auto",
                     )
 
-                # CARIMBO DE AUDITORIA (rodapé)
+                # CARIMBO DE AUDITORIA (rodapÃ©)
                 if AUDIT_STAMP:
                     can.setFont("Helvetica", 7)
-                    carimbo = f"Signed {signed_at:%Y-%m-%d %H:%M UTC} • IP {client_ip}"
+                    carimbo = f"Signed {signed_at:%Y-%m-%d %H:%M UTC} â€¢ IP {client_ip}"
                     can.drawString(24, 14, carimbo)
 
-                # ASSINATURA COMPLETA SOMENTE NA ÚLTIMA PÁGINA
+                # ASSINATURA COMPLETA SOMENTE NA ÃšLTIMA PÃGINA
                 if i == last_idx:
                     x_full = w * SIGN_FULL_X_REL
                     y_full = h * SIGN_FULL_Y_REL
 
                     if CALIBRATE_SIGNATURE_BOX:
-                        # retângulo magenta para ajudar a calibrar posição/tamanho
+                        # retÃ¢ngulo magenta para ajudar a calibrar posiÃ§Ã£o/tamanho
                         can.setStrokeColorRGB(1, 0, 1)
                         can.setLineWidth(1)
                         can.rect(x_full, y_full, SIGN_FULL_W, SIGN_FULL_H)
@@ -1771,7 +1793,7 @@ def download_signed_contract(reserva_id):
     paths = _resolve_paths(reserva_id)
     pdf = paths["signed"] if paths["signed"].exists() else paths["legacy_signed"]
     if not pdf or not pdf.exists():
-        return "Contrato assinado não encontrado", 404
+        return "Contrato assinado nÃ£o encontrado", 404
     return send_file(
         str(pdf),
         as_attachment=True,
@@ -1780,18 +1802,18 @@ def download_signed_contract(reserva_id):
         conditional=True,
         max_age=0
     )
-# ======= FIM – rotas de contrato =======
+# ======= FIM â€“ rotas de contrato =======
 
 # Salva dados do modal e segue para assinatura
 @public_bp.post("/contract/start")
 def public_contract_start():
     res_id = request.form.get("reservation_id", type=int)
     if not res_id:
-        return jsonify(ok=False, error="Reserva inválida"), 400
+        return jsonify(ok=False, error="Reserva invÃ¡lida"), 400
 
     res = Reservation.query.filter_by(id=res_id, tenant_id=g.tenant.id).first()
     if not res:
-        return jsonify(ok=False, error="Reserva não encontrada"), 404
+        return jsonify(ok=False, error="Reserva nÃ£o encontrada"), 404
 
     # Campos do modal
     res.customer_name    = (request.form.get("customer_name") or "").strip() or res.customer_name
@@ -1802,9 +1824,10 @@ def public_contract_start():
 
     db.session.commit()
 
-    # URL da sua página de assinatura já existente
+    # URL da sua pÃ¡gina de assinatura jÃ¡ existente
     next_url = request.form.get("next_url") or url_for(
         "public.contract_sign", tenant_slug=g.tenant.slug, reservation_id=res.id
     )
     return jsonify(ok=True, next_url=next_url)
+
 

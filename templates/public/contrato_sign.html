@@ -1,12 +1,18 @@
-{% extends "base_public.html" %}
-{% block title %}Assinar Contrato — {{ g.tenant.name if g.tenant else "" }}{% endblock %}
+﻿{% extends "base_public.html" %}
+{% block title %}Assinar Contrato â€” {{ g.tenant.name if g.tenant else "" }}{% endblock %}
 
 {% block content %}
 <div class="container py-4">
-  <h3 class="mb-1">Contrato de Locação</h3>
-  <p class="text-muted">Visualize o contrato e assine dentro da área destacada.</p>
+  <h3 class="mb-1">Contrato de LocaÃ§Ã£o</h3>
+  <p class="text-muted">Visualize o contrato e assine dentro da Ã¡rea destacada.</p>
+  <div class="mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="history.back()">
+       Voltar
+    </button>
+  </div>
+  
 
-  <!-- Visualização do PDF (sempre exibe o assinado se já existir) -->
+  <!-- VisualizaÃ§Ã£o do PDF (sempre exibe o assinado se jÃ¡ existir) -->
   <div class="border rounded bg-light p-2 mb-3" style="max-height:65vh; overflow:auto;">
     <iframe
       id="pdf-frame"
@@ -16,13 +22,13 @@
     </iframe>
   </div>
 
-  <!-- Área e canvas de assinatura -->
+  <!-- Ãrea e canvas de assinatura -->
   <div class="text-center mb-2">
-    <span class="badge bg-light text-dark border">✍️ Assine dentro da área demarcada</span>
+    <span class="badge bg-light text-dark border">âœï¸ Assine dentro da Ã¡rea demarcada</span>
   </div>
 
   <div id="signature-wrapper" class="position-relative mx-auto" style="max-width:920px;">
-    <!-- Slot/guia visual (mesmas proporções da assinatura final no PDF) -->
+    <!-- Slot/guia visual (mesmas proporÃ§Ãµes da assinatura final no PDF) -->
     <div id="sign-slot"
          class="position-absolute start-50 translate-middle-x"
          style="top:18px; width:min(96%, 760px); height:120px; border:2px dashed #0d6efd; border-radius:10px; background:rgba(13,110,253,.05); pointer-events:none; z-index:0;">
@@ -35,7 +41,7 @@
   </div>
 
   <div class="mt-3 d-flex justify-content-center gap-2">
-    <button id="clear-signature" type="button" class="btn btn-outline-secondary btn-sm">🧹 Limpar assinatura</button>
+    <button id="clear-signature" type="button" class="btn btn-outline-secondary btn-sm">ðŸ§¹ Limpar assinatura</button>
 
     <!-- IMPORTANTE: type="button" e data-post-url apontando para apply_signature -->
     <button
@@ -43,10 +49,11 @@
       type="button"
       class="btn btn-success btn-sm"
       data-post-url="{{ url_for('public.apply_signature', tenant_slug=g.tenant.slug, reserva_id=reserva_id) }}">
-      ✅ Confirmar assinatura
+      âœ… Confirmar assinatura
     </button>
   </div>
 
   <div id="sign-error" class="alert alert-danger mt-3 d-none text-center"></div>
 </div>
 {% endblock %}
+
