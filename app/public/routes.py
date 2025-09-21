@@ -1199,6 +1199,110 @@ def thanks():
         """
         return html
 
+def _tenant_settings_dir() -> Path:
+    """Pasta de settings do tenant (privada, em instance/)."""
+    p = Path(current_app.instance_path) / "uploads" / "tenant_settings" / _tenant_slug()
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+def _tenant_airports_served_path() -> Path:
+    return _tenant_settings_dir() / "airports.json"
+
+def _tenant_airports_served_list() -> list[str]:
+    """
+    Lê a lista salva no Settings do tenant e devolve rótulos prontos
+    no formato: "Nome (IATA) - Cidade".
+    Aceita dois formatos de arquivo:
+      A) {"items": [ ... ]}
+      B) [ ... ]
+    Onde cada item pode ser:
+      - string já no formato final
+      - dict com "label"
+      - dict com "name"/"code"(/"iata") e opcional "city"
+    """
+    def _mk_label_from_dict(d: dict) -> str | None:
+        # 1) se já vier "label"
+        lbl = (d.get("label") or "").strip()
+        if lbl:
+            return lbl
+        # 2) se vier name/code(/iata)/city
+        name = (d.get("name") or "").strip()
+        code = (d.get("code") or d.get("iata") or "").strip().upper()
+        city = (d.get("city") or "").strip()
+        if name and code:
+            return f"{name} ({code})" + (f" - {city}" if city else "")
+        return None
+
+    try:
+        p = _tenant_airports_served_path()
+        if not p.exists():
+            return []
+
+        raw = p.read_text(encoding="utf-8") or ""
+        data = json.loads(raw)
+
+        # normaliza para uma lista de itens
+        if isinstance(data, dict):
+            items = data.get("items") if isinstance(data.get("items"), list) else []
+        elif isinstance(data, list):
+            items = data
+        else:
+            items = []
+
+        out: list[str] = []
+        for it in items:
+            if isinstance(it, str):
+                s = it.strip()
+                if s:
+                    out.append(s)
+            elif isinstance(it, dict):
+                lbl = _mk_label_from_dict(it) or ""
+                if lbl:
+                    out.append(lbl)
+
+        # remove duplicados preservando ordem
+        seen = set()
+        normed = []
+        for s in out:
+            # normaliza hifens exóticos só para comparação
+            s_cmp = re.sub(r'[\u2010-\u2015\u2212]', '-', s)
+            if s_cmp not in seen:
+                seen.add(s_cmp)
+                normed.append(s)
+
+        return normed
+    except Exception:
+        current_app.logger.exception("Falha ao ler airports.json do tenant")
+        return []
+
+
+def _parse_air_label(label: str) -> tuple[str, str, str]:
+    """
+    Recebe 'Nome (IATA) - Cidade' (variações de hífen aceitas) e
+    devolve (name, code, city). Valores em branco -> "".
+    """
+    if not label:
+        return "", "", ""
+    s = re.sub(r'[\u2010-\u2015\u2212]', '-', label).strip()
+    # tenta capturar "name (CODE) - city"
+    m = re.match(r'^(.*?)\s*\(([^)]+)\)\s*(?:-\s*(.*))?$', s)
+    if not m:
+        return s, "", ""
+    name = (m.group(1) or "").strip()
+    code = (m.group(2) or "").strip()
+    city = (m.group(3) or "").strip()
+    return name, code, city
+
+def _matches_query(label: str, q: str) -> bool:
+    if not q:
+        return True
+    name, code, city = _parse_air_label(label)
+    ql = q.lower()
+    return (
+        code.lower().startswith(ql) or
+        ql in name.lower() or
+        (city and ql in city.lower())
+    )
 
 # =========================
 # AIRPORTS JSON (autocomplete)
@@ -1206,26 +1310,38 @@ def thanks():
 @public_bp.get('/airports.json')
 def airports_json():
     """
-    Retorna sugestões de aeroportos no formato "Nome (IATA) - Cidade".
-    Busca o arquivo em:
-      - <raiz>/static/data/airports_us.json   (seu caso)
-      - <app>/static/data/airports_us.json    (fallback)
-      - <raiz>/static/data/airports_us_iata.json (formato antigo, com 'iata')
-    Se receber ?q=, filtra por code/name/city (case-insensitive) e limita a 20 itens.
+    Retorna sugestões no formato 'Nome (IATA) - Cidade'.
+    1º: se o tenant tiver lista configurada, filtra APENAS nela.
+    2º: caso contrário, usa o arquivo global (como era antes).
     """
-    q = (request.args.get("q") or "").strip().lower()
-    items = []
+    q = (request.args.get("q") or "").strip()
+    items: list[str] = []
 
+    # 1) tenta lista específica do tenant
     try:
-        # caminhos candidatos
-        root_dir = os.path.abspath(os.path.join(current_app.root_path, os.pardir))  # <raiz do projeto>
+        served = _tenant_airports_served_list()  # já normaliza labels
+        if served:
+            # filtra por query (>=2 chars como antes)
+            if q and len(q) >= 2:
+                items = [s for s in served if _matches_query(s, q)]
+            else:
+                items = []
+            # normaliza hífens longos para um simples " - " no retorno
+            items = [re.sub(r'[\u2010-\u2015\u2212]', ' - ', s) for s in items[:20]]
+            return jsonify({"items": items})
+    except Exception:
+        current_app.logger.exception("Erro ao filtrar pela lista do tenant; caindo para o arquivo global.")
+
+    # 2) arquivo global (comportamento anterior)
+    ql = q.lower()
+    try:
+        root_dir = os.path.abspath(os.path.join(current_app.root_path, os.pardir))
         candidates = [
             os.path.join(root_dir, "static", "data", "airports_us.json"),
             os.path.join(current_app.root_path, "static", "data", "airports_us.json"),
             os.path.join(root_dir, "static", "data", "airports_us_iata.json"),
         ]
         path = next((p for p in candidates if os.path.isfile(p)), None)
-
         if path:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -1243,39 +1359,35 @@ def airports_json():
                 city = norm(a, "city")
                 if not (code and name):
                     continue
-
                 if q and len(q) >= 2:
-                    # filtro: code começa com q OU name/city contém q
-                    if not (code.lower().startswith(q) or (q in name.lower()) or (city and q in city.lower())):
+                    if not (code.lower().startswith(ql) or (ql in name.lower()) or (city and ql in city.lower())):
                         continue
-
                 city_txt = f" - {city}" if city else ""
                 out.append(f"{name} ({code}){city_txt}")
 
-            # se veio q, já limitamos; se não veio, não devolve tudo pra não lotar
-            items = out[:20] if q else []
+            items = out[:20] if q and len(q) >= 2 else []
         else:
-            current_app.logger.warning("airports.json: arquivo não encontrado em %s", candidates)
-
+            current_app.logger.warning("airports.json global não encontrado em %s", candidates)
     except Exception as e:
         current_app.logger.exception("Falha ao carregar/parsear airports JSON: %s", e)
+        items = []
 
-    # fallback (ainda filtrável) se nada deu certo
+    # fallback
     if not items:
         fallback = [
-            "Orlando International Airport (MCO) - Orlando",
-            "Los Angeles International Airport (LAX) - Los Angeles",
-            "John F. Kennedy International Airport (JFK) - New York",
-            "Miami International Airport (MIA) - Miami",
-            "San Francisco International Airport (SFO) - San Francisco",
+            "Orlando Intl (MCO) - Orlando",
+            "Los Angeles Intl (LAX) - Los Angeles",
+            "John F. Kennedy Intl (JFK) - New York",
+            "Miami Intl (MIA) - Miami",
+            "Fort Lauderdale - Hollywood Intl (FLL) - Fort Lauderdale",
+            "San Francisco Intl (SFO) - San Francisco",
         ]
         if q and len(q) >= 2:
-            ql = q.lower()
-            items = [s for s in fallback if (ql in s.lower())][:20]
+            items = [s for s in fallback if _matches_query(s, q)]
         else:
-            items = []  # sem q>=2 não manda lista gigante
+            items = []
 
-    items = [re.sub(r'[\u2010-\u2015\u2212]', ' - ', s) for s in items]
+    items = [re.sub(r'[\u2010-\u2015\u2212]', ' - ', s) for s in items[:20]]
     return jsonify({"items": items})
 
 

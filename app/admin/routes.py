@@ -18,6 +18,7 @@ import json
 from app.services.mailer import save_tenant_mail_creds, get_tenant_mail_creds, send_test_mail
 from . import admin_bp
 from azure.storage.blob import BlobServiceClient, ContentSettings
+from app.storage import load_tenant_airports, save_tenant_airports
 from azure.identity import DefaultAzureCredential
 from flask import (
     render_template, request, redirect, url_for, flash,
@@ -2521,3 +2522,30 @@ def user_activate():
         flash("Não foi possível ativar o usuário agora.", "danger")
 
     return redirect(url_for("admin.settings", _anchor="pane-users"))
+
+
+
+# ========== SETTINGS: Airports served (per-tenant) ==========
+
+@admin_bp.get("/settings/airports")
+def admin_get_airports_served():
+    """
+    Retorna a lista (array) dos aeroportos atendidos pelo tenant atual.
+    Armazena/ler em: instance/uploads/tenant_settings/<slug>/airports.json
+    """
+    tenant_slug = getattr(getattr(g, "tenant", None), "slug", None) or "default"
+    airports = load_tenant_airports(current_app.instance_path, tenant_slug)
+    return jsonify({"items": airports})
+
+
+@admin_bp.post("/settings/airports")
+def admin_set_airports_served():
+    """
+    Espera JSON: { "items": ["Miami International Airport (MIA) - Miami", "Orlando ... (MCO) - Orlando", ...] }
+    Persiste a lista inteira.
+    """
+    payload = request.get_json(silent=True) or {}
+    items = payload.get("items") or []
+    tenant_slug = getattr(getattr(g, "tenant", None), "slug", None) or "default"
+    ok = save_tenant_airports(current_app.instance_path, tenant_slug, items)
+    return jsonify({"ok": bool(ok), "count": len(items)})

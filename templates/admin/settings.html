@@ -99,6 +99,200 @@
       </div>
     </div>
   </div>
+  <!-- ========== Airports atendidos (por tenant) ========== -->
+<div class="card mt-4">
+  <div class="card-header">
+    <strong>Locais de atendimento (Aeroportos)</strong>
+  </div>
+  <div class="card-body">
+
+    <p class="text-muted small mb-2">
+      Pesquise pelo aeroporto e clique para adicionar. A lista abaixo define os locais que aparecerão na página pública.
+    </p>
+
+    <!-- URLs dos endpoints (renderizadas por Jinja) -->
+    <div
+      id="airports-config"
+      data-get="{{ url_for('admin.admin_get_airports_served', tenant_slug=g.tenant.slug) }}"
+      data-post="{{ url_for('admin.admin_set_airports_served', tenant_slug=g.tenant.slug) }}"
+      data-suggest="{{ url_for('public.airports_json', tenant_slug=g.tenant.slug) }}">
+    </div>
+
+    <!-- input + sugestões -->
+    <div class="position-relative" style="max-width: 680px;">
+      <input
+        id="airport-search"
+        type="text"
+        class="form-control"
+        placeholder="Comece a digitar (ex.: MIA, Orlando, JFK...)"
+        autocomplete="off">
+      <div id="airport-suggest" class="list-group position-absolute w-100 shadow-sm" style="z-index: 30; max-height: 240px; overflow:auto; display:none;"></div>
+    </div>
+
+    <!-- chips -->
+    <div id="airport-chips" class="d-flex flex-wrap gap-2 mt-3"></div>
+
+    <!-- ações -->
+    <div class="mt-3 d-flex gap-2">
+      <button id="btn-save-airports" class="btn btn-primary btn-sm">Salvar locais</button>
+      <button id="btn-clear-airports" class="btn btn-outline-secondary btn-sm">Limpar tudo</button>
+      <div id="airports-flash" class="ms-2 small"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const root    = document.getElementById('airports-config');
+  if (!root) return;
+
+  const GET_URL    = root.dataset.get;
+  const POST_URL   = root.dataset.post;
+  const SUGGEST_URL= root.dataset.suggest;
+
+  const $input   = document.getElementById('airport-search');
+  const $list    = document.getElementById('airport-suggest');
+  const $chips   = document.getElementById('airport-chips');
+  const $saveBtn = document.getElementById('btn-save-airports');
+  const $clearBtn= document.getElementById('btn-clear-airports');
+  const $flash   = document.getElementById('airports-flash');
+
+  /** estado local */
+  let selected = []; // array de strings exatamente como voltam do /airports.json, ex: "Miami International Airport (MIA) - Miami"
+
+  function flash(msg, type="muted") {
+    $flash.className = "ms-2 small text-" + type;
+    $flash.textContent = msg || "";
+    if (msg) setTimeout(() => { $flash.textContent = ""; }, 4000);
+  }
+
+  function renderChips() {
+    $chips.innerHTML = "";
+    selected.forEach((label, idx) => {
+      const chip = document.createElement('span');
+      chip.className = "badge rounded-pill bg-secondary";
+      chip.style.fontSize = "0.9rem";
+      chip.style.display = "inline-flex";
+      chip.style.alignItems = "center";
+      chip.style.gap = ".4rem";
+      chip.textContent = label;
+
+      const x = document.createElement('button');
+      x.type = "button";
+      x.className = "btn-close btn-close-white btn-sm ms-1";
+      x.style.filter = "invert(1)";
+      x.ariaLabel = "Remover";
+      x.onclick = () => {
+        selected.splice(idx, 1);
+        renderChips();
+      };
+      chip.appendChild(x);
+      $chips.appendChild(chip);
+    });
+  }
+
+  function addIfNotExists(label) {
+    if (!label) return;
+    if (selected.includes(label)) return;
+    selected.push(label);
+    renderChips();
+  }
+
+  function showSuggest(items) {
+    if (!items || !items.length) {
+      $list.style.display = "none";
+      $list.innerHTML = "";
+      return;
+    }
+    $list.innerHTML = "";
+    items.slice(0, 20).forEach(txt => {
+      const a = document.createElement('button');
+      a.type = "button";
+      a.className = "list-group-item list-group-item-action";
+      a.textContent = txt;
+      a.onclick = () => {
+        addIfNotExists(txt);
+        $input.value = "";
+        $list.style.display = "none";
+        $list.innerHTML = "";
+        $input.focus();
+      };
+      $list.appendChild(a);
+    });
+    $list.style.display = "block";
+  }
+
+  /** debounce simples */
+  let tId = null;
+  $input.addEventListener('input', (e) => {
+    const q = (e.target.value || "").trim();
+    if (tId) clearTimeout(tId);
+    if (q.length < 2) {
+      $list.style.display = "none";
+      $list.innerHTML = "";
+      return;
+    }
+    tId = setTimeout(async () => {
+      try {
+        const res = await fetch(`${SUGGEST_URL}?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
+        const data = await res.json();
+        showSuggest(data.items || []);
+      } catch (err) {
+        console.error(err);
+        showSuggest([]);
+      }
+    }, 200);
+  });
+
+  document.addEventListener('click', (ev) => {
+    if (!$list.contains(ev.target) && ev.target !== $input) {
+      $list.style.display = "none";
+    }
+  });
+
+  /** carregar lista atual do tenant */
+  (async () => {
+    try {
+      const res = await fetch(GET_URL, { credentials: 'same-origin' });
+      const data = await res.json();
+      selected = Array.isArray(data.items) ? data.items.slice(0, 200) : [];
+      renderChips();
+    } catch (e) {
+      console.error(e);
+      selected = [];
+      renderChips();
+    }
+  })();
+
+  /** salvar */
+  $saveBtn.addEventListener('click', async () => {
+    try {
+      const res = await fetch(POST_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ items: selected })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        flash(`Salvo! (${data.count} locais)`, "success");
+      } else {
+        flash("Falha ao salvar.", "danger");
+      }
+    } catch (e) {
+      console.error(e);
+      flash("Erro ao salvar.", "danger");
+    }
+  });
+
+  /** limpar tudo */
+  $clearBtn.addEventListener('click', () => {
+    selected = [];
+    renderChips();
+  });
+})();
+</script>
+
   <!-- PAYMENTS -->
   <div class="tab-pane fade" id="pane-payments" role="tabpanel" aria-labelledby="tab-payments">
     <div class="card">

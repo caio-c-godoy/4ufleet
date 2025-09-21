@@ -121,3 +121,47 @@ def get_media_storage() -> MediaStorage:
 def save_media(file: FileStorage, *, folder: str = "vehicles") -> str:
     storage = get_media_storage()
     return storage.save(file, folder=folder)
+
+# ===== Airports served (per-tenant) stored under instance/uploads/tenant_settings/<slug>/airports.json
+from pathlib import Path
+import json
+
+def _tenant_settings_dir(instance_path: str, tenant_slug: str) -> Path:
+    """
+    Returns instance/uploads/tenant_settings/<tenant_slug> creating it when needed.
+    """
+    p = Path(instance_path) / "uploads" / "tenant_settings" / (tenant_slug or "default")
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+def load_tenant_airports(instance_path: str, tenant_slug: str) -> list[str]:
+    """
+    Reads the allowed airports (list of strings like 'Miami International Airport (MIA) - Miami'
+    OR just IATA codes like 'MIA') from the JSON file. Returns [] if absent.
+    """
+    try:
+        settings_dir = _tenant_settings_dir(instance_path, tenant_slug)
+        f = settings_dir / "airports.json"
+        if not f.exists():
+            return []
+        data = json.loads(f.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            # normalize to strings only
+            return [str(x).strip() for x in data if x]
+        return []
+    except Exception:
+        return []
+
+def save_tenant_airports(instance_path: str, tenant_slug: str, airports: list[str]) -> bool:
+    """
+    Persists the list of airports for the tenant. Overwrites the whole file.
+    """
+    try:
+        settings_dir = _tenant_settings_dir(instance_path, tenant_slug)
+        f = settings_dir / "airports.json"
+        # keep as a simple JSON array of strings
+        clean = [str(x).strip() for x in (airports or []) if str(x).strip()]
+        f.write_text(json.dumps(clean, ensure_ascii=False, indent=2), encoding="utf-8")
+        return True
+    except Exception:
+        return False
