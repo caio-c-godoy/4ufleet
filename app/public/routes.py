@@ -349,12 +349,38 @@ def _overlap_clause(start_dt, end_dt):
 # =========================
 @public_bp.get('/')
 def search():
-    return render_template('public/search.html')
+    # lista curta (até 100) – já vem do tenant
+    try:
+        served = _tenant_airports_served_list()  # já criamos antes
+    except Exception:
+        served = []
+    return render_template('public/search.html', airports_served=served)
+
 
 
 @public_bp.get('/results')
 def results():
     q = _parse_query(request.args)
+
+    # ---- valida pickup/dropoff contra a lista de atendidos ----
+    served_lower = _served_set_lower()
+    def _ok(label: str) -> bool:
+        if not label:
+            return False
+        s_cmp = re.sub(r'[\u2010-\u2015\u2212]', '-', label).strip().lower()
+        return s_cmp in served_lower
+
+    if not _ok(q.get('pickup_airport')) or not _ok(q.get('dropoff_airport')):
+        # opcional: você pode dar flash + redirect para a / (search)
+        # return redirect(url_for('public.search', tenant_slug=g.tenant.slug))
+        return (
+            jsonify({
+                "ok": False,
+                "error": "Os aeroportos escolhidos precisam estar na lista de locais atendidos."
+            }),
+            400
+        )
+# ------------------------------------------------------------
 
     # dias (mínimo 1)
     try:
@@ -1275,6 +1301,16 @@ def _tenant_airports_served_list() -> list[str]:
         current_app.logger.exception("Falha ao ler airports.json do tenant")
         return []
 
+def _served_set_lower() -> set[str]:
+    """Conjunto (lowercase, hífen normalizado) de labels atendidos do tenant."""
+    served = _tenant_airports_served_list()
+    out = set()
+    for s in served:
+        s_cmp = re.sub(r'[\u2010-\u2015\u2212]', '-', s or '').strip().lower()
+        if s_cmp:
+            out.add(s_cmp)
+    return out
+
 
 def _parse_air_label(label: str) -> tuple[str, str, str]:
     """
@@ -1310,85 +1346,82 @@ def _matches_query(label: str, q: str) -> bool:
 @public_bp.get('/airports.json')
 def airports_json():
     """
-    Retorna sugestões no formato 'Nome (IATA) - Cidade'.
-    1º: se o tenant tiver lista configurada, filtra APENAS nela.
-    2º: caso contrário, usa o arquivo global (como era antes).
+    Sugestões de aeroportos no formato "Nome (IATA) - Cidade".
+    Parâmetros:
+      q: termo para busca (>=2 chars para sugerir); se ausente em scope=served, retorna todos os servidos.
+      scope: "all" (todos da base) | "served" (somente os salvos pelo tenant). Default: "all".
     """
-    q = (request.args.get("q") or "").strip()
-    items: list[str] = []
+    q = (request.args.get("q") or "").strip().lower()
+    scope = (request.args.get("scope") or "all").strip().lower()
 
-    # 1) tenta lista específica do tenant
-    try:
-        served = _tenant_airports_served_list()  # já normaliza labels
-        if served:
-            # filtra por query (>=2 chars como antes)
-            if q and len(q) >= 2:
-                items = [s for s in served if _matches_query(s, q)]
-            else:
-                items = []
-            # normaliza hífens longos para um simples " - " no retorno
-            items = [re.sub(r'[\u2010-\u2015\u2212]', ' - ', s) for s in items[:20]]
-            return jsonify({"items": items})
-    except Exception:
-        current_app.logger.exception("Erro ao filtrar pela lista do tenant; caindo para o arquivo global.")
+    def _load_base_items():
+        # carrega base local (preferida)
+        try:
+            root_dir = os.path.abspath(os.path.join(current_app.root_path, os.pardir))
+            candidates = [
+                os.path.join(root_dir, "static", "data", "airports_us.json"),
+                os.path.join(current_app.root_path, "static", "data", "airports_us.json"),
+                os.path.join(root_dir, "static", "data", "airports_us_iata.json"),
+            ]
+            path = next((p for p in candidates if os.path.isfile(p)), None)
+            if not path:
+                return []
 
-    # 2) arquivo global (comportamento anterior)
-    ql = q.lower()
-    try:
-        root_dir = os.path.abspath(os.path.join(current_app.root_path, os.pardir))
-        candidates = [
-            os.path.join(root_dir, "static", "data", "airports_us.json"),
-            os.path.join(current_app.root_path, "static", "data", "airports_us.json"),
-            os.path.join(root_dir, "static", "data", "airports_us_iata.json"),
-        ]
-        path = next((p for p in candidates if os.path.isfile(p)), None)
-        if path:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            def norm(a, key1, key2=None):
-                v = (a.get(key1) or "").strip()
-                if not v and key2:
-                    v = (a.get(key2) or "").strip()
-                return v
-
             out = []
             for a in data:
-                code = norm(a, "code", "iata").upper()
-                name = norm(a, "name")
-                city = norm(a, "city")
+                code = (a.get("code") or a.get("iata") or "").strip().upper()
+                name = (a.get("name") or "").strip()
+                city = (a.get("city") or "").strip()
                 if not (code and name):
                     continue
-                if q and len(q) >= 2:
-                    if not (code.lower().startswith(ql) or (ql in name.lower()) or (city and ql in city.lower())):
-                        continue
                 city_txt = f" - {city}" if city else ""
                 out.append(f"{name} ({code}){city_txt}")
+            return out
+        except Exception:
+            current_app.logger.exception("airports_json: falha ao carregar base local")
+            return []
 
-            items = out[:20] if q and len(q) >= 2 else []
-        else:
-            current_app.logger.warning("airports.json global não encontrado em %s", candidates)
-    except Exception as e:
-        current_app.logger.exception("Falha ao carregar/parsear airports JSON: %s", e)
-        items = []
+    def _tenant_served_items():
+        # tenta ler do campo JSON do tenant
+        try:
+            items_raw = getattr(g.tenant, "airports_served_json", None)
+            if isinstance(items_raw, str):
+                data = json.loads(items_raw or "[]")
+            else:
+                data = items_raw or []
+            # pode vir já como list ou dict antigo {"items":[...]}
+            if isinstance(data, dict):
+                data = data.get("items") or []
+            return [str(x) for x in (data if isinstance(data, list) else [])]
+        except Exception:
+            current_app.logger.exception("airports_json: falha ao ler lista do tenant")
+            return []
 
-    # fallback
-    if not items:
-        fallback = [
-            "Orlando Intl (MCO) - Orlando",
-            "Los Angeles Intl (LAX) - Los Angeles",
-            "John F. Kennedy Intl (JFK) - New York",
-            "Miami Intl (MIA) - Miami",
-            "Fort Lauderdale - Hollywood Intl (FLL) - Fort Lauderdale",
-            "San Francisco Intl (SFO) - San Francisco",
-        ]
-        if q and len(q) >= 2:
-            items = [s for s in fallback if _matches_query(s, q)]
-        else:
-            items = []
+    # fonte de dados
+    if scope == "served":
+        base_items = _tenant_served_items()
+    else:
+        base_items = _load_base_items()
 
-    items = [re.sub(r'[\u2010-\u2015\u2212]', ' - ', s) for s in items[:20]]
+    # sem fonte -> vazio
+    if not base_items:
+        return jsonify({"items": []})
+
+    # filtro
+    if q and len(q) >= 2:
+        ql = q.lower()
+        items = [s for s in base_items if ql in s.lower()]
+    else:
+        # sem q: se scope=served devolve todos os servidos; se all, devolve vazio para não listar tudo
+        items = base_items if scope == "served" else []
+
+    # normaliza hífens estranhos
+    items = [re.sub(r'[\u2010-\u2015\u2212]', '-', s) for s in items][:50]
     return jsonify({"items": items})
+
 
 
 # =========================

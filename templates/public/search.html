@@ -1,5 +1,5 @@
 {% extends "base_public.html" %}
-{% block title %}Buscar carro  {{ g.tenant.name if g.tenant else "" }}{% endblock %}
+{% block title %}Buscar carro — {{ g.tenant.name if g.tenant else "" }}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -7,28 +7,46 @@
     <div class="card shadow-sm">
       <div class="card-body">
         <h1 class="h4 mb-3">Encontre o carro ideal</h1>
+
         <form method="get" action="{{ url_for('public.results', tenant_slug=g.tenant.slug) }}">
           <div class="row g-3">
+
+            <!-- RETIRADA -->
             <div class="col-12 col-lg-6">
               <label class="form-label">Retirada (aeroporto)</label>
-              <input class="form-control"
-                     id="pickup-airport"
-                     name="pickup_airport"
-                     placeholder="Ex: Orlando International (MCO)"
-                     list="us-airports"
-                     autocomplete="off"
-                     required>
+              <div class="position-relative" style="max-width:640px;">
+                <input
+                  id="pickup_airport"
+                  name="pickup_airport"
+                  type="text"
+                  class="form-control"
+                  placeholder="Ex: Miami Intl (MIA), Orlando, JFK…"
+                  autocomplete="off"
+                  required
+                />
+                <div id="pickup_dd"
+                     class="dropdown-menu show"
+                     style="width:100%; max-height:200px; overflow-y:auto; display:none; z-index:1050;"></div>
+              </div>
             </div>
 
+            <!-- DEVOLUÇÃO -->
             <div class="col-12 col-lg-6">
               <label class="form-label">Devolução (aeroporto)</label>
-              <input class="form-control"
-                     id="dropoff-airport"
-                     name="dropoff_airport"
-                     placeholder="Ex: Orlando International (MCO)"
-                     list="us-airports"
-                     autocomplete="off"
-                     required>
+              <div class="position-relative" style="max-width:640px;">
+                <input
+                  id="dropoff_airport"
+                  name="dropoff_airport"
+                  type="text"
+                  class="form-control"
+                  placeholder="Ex: Miami Intl (MIA), Orlando, JFK…"
+                  autocomplete="off"
+                  required
+                />
+                <div id="dropoff_dd"
+                     class="dropdown-menu show"
+                     style="width:100%; max-height:200px; overflow-y:auto; display:none; z-index:1050;"></div>
+              </div>
             </div>
 
             <div class="col-6 col-lg-3">
@@ -91,7 +109,6 @@
               const phoneHidden = document.getElementById("full_phone");
               const email = document.querySelector('input[name="email"]');
 
-              // Se já veio um phone completo (+DDI...), tentar decompor para pré-preencher
               if (phoneHidden && phoneHidden.value && phoneHidden.value.startsWith("+")) {
                 const compact = phoneHidden.value.replace(/\s+/g, "");
                 const m = compact.match(/^\+(\d{1,3})(.*)$/);
@@ -108,7 +125,6 @@
                   local.reportValidity();
                   return;
                 }
-                // Monta o E.164 simples: +DDI + dígitos
                 if (digits.length < 8) {
                   e.preventDefault();
                   local.setCustomValidity("Digite ao menos 8 dígitos do número.");
@@ -117,11 +133,7 @@
                   return;
                 }
                 phoneHidden.value = `+${ddi.value}${digits}`;
-
-                // Normaliza email: trim + lowercase (HTML5 type=email já valida formato)
-                if (email && email.value) {
-                  email.value = email.value.trim().toLowerCase();
-                }
+                if (email && email.value) email.value = email.value.trim().toLowerCase();
               });
             });
           </script>
@@ -130,55 +142,169 @@
     </div>
 
     <p class="text-muted small mt-3 mb-0">
-      Dica: digite o nome do aeroporto ou o código IATA (ex.: <strong>MCO</strong>, <strong>LAX</strong>, <strong>JFK</strong>).
+      Dica: digite o nome do aeroporto ou o código IATA (ex.: <strong>MIA</strong>, <strong>MCO</strong>, <strong>JFK</strong>).
     </p>
   </div>
 </div>
 
+<!-- datalist permanece (não atrapalha; útil se quiser manter fallback) -->
 <datalist id="us-airports"></datalist>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .air-item { padding:.5rem .75rem; cursor:pointer; white-space:normal; }
+  .air-item:hover, .air-item.active { background: var(--bs-light); }
+  .air-section { font-size:.75rem; color: var(--bs-secondary); padding:.25rem .75rem; text-transform:uppercase; }
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-/* seu JS de autocomplete permanece idêntico */
 (function () {
-  const DL_ID = 'us-airports';
-  const dl = document.getElementById(DL_ID);
-  const inputs = document.querySelectorAll('input[list="us-airports"]');
+  // Lista vinda do backend. Pode ser [].
+  const SERVED = Array.isArray({{ (airports_served|tojson) or '[]' }})
+    ? {{ (airports_served|tojson) or '[]' }} : [];
 
-  function buildUrl(q) {
-    const url = new URL(window.location.origin + "{{ url_for('public.airports_json', tenant_slug=g.tenant.slug) }}");
-    url.searchParams.set('q', q);
-    return url.toString();
+  // normalização para comparar com segurança (case, espaços, hífens tipográficos)
+  const norm = (s) => (s || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[\u2010-\u2015\u2212]/g, "-");
+
+  const servedSet = new Set(SERVED.map(norm));
+
+  const fields = [
+    { input: "pickup_airport",  menu: "pickup_dd",  title: "Locais atendidos" },
+    { input: "dropoff_airport", menu: "dropoff_dd", title: "Locais atendidos" },
+  ];
+
+  function hide(menuEl){ menuEl.style.display = "none"; }
+
+  function renderMenu(menuEl, items, title) {
+    menuEl.innerHTML = "";
+    if (title) {
+      const head = document.createElement("div");
+      head.className = "air-section";
+      head.textContent = title;
+      menuEl.appendChild(head);
+    }
+    // mostra no máx. 5; resto por rolagem
+    const MAX_VISIBLE = 5;
+    items.slice(0, MAX_VISIBLE).forEach(txt => {
+      const d = document.createElement("div");
+      d.className = "dropdown-item air-item";
+      d.textContent = txt;
+      d.addEventListener("click", () => {
+        menuEl.__bindInput.value = txt;
+        menuEl.__bindInput.dataset.validServed = "1"; // marca como válido
+        hide(menuEl);
+      });
+      menuEl.appendChild(d);
+    });
+
+    menuEl.style.maxHeight = "240px";
+    menuEl.style.overflow = "auto";
+    menuEl.style.display = items.length ? "block" : "none";
   }
 
-  async function fetchAirports(q) {
-    try {
-      const res = await fetch(buildUrl(q), { headers: { 'Accept': 'application/json' } });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return Array.isArray(data.items) ? data.items : [];
-    } catch { return []; }
+  // filtra SOMENTE dentro dos atendidos (no cliente mesmo)
+  function suggestFromServed(q) {
+    if (!q) return SERVED.slice();
+    const ql = norm(q);
+    return SERVED.filter(s => norm(s).includes(ql));
   }
 
-  function clearDatalist() { dl.innerHTML = ''; }
+  // wire nos dois campos
+  fields.forEach(({input, menu, title}) => {
+    const inp = document.getElementById(input);
+    const dd  = document.getElementById(menu);
+    if (!inp || !dd) return;
+    dd.__bindInput = inp;
 
-  async function handleChange(inp) {
-    const q = (inp.value || '').trim();
-    if (q.length < 2) { inp.removeAttribute('list'); clearDatalist(); return; }
-    inp.setAttribute('list', DL_ID);
-    const items = await fetchAirports(q);
-    dl.innerHTML = items.map(txt => `<option value="${txt.replace(/"/g, '&quot;')}"></option>`).join('');
-  }
+    // sempre que o valor mudar, reset da “marca de válido”
+    inp.addEventListener("input", () => {
+      const v = norm(inp.value);
+      if (servedSet.has(v)) {
+        inp.dataset.validServed = "1";
+      } else {
+        delete inp.dataset.validServed;
+      }
+    });
 
-  inputs.forEach(inp => {
-    handleChange(inp);
-    inp.addEventListener('input', () => handleChange(inp));
-    inp.addEventListener('focus', () => {
-      if ((inp.value || '').trim().length < 2) { inp.removeAttribute('list'); clearDatalist(); }
-      else { handleChange(inp); }
+    // focou → mostra a lista do tenant
+    inp.addEventListener("focus", () => {
+      if (SERVED.length) renderMenu(dd, SERVED, title);
+      else hide(dd);
+    });
+
+    // digitou → filtra dentro dos atendidos
+    let tmr = null;
+    inp.addEventListener("input", () => {
+      const q = inp.value.trim();
+      clearTimeout(tmr);
+      tmr = setTimeout(() => {
+        const items = suggestFromServed(q);
+        renderMenu(dd, items, title);
+      }, 120);
+    });
+
+    // Enter escolhe o primeiro; Esc fecha
+    inp.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") hide(dd);
+      if (ev.key === "Enter" && dd.style.display === "block") {
+        const first = dd.querySelector(".air-item");
+        if (first) {
+          ev.preventDefault();
+          inp.value = first.textContent;
+          inp.dataset.validServed = "1";
+          hide(dd);
+        }
+      }
+    });
+  });
+
+  // fechar dropdown ao clicar fora
+  document.addEventListener("click", (ev) => {
+    fields.forEach(({menu}) => {
+      const dd = document.getElementById(menu);
+      const inp = dd?.__bindInput;
+      if (dd && dd.style.display === "block" && !dd.contains(ev.target) && ev.target !== inp) {
+        hide(dd);
+      }
+    });
+  });
+
+  // Travar SUBMIT se valores não forem da lista SERVED
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.querySelector('form[action*="/results"]') || document.querySelector("form");
+    if (!form) return;
+
+    function ensureValid(inp, label) {
+      const v = norm(inp.value);
+      const ok = servedSet.has(v);
+      if (!ok) {
+        // mensagem nativa de validação
+        inp.setCustomValidity(`Selecione ${label} a partir da lista de locais atendidos.`);
+        inp.reportValidity();
+        setTimeout(() => inp.setCustomValidity(""), 2000);
+        inp.focus();
+      }
+      return ok;
+    }
+
+    form.addEventListener("submit", (ev) => {
+      // se não há lista configurada no tenant, não trava
+      if (!SERVED.length) return;
+
+      const pick = document.getElementById("pickup_airport");
+      const drop = document.getElementById("dropoff_airport");
+      if (pick && !ensureValid(pick, "o local de retirada")) { ev.preventDefault(); return; }
+      if (drop && !ensureValid(drop, "o local de devolução")) { ev.preventDefault(); return; }
     });
   });
 })();
 </script>
 {% endblock %}
+
