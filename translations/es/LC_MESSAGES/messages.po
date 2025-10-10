@@ -1,0 +1,1102 @@
+msgid ""
+msgstr ""
+"Project-Id-Version:  4uFleet\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-09 11:13-0400\n"
+"PO-Revision-Date: 2025-10-09 00:00+0000\n"
+"Last-Translator: \n"
+"Language: es\n"
+"Language-Team: es <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: templates/base.html:169
+msgid "Sair"
+msgstr "Cerrar sesión"
+
+#: templates/base_public.html:8
+msgid "Car Rental — Public"
+msgstr "Alquiler de autos — Público"
+
+#: templates/base_public.html:90
+msgid "CAR RENTAL"
+msgstr "ALQUILER DE AUTOS"
+
+#: templates/base_public.html:95
+#, python-format
+msgid "Aluguel de carros — %(tenant)s"
+msgstr "Alquiler de autos — %(tenant)s"
+
+#: templates/base_public.html:95
+msgid "Aluguel de carros"
+msgstr "Alquiler de autos"
+
+#: templates/base_public.html:107
+msgid "Idioma"
+msgstr "Idioma"
+
+#: templates/base_public.html:132 templates/base_public.html:151 templates/site/landing.html:507 templates/site/landing.html:542 templates/site/landing.html:560
+msgid "Fechar"
+msgstr "Cerrar"
+
+#: templates/base_public.html:150
+msgid "Finalizar solicitação"
+msgstr "Enviar solicitud"
+
+#: templates/base_public.html:171
+msgid "Olá! Preciso de ajuda com minha reserva."
+msgstr "¡Hola! Necesito ayuda con mi reserva."
+
+#: templates/base_public.html:173 templates/site/landing.html:581
+msgid "Falar no WhatsApp"
+msgstr "Hablar por WhatsApp"
+
+#: templates/base_public.html:198
+msgid "Página"
+msgstr "Página"
+
+# ======= TÍTULO/HEAD =======
+#: templates/site/home.html:2
+msgid "4uFleet Pro — Software completo para locadoras (ilimitado)"
+msgstr "4uFleet Pro — Software integral para arrendadoras (ilimitado)"
+
+#: templates/site/home.html:78
+msgid "Multi-filiais sem atrito"
+msgstr "Multisucursal sin fricción"
+
+#: templates/site/home.html:79
+msgid "White-label por tenant"
+msgstr "Marca blanca por tenant"
+
+#: templates/site/home.html:80 templates/site/home.html:170
+msgid "RBAC & Auditoria"
+msgstr "RBAC y Auditoría"
+
+#: templates/site/home.html:81 templates/site/home.html:220 \
+#: templates/site/home.html:456
+msgid "API & Webhooks"
+msgstr "API y Webhooks"
+
+#: templates/site/home.html:82 templates/site/home.html:455
+msgid "SMTP por tenant"
+msgstr "SMTP por tenant"
+
+#: templates/site/home.html:85
+msgid ""
+"4uFleet Pro — escale sua locadora com integrações, segurança e operação "
+"zero atrito"
+msgstr "4uFleet Pro — escala tu arrendadora con integraciones, seguridad y operación sin fricción"
+
+#: templates/site/home.html:87
+msgid ""
+"\n"
+"      Do orçamento ao contrato assinado: calendário, bloqueios, tarifas, "
+"repasses, checklist com fotos, PDF, e-mails e relatórios — tudo no mesmo "
+"lugar.\n"
+"      "
+msgstr ""
+"Del presupuesto al contrato firmado: calendario, bloqueos, tarifas, pagos,"
+" checklists con fotos, PDF, correos e informes — todo en un solo lugar."
+
+#: templates/site/home.html:94
+msgid "Assinar Pro — US$ 89,90/mês"
+msgstr "Suscribirse a Pro — US$ 89,90/mes"
+
+#: templates/site/home.html:97 templates/site/home.html:444
+msgid "Ver demo (1:10)"
+msgstr "Ver demo (1:10)"
+
+#: templates/site/home.html:100
+msgid "Usuários e veículos ilimitados. Cancele quando quiser."
+msgstr "Usuarios y vehículos ilimitados. Cancela cuando quieras."
+
+# ======= SECCIONES =======
+#: templates/site/home.html:107 templates/site/landing.html:178
+msgid "Locadoras ativas"
+msgstr "Arrendadoras activas"
+
+#: templates/site/home.html:112 templates/site/landing.html:184
+msgid "Estados Unidos"
+msgstr "Estados Unidos"
+
+#: templates/site/home.html:113 templates/site/landing.html:190
+msgid "Canadá"
+msgstr "Canadá"
+
+#: templates/site/home.html:114 templates/site/landing.html:196
+msgid "Europa"
+msgstr "Europa"
+
+#: templates/site/home.html:128
+msgid "O que muda do “básico” para o Pro"
+msgstr "Qué cambia de lo básico a Pro"
+
+#: templates/site/home.html:129
+msgid "Operação que aguenta crescimento"
+msgstr "Operación que soporta crecimiento"
+
+#: templates/site/home.html:131
+msgid ""
+"O Pro foi desenhado para locadoras que querem escala e padronização, sem "
+"abrir mão de marca própria e segurança."
+msgstr "Pro está pensado para arrendadoras que buscan escala y estandarización sin renunciar a marca y seguridad."
+
+#: templates/site/home.html:134
+msgid "White-label por filial (cores, logos, domínios e SMTP)"
+msgstr "Marca blanca por filial (colores, logos, dominios y SMTP)"
+
+#: templates/site/home.html:135
+msgid "Permissões (RBAC) e trilhas de auditoria"
+msgstr "Permisos (RBAC) y trazas de auditoría"
+
+#: templates/site/home.html:136
+msgid "Importadores CSV (frota, clientes, reservas) com validação"
+msgstr "Importadores CSV (flota, clientes, reservas) con validación"
+
+#: templates/site/home.html:137
+msgid "API & Webhooks para automações e ERPs"
+msgstr "API y Webhooks para automatizaciones y ERPs"
+
+#: templates/site/home.html:140
+msgid "Ver preço"
+msgstr "Ver precios"
+
+#: templates/site/home.html:141 templates/site/home.html:402
+msgid "Testar antes"
+msgstr "Probar antes"
+
+#: templates/site/home.html:148
+msgid "Spotlight"
+msgstr "Spotlight"
+
+#: templates/site/home.html:159
+msgid "Poder nas rotinas que mais importam"
+msgstr "Poder en las rutinas que más importan"
+
+#: templates/site/home.html:160
+msgid "Menos atrito, mais controle: do balcão ao financeiro."
+msgstr "Menos fricción, más control: del mostrador a finanzas."
+
+#: templates/site/home.html:165
+msgid "Check-in/out com fotos"
+msgstr "Check-in/out con fotos"
+
+#: templates/site/home.html:165
+msgid "Mapa do carro, múltiplas fotos, observações e assinatura."
+msgstr "Mapa del vehículo, múltiples fotos, notas y firma."
+
+#: templates/site/home.html:166
+msgid "Contrato digital em PDF"
+msgstr "Contrato digital en PDF"
+
+#: templates/site/home.html:166
+msgid "Modelo editável com variáveis; gere e assine em segundos."
+msgstr "Plantilla editable con variables; genera y firma en segundos."
+
+#: templates/site/home.html:167 templates/site/home.html:392
+msgid "Calendário e bloqueios"
+msgstr "Calendario y bloqueos"
+
+#: templates/site/home.html:167
+msgid "Entregas, devoluções, manutenção e indisponibilidades."
+msgstr "Entregas, devoluciones, mantenimiento e indisponibilidades."
+
+#: templates/site/home.html:168 templates/site/home.html:393
+msgid "Tarifas, adicionais e repasses"
+msgstr "Tarifas, adicionales y pagos"
+
+#: templates/site/home.html:168
+msgid "Preço por categoria, diárias, taxas, caução e split interno."
+msgstr "Precio por categoría, diarias, tasas, fianza y split interno."
+
+#: templates/site/home.html:169
+msgid "E-mails transacionais (SMTP)"
+msgstr "Correos transaccionales (SMTP)"
+
+#: templates/site/home.html:169
+msgid "SMTP por tenant (Office/Google) com identidade própria."
+msgstr "SMTP por tenant (Office/Google) con identidad propia."
+
+#: templates/site/home.html:170
+msgid "Perfis e trilhas de alteração para ações críticas."
+msgstr "Perfiles y trazas de cambios para acciones críticas."
+
+#: templates/site/home.html:194
+msgid "Pronto para crescer"
+msgstr "Listo para crecer"
+
+#: templates/site/home.html:195
+msgid ""
+"White-label por filial, importadores e trilhas de auditoria — "
+"diferenciais para escala."
+msgstr "Marca blanca por filial, importadores y auditoría — diferenciales para escalar."
+
+#: templates/site/home.html:203
+msgid "Recurso"
+msgstr "Función"
+
+#: templates/site/home.html:204
+msgid "Incluso"
+msgstr "Incluido"
+
+#: templates/site/home.html:205
+msgid "Detalhes"
+msgstr "Detalles"
+
+#: templates/site/home.html:210
+msgid "White-label por tenant/filial"
+msgstr "Marca blanca por tenant/filial"
+
+#: templates/site/home.html:212
+msgid "cores/logos"
+msgstr "colores/logos"
+
+#: templates/site/home.html:212
+msgid "SMTP"
+msgstr "SMTP"
+
+#: templates/site/home.html:212
+msgid "domínio"
+msgstr "dominio"
+
+#: templates/site/home.html:215
+msgid "Importadores (CSV)"
+msgstr "Importadores (CSV)"
+
+#: templates/site/home.html:217
+msgid "Frota, clientes e reservas com validação e relatório de inconsistências"
+msgstr "Flota, clientes y reservas con validación e informe de inconsistencias"
+
+#: templates/site/home.html:222
+msgid "Eventos de reserva, contrato, checklist e devolução"
+msgstr "Eventos de reserva, contrato, checklist y devolución"
+
+#: templates/site/home.html:225
+msgid "Permissões (RBAC)"
+msgstr "Permisos (RBAC)"
+
+#: templates/site/home.html:227
+msgid "visualizar • cadastrar • editar • excluir • exportar • admin"
+msgstr "ver • crear • editar • eliminar • exportar • admin"
+
+#: templates/site/home.html:230
+msgid "App mobile"
+msgstr "App móvil"
+
+#: templates/site/home.html:232
+msgid "Checklist offline + sincronização posterior (roadmap)"
+msgstr "Checklist offline + sincronización posterior (roadmap)"
+
+#: templates/site/home.html:239
+msgid "* “Roadmap” indica funcionalidades planejadas/próximas entregas."
+msgstr "* “Roadmap” indica funcionalidades planificadas/próximas entregas."
+
+#: templates/site/home.html:247
+msgid "Integrações que cortam trabalho manual"
+msgstr "Integraciones que reducen trabajo manual"
+
+#: templates/site/home.html:248
+msgid "Pagamentos, documentos, contabilidade e comunicação — conectados."
+msgstr "Pagos, documentos, contabilidad y comunicación — conectados."
+
+#: templates/site/home.html:253
+msgid "Pagamentos"
+msgstr "Pagos"
+
+#: templates/site/home.html:253
+msgid "Stripe (recorrência e links de cobrança)"
+msgstr "Stripe (recurrencia y enlaces de cobro)"
+
+#: templates/site/home.html:254
+msgid "Documentos"
+msgstr "Documentos"
+
+#: templates/site/home.html:254
+msgid "Modelos com variáveis; assinatura em balcão"
+msgstr "Plantillas con variables; firma en mostrador"
+
+#: templates/site/home.html:255
+msgid "E-mail/SMTP"
+msgstr "Correo/SMTP"
+
+#: templates/site/home.html:255
+msgid "Office365, Google Workspace (por tenant)"
+msgstr "Office 365, Google Workspace (por tenant)"
+
+#: templates/site/home.html:256
+msgid "Fiscal/Contábil"
+msgstr "Fiscal/Contable"
+
+#: templates/site/home.html:256
+msgid "Exportações CSV/Excel; webhooks para ERPs"
+msgstr "Exportaciones CSV/Excel; webhooks para ERPs"
+
+#: templates/site/home.html:257 templates/site/home.html:465
+msgid "Mapas/Endereços"
+msgstr "Mapas/Direcciones"
+
+#: templates/site/home.html:257
+msgid "Autocomplete e normalização de endereço"
+msgstr "Autocompletar y normalización de direcciones"
+
+#: templates/site/home.html:258
+msgid "Webhooks"
+msgstr "Webhooks"
+
+#: templates/site/home.html:258
+msgid "Eventos: reserva, contrato, checklist, devolução"
+msgstr "Eventos: reserva, contrato, checklist, devolución"
+
+#: templates/site/home.html:284
+msgid "Relatórios que guiam decisões"
+msgstr "Informes que guían decisiones"
+
+#: templates/site/home.html:285
+msgid ""
+"Desempenho por categoria, utilização de frota, manutenção, recebíveis e "
+"receita."
+msgstr "Desempeño por categoría, utilización de flota, mantenimiento, cuentas y ingresos."
+
+#: templates/site/home.html:287
+msgid "KPI por período e filial"
+msgstr "KPIs por período y filial"
+
+#: templates/site/home.html:288
+msgid "Exportar para CSV/Excel"
+msgstr "Exportar a CSV/Excel"
+
+#: templates/site/home.html:289
+msgid "Logs e trilhas de auditoria"
+msgstr "Logs y trazas de auditoría"
+
+#: templates/site/home.html:294
+msgid "Utilização da frota"
+msgstr "Utilización de la flota"
+
+#: templates/site/home.html:295
+msgid "Receita por categoria"
+msgstr "Ingresos por categoría"
+
+#: templates/site/home.html:296
+msgid "Ticket médio"
+msgstr "Ticket medio"
+
+#: templates/site/home.html:297
+msgid "Atrasos & incidências"
+msgstr "Retrasos e incidencias"
+
+#: templates/site/home.html:308
+msgid "Como começar em 3 passos"
+msgstr "Cómo empezar en 3 pasos"
+
+#: templates/site/home.html:309
+msgid "Fluxo rápido da criação à operação."
+msgstr "Flujo rápido desde la creación hasta la operación."
+
+#: templates/site/home.html:316
+msgid "Criar conta e identidade"
+msgstr "Crear cuenta e identidad"
+
+#: templates/site/home.html:317
+msgid "Defina cores, logo, domínio e SMTP do seu tenant."
+msgstr "Define colores, logo, dominio y SMTP de tu tenant."
+
+#: templates/site/home.html:325
+msgid "Importar dados & configurar tarifas"
+msgstr "Importar datos y configurar tarifas"
+
+#: templates/site/home.html:326
+msgid "Frota, clientes e políticas; adicionais e caução."
+msgstr "Flota, clientes y políticas; adicionales y fianza."
+
+#: templates/site/home.html:334
+msgid "Fechar contratos com fotos & PDF"
+msgstr "Cerrar contratos con fotos y PDF"
+
+#: templates/site/home.html:335
+msgid "Checklist com evidências, assinatura e e-mails automáticos."
+msgstr "Checklist con evidencias, firma y correos automáticos."
+
+#: templates/site/home.html:341 templates/site/home.html:445
+msgid "Começar agora"
+msgstr "Empezar ahora"
+
+#: templates/site/home.html:350
+msgid "Histórias reais"
+msgstr "Historias reales"
+
+#: templates/site/home.html:351
+msgid "Quem usa, recomenda. Resultados em poucos dias."
+msgstr "Quien usa, recomienda. Resultados en pocos días."
+
+#: templates/site/home.html:356
+msgid ""
+"Migramos num fim de semana. O checklist com fotos salvou o nosso caução "
+"duas vezes."
+msgstr "Migramos en un fin de semana. El checklist con fotos salvó nuestra fianza dos veces."
+
+#: templates/site/home.html:362
+msgid ""
+"Contrato digital e e-mails automáticos acabaram com o retrabalho. "
+"Atendimento subiu muito."
+msgstr "El contrato digital y los correos automáticos eliminaron el retrabajo. La atención mejoró muchísimo."
+
+#: templates/site/home.html:368
+msgid ""
+"Com calendário e tarifário por categoria, parei de errar preço. Escalamos"
+" sem dor."
+msgstr "Con el calendario y la tarifa por categoría dejé de errar el precio. Escalamos sin dolor."
+
+# ======= PRECIO =======
+#: templates/site/home.html:380
+msgid "Plano Pro"
+msgstr "Plan Pro"
+
+#: templates/site/home.html:381
+msgid "Preço simples, ilimitado"
+msgstr "Precio simple e ilimitado"
+
+#: templates/site/home.html:382
+msgid "Sem limite de usuários. Sem limite de veículos."
+msgstr "Sin límite de usuarios. Sin límite de vehículos."
+
+#: templates/site/home.html:388
+msgid "US$ 89,90"
+msgstr "US$ 89,90"
+
+#: templates/site/home.html:388
+msgid "/ mês"
+msgstr "/ mes"
+
+#: templates/site/home.html:389
+msgid ""
+"Contrato PDF • Checklists com fotos • SMTP por tenant • API & Webhooks • "
+"Auditoria"
+msgstr "Contrato PDF • Checklists con fotos • SMTP por tenant • API y Webhooks • Auditoría"
+
+#: templates/site/home.html:394
+msgid "Importadores de dados (CSV)"
+msgstr "Importadores de datos (CSV)"
+
+#: templates/site/home.html:395
+msgid "Logs e permissões por perfil"
+msgstr "Logs y permisos por perfil"
+
+#: templates/site/home.html:399
+msgid "Assinar agora"
+msgstr "Suscribirse ahora"
+
+#: templates/site/home.html:405
+msgid "Cancelamento a qualquer momento."
+msgstr "Cancela cuando quieras."
+
+# ======= SOPORTE =======
+#: templates/site/home.html:418
+msgid "Dúvidas? Implementamos com você"
+msgstr "¿Dudas? Te ayudamos a implementar"
+
+#: templates/site/home.html:419
+msgid "Migração de dados, configuração de políticas e treinamento do time."
+msgstr "Migración de datos, configuración de políticas y capacitación del equipo."
+
+#: templates/site/home.html:422
+msgid "Olá! Quero conhecer o 4uFleet Pro e entender a implementação."
+msgstr "¡Hola! Quiero conocer 4uFleet Pro y entender la implementación."
+
+#: templates/site/home.html:434
+msgid "Mapa do Site"
+msgstr "Mapa del sitio"
+
+#: templates/site/home.html:435
+msgid "Atalhos para tudo que você precisa, em um só lugar."
+msgstr "Atajos a todo lo que necesitas, en un solo lugar."
+
+# ======= FOOTER / MAPA DEL SITIO =======
+#: templates/site/home.html:440 templates/site/landing.html:471
+msgid "Produto"
+msgstr "Producto"
+
+#: templates/site/home.html:442
+msgid "Visão geral"
+msgstr "Visión general"
+
+#: templates/site/home.html:443
+msgid "Preços (Plano Pro)"
+msgstr "Precios (Plan Pro)"
+
+#: templates/site/home.html:449 templates/site/landing.html:473
+msgid "Recursos"
+msgstr "Funciones"
+
+#: templates/site/home.html:451
+msgid "Contrato PDF"
+msgstr "Contrato en PDF"
+
+#: templates/site/home.html:452 templates/site/landing.html:214
+msgid "Checklists com fotos"
+msgstr "Checklists con fotos"
+
+#: templates/site/home.html:453
+msgid "Calendário & bloqueios"
+msgstr "Calendario y bloqueos"
+
+#: templates/site/home.html:454
+msgid "Tarifas & repasses"
+msgstr "Tarifas y pagos"
+
+#: templates/site/home.html:460
+msgid "Integrações"
+msgstr "Integraciones"
+
+#: templates/site/home.html:462
+msgid "Stripe (pagamentos)"
+msgstr "Stripe (pagos)"
+
+#: templates/site/home.html:463
+msgid "E-mail (Office/Google)"
+msgstr "Correo (Office/Google)"
+
+#: templates/site/home.html:464
+msgid "Exportações CSV/Excel"
+msgstr "Exportaciones CSV/Excel"
+
+#: templates/site/home.html:466
+msgid "Webhooks (eventos)"
+msgstr "Webhooks (eventos)"
+
+#: templates/site/home.html:470
+msgid "Empresa"
+msgstr "Empresa"
+
+#: templates/site/home.html:472
+msgid "Contato comercial"
+msgstr "Contacto comercial"
+
+#: templates/site/home.html:473
+msgid "Olá! Quero conhecer o 4uFleet Pro."
+msgstr "¡Hola! Quiero conocer 4uFleet Pro."
+
+#: templates/site/home.html:475
+msgid "Criar conta"
+msgstr "Crear cuenta"
+
+#: templates/site/home.html:476 templates/site/landing.html:493
+msgid "Termos de uso"
+msgstr "Términos de uso"
+
+#: templates/site/home.html:477
+msgid "Política de Privacidade"
+msgstr "Política de Privacidad"
+
+#: templates/site/home.html:484
+msgid "* Ajuste os paths conforme suas rotas ativas."
+msgstr "* Ajusta las rutas según tus endpoints activos."
+
+# ======= LANDING =======
+#: templates/site/landing.html:2
+msgid "4uFleet — Car rental software"
+msgstr "4uFleet — Software para alquiler de autos"
+
+# HERO / NUEVO MENSAJE
+#: templates/site/landing.html:89
+msgid "Teste grátis de 7 dias"
+msgstr "Prueba gratuita de 7 días"
+
+#: templates/site/landing.html:91
+msgid ""
+"O sistema de locação que acelera sua operação — simples, moderno e "
+"ilimitado."
+msgstr "El sistema de alquiler que acelera tu operación — simple, moderno e ilimitado."
+
+#: templates/site/landing.html:94
+msgid ""
+"\n"
+"          Reservas, checklist com fotos e assinatura, contrato PDF, "
+"repasses e régua de cobrança — tudo em uma plataforma unificada.\n"
+"          "
+msgstr ""
+"Reservas, checklists con fotos y firma, contrato PDF, pagos y cobranzas — "
+"todo en una plataforma unificada."
+
+#: templates/site/landing.html:100
+msgid "Contrato assinado em PDF"
+msgstr "Contrato PDF firmado"
+
+#: templates/site/landing.html:101
+msgid "Checklists com mapa do carro"
+msgstr "Checklists con mapa de daños"
+
+#: templates/site/landing.html:102 templates/site/landing.html:218
+msgid "E-mails transacionais"
+msgstr "Correos transaccionales"
+
+#: templates/site/landing.html
+msgid "Iniciar teste de 7 dias"
+msgstr "Comenzar prueba de 7 días"
+
+#: templates/site/landing.html:114 templates/site/landing.html:332
+msgid "Ver termos"
+msgstr "Ver términos"
+
+#: templates/site/landing.html:117
+msgid "Ver vídeo (1:10)"
+msgstr "Ver video (1:10)"
+
+#: templates/site/landing.html:121
+msgid "Teste de 7 dias • Ativação imediata"
+msgstr "Prueba de 7 días • Activación inmediata"
+
+# CARD PRECIO / PRO
+#: templates/site/landing.html:129
+msgid "Assinatura Pro"
+msgstr "Suscripción Pro"
+
+#: templates/site/landing.html:131
+msgid "mês"
+msgstr "mes"
+
+#: templates/site/landing.html:133
+msgid "Inclui teste gratuito de 7 dias. Após o período, a cobrança é mensal."
+msgstr "Incluye una prueba gratuita de 7 días. Tras el período, la facturación es mensual."
+
+#: templates/site/landing.html:137
+msgid "Usuários ilimitados"
+msgstr "Usuarios ilimitados"
+
+#: templates/site/landing.html:138
+msgid "Veículos e categorias ilimitados"
+msgstr "Flota y categorías ilimitadas"
+
+#: templates/site/landing.html:139
+msgid "Templates de contrato editáveis"
+msgstr "Plantillas de contrato editables"
+
+#: templates/site/landing.html:140
+msgid "Notificações por e-mail"
+msgstr "Notificaciones por correo"
+
+#: templates/site/landing.html:147
+msgid "Começar agora — 7 dias grátis"
+msgstr "Empezar ahora — prueba de 7 días"
+
+#: templates/site/landing.html:151
+msgid "Cancele quando quiser. Sem taxa de instalação."
+msgstr "Cancela cuando quieras. Sin costo de instalación."
+
+# PRUEBA SOCIAL
+#: templates/site/landing.html:159
+msgid "Confiado por locadoras independentes"
+msgstr "Confiado por arrendadoras independientes"
+
+#: templates/site/landing.html:208
+msgid "Tudo que você precisa para operar bem"
+msgstr "Todo lo que necesitas para operar bien"
+
+#: templates/site/landing.html:209
+msgid "Foco em velocidade, segurança e simplicidade."
+msgstr "Enfoque en velocidad, seguridad y simplicidad."
+
+#: templates/site/landing.html:214
+msgid "Registre danos com evidências fotográficas, mapa do carro e assinatura."
+msgstr "Registra daños con evidencia fotográfica, mapa del vehículo y firma."
+
+#: templates/site/landing.html:215
+msgid "Contrato em PDF"
+msgstr "Contrato en PDF"
+
+#: templates/site/landing.html:215
+msgid "Modelo editável, geração instantânea e assinatura no balcão."
+msgstr "Plantilla editable, generación al instante y firma en mostrador."
+
+#: templates/site/landing.html:216
+msgid "Calendário de reservas"
+msgstr "Calendario de reservas"
+
+#: templates/site/landing.html:216
+msgid "Visão clara de entregas, devoluções e manutenções."
+msgstr "Visión clara de entregas, devoluciones y mantenimiento."
+
+#: templates/site/landing.html:217
+msgid "Tarifas e repasses"
+msgstr "Tarifas y pagos"
+
+#: templates/site/landing.html:217
+msgid "Controle de preços, adicionais e repasses."
+msgstr "Control de precios, adicionales y pagos."
+
+#: templates/site/landing.html:218
+msgid "Envio por SMTP do seu tenant, com identidade própria."
+msgstr "Envío por SMTP de tu tenant, con identidad propia."
+
+#: templates/site/landing.html:219
+msgid "Auditoria e logs"
+msgstr "Auditoría y registros"
+
+#: templates/site/landing.html:219
+msgid "Rastreabilidade de ações críticas no sistema."
+msgstr "Trazabilidad de acciones críticas en el sistema."
+
+# VIDEO
+#: templates/site/landing.html:246
+msgid "Demo"
+msgstr "Demo"
+
+#: templates/site/landing.html:250
+msgid "Assistir demo"
+msgstr "Ver demo"
+
+#: templates/site/landing.html:255
+msgid "Visão rápida em 60 segundos"
+msgstr "Vista rápida en 60 segundos"
+
+#: templates/site/landing.html:256
+msgid ""
+"Conheça o fluxo de ponta a ponta: da reserva ao contrato assinado — com "
+"checagem e fotos."
+msgstr "Conoce el flujo de punta a punta: de la reserva al contrato firmado — con verificación y fotos."
+
+#: templates/site/landing.html:260
+msgid "Onboarding em minutos"
+msgstr "Onboarding en minutos"
+
+#: templates/site/landing.html:260
+msgid "Crie sua conta e publique a frota em 15 minutos."
+msgstr "Crea tu cuenta y publica la flota en 15 minutos."
+
+#: templates/site/landing.html:264
+msgid "Nuvem segura"
+msgstr "Nube segura"
+
+#: templates/site/landing.html:264
+msgid "Backups, SSL e atualizações contínuas."
+msgstr "Backups, SSL y actualizaciones continuas."
+
+#: templates/site/landing.html:268
+msgid "Sem limite de uso"
+msgstr "Sin límite de uso"
+
+#: templates/site/landing.html:268
+msgid "Usuários e veículos ilimitados no plano Pro."
+msgstr "Usuarios y vehículos ilimitados en el plan Pro."
+
+# GALERÍA
+#: templates/site/landing.html:280
+msgid "Interface moderna e clara"
+msgstr "Interfaz moderna y clara"
+
+#: templates/site/landing.html:281
+msgid "Alguns prints da aplicação."
+msgstr "Algunas capturas de la aplicación."
+
+#: templates/site/landing.html:290
+msgid "Tela"
+msgstr "Pantalla"
+
+# CÓMO FUNCIONA / TÉRMINOS
+#: templates/site/landing.html:309
+msgid "Como funciona o teste e a assinatura"
+msgstr "Cómo funciona la prueba y la suscripción"
+
+#: templates/site/landing.html:312
+msgid "7 dias de teste com todos os recursos."
+msgstr "7 días de prueba con todas las funciones."
+
+#: templates/site/landing.html:315
+#, python-format
+msgid ""
+"Após o teste, a assinatura continua por <strong>US$ "
+"%(price)s</strong>/mês."
+msgstr "Tras la prueba, la suscripción continúa por <strong>US$ %(price)s</strong>/mes."
+
+#: templates/site/landing.html:318
+msgid "Usuários e veículos ilimitados, sem taxas ocultas."
+msgstr "Usuarios y vehículos ilimitados, sin costos ocultos."
+
+#: templates/site/landing.html:321
+msgid "Cancele quando quiser, direto pelo painel."
+msgstr "Cancela cuando quieras, directamente desde el panel."
+
+#: templates/site/landing.html:329 templates/site/landing.html:559
+msgid "Iniciar meu teste"
+msgstr "Iniciar mi prueba"
+
+#: templates/site/landing.html:338
+msgid "Em 3 passos"
+msgstr "En 3 pasos"
+
+#: templates/site/landing.html:342
+msgid "Crie sua conta"
+msgstr "Crea tu cuenta"
+
+#: templates/site/landing.html:344
+msgid "Acesse"
+msgstr "Accede a"
+
+#: templates/site/landing.html:349
+msgid "e ative sua locadora."
+msgstr "y activa tu arrendadora."
+
+#: templates/site/landing.html:355
+msgid "Cadastre frota e tarifas"
+msgstr "Registra flota y tarifas"
+
+#: templates/site/landing.html:355
+msgid "Defina preços, adicionais e posicione sua assinatura no contrato."
+msgstr "Define precios, adicionales y coloca tu firma en el contrato."
+
+#: templates/site/landing.html:359
+msgid "Finalize os aluguéis no sistema"
+msgstr "Finaliza los alquileres en el sistema"
+
+#: templates/site/landing.html:359
+msgid "Checklist com fotos, contrato PDF e comunicação por e-mail."
+msgstr "Checklist con fotos, contrato PDF y comunicación por correo."
+
+# SOPORTE
+#: templates/site/landing.html:373
+msgid "Dúvidas na implementação?"
+msgstr "¿Dudas en la implementación?"
+
+#: templates/site/landing.html:374
+msgid ""
+"Fale direto com nossa equipe — vamos profissionalizar sua operação e dar "
+"mais confiança ao seu cliente."
+msgstr "Habla directo con nuestro equipo — profesionalizamos tu operación y aumentamos la confianza del cliente."
+
+#: templates/site/landing.html:377 templates/site/landing.html:579
+msgid "Olá! Tenho dúvidas sobre a implementação do 4uFleet. Podemos falar?"
+msgstr "¡Hola! Tengo dudas sobre la implementación de 4uFleet. ¿Podemos hablar?"
+
+# TESTIMONIOS
+#: templates/site/landing.html:389
+msgid "Quem usa, recomenda"
+msgstr "Quien usa, recomienda"
+
+#: templates/site/landing.html:390
+msgid "Feedback de locadoras que simplificaram a operação."
+msgstr "Opiniones de arrendadoras que simplificaron la operación."
+
+#: templates/site/landing.html:395
+msgid ""
+"Implementamos em um fim de semana. O check-in com fotos salvou meu "
+"depósito em duas ocasiões."
+msgstr "Implementamos en un fin de semana. El check-in con fotos salvó nuestro depósito dos veces."
+
+#: templates/site/landing.html:396
+msgid "Sócia, JetCar"
+msgstr "Socia, JetCar"
+
+#: templates/site/landing.html:401
+msgid ""
+"O contrato digital e os e-mails automáticos eliminaram ligações e papel. "
+"Fluxo muito mais confiável."
+msgstr "El contrato digital y los correos automáticos eliminaron llamadas y papel. Flujo mucho más confiable."
+
+#: templates/site/landing.html:402
+msgid "Gerente, EasyDrive"
+msgstr "Gerente, EasyDrive"
+
+#: templates/site/landing.html:407
+msgid ""
+"Com o calendário e as tarifas por categoria, parei de errar preço. "
+"Crescemos com previsibilidade."
+msgstr "Con el calendario y la tarifa por categoría dejé de errar el precio. Crecimos con previsibilidad."
+
+#: templates/site/landing.html:408
+msgid "Owner, BlueRent"
+msgstr "Owner, BlueRent"
+
+# FAQ
+#: templates/site/landing.html:419
+msgid "Perguntas frequentes"
+msgstr "Preguntas frecuentes"
+
+#: templates/site/landing.html:425
+msgid "Como funciona o teste de 7 dias?"
+msgstr "¿Cómo funciona la prueba de 7 días?"
+
+#: templates/site/landing.html:428
+msgid ""
+"Você tem acesso completo por 7 dias. Ao final do período, a assinatura é "
+"ativada automaticamente, a menos que você cancele antes do vencimento."
+msgstr "Tienes acceso completo por 7 días. Al final del período, la suscripción se activa automáticamente a menos que canceles antes del vencimiento."
+
+#: templates/site/landing.html:433
+msgid "Posso cancelar quando quiser?"
+msgstr "¿Puedo cancelar cuando quiera?"
+
+#: templates/site/landing.html:435
+msgid ""
+"Sim. O cancelamento pode ser feito a qualquer momento pelo painel, sem "
+"multa."
+msgstr "Sí. Puedes cancelar en cualquier momento desde el panel, sin cargos."
+
+#: templates/site/landing.html:439
+msgid "Tem limite de frota ou usuários?"
+msgstr "¿Hay límite de flota o usuarios?"
+
+#: templates/site/landing.html:441
+msgid "Não. O plano Pro inclui usuários e veículos ilimitados."
+msgstr "No. El plan Pro incluye usuarios y vehículos ilimitados."
+
+#: templates/site/landing.html:453
+msgid "Pronto para começar seu teste de 7 dias?"
+msgstr "¿Listo para empezar tu prueba de 7 días?"
+
+#: templates/site/landing.html:454
+msgid "Leva poucos minutos para configurar e colocar sua operação no ar."
+msgstr "Toma pocos minutos configurar y poner tu operación en marcha."
+
+#: templates/site/landing.html:456
+msgid "Iniciar meu teste agora"
+msgstr "Iniciar mi prueba ahora"
+
+#: templates/site/landing.html:468
+msgid "Plano Pro com teste gratuito de 7 dias."
+msgstr "Plan Pro con prueba gratuita de 7 días."
+
+#: templates/site/landing.html:474
+msgid "Screenshots"
+msgstr "Capturas"
+
+#: templates/site/landing.html:475
+msgid "Como funciona"
+msgstr "Cómo funciona"
+
+#: templates/site/landing.html:476
+msgid "FAQ"
+msgstr "FAQ"
+
+#: templates/site/landing.html:480
+msgid "Suporte"
+msgstr "Soporte"
+
+#: templates/site/landing.html:482
+msgid "Contato"
+msgstr "Contacto"
+
+#: templates/site/landing.html:484 templates/site/landing.html:515
+msgid "Telefone"
+msgstr "Teléfono"
+
+#: templates/site/landing.html:488
+msgid "Ação"
+msgstr "Acción"
+
+# MODALES
+#: templates/site/landing.html:506
+msgid "Comece seu teste em minutos"
+msgstr "Empieza tu prueba en minutos"
+
+#: templates/site/landing.html:511
+msgid "Seu nome"
+msgstr "Tu nombre"
+
+#: templates/site/landing.html:519
+msgid "E-mail"
+msgstr "Correo"
+
+#: templates/site/landing.html:523
+msgid "Enviaremos um e-mail com o link para criar sua conta e iniciar o teste."
+msgstr "Te enviaremos un correo con el enlace para crear tu cuenta e iniciar la prueba."
+
+#: templates/site/landing.html:528
+msgid "Cancelar"
+msgstr "Cancelar"
+
+#: templates/site/landing.html:529 templates/site/landing.html:635
+msgid "Enviar"
+msgstr "Enviar"
+
+#: templates/site/landing.html:541
+#, python-format
+msgid "Termos de uso — Assinatura Pro %(brand)s"
+msgstr "Términos de uso — Suscripción Pro %(brand)s"
+
+#: templates/site/landing.html:546
+msgid "Período de teste:"
+msgstr "Período de prueba:"
+
+#: templates/site/landing.html:546
+msgid "7 dias com acesso completo. O teste inicia na ativação da conta."
+msgstr "7 días con acceso completo. La prueba inicia con la activación de la cuenta."
+
+#: templates/site/landing.html:547
+msgid "Cobrança:"
+msgstr "Facturación:"
+
+#: templates/site/landing.html:548
+#, python-format
+msgid "após o teste, a assinatura continua por US$ %(price)s/mês, recorrente."
+msgstr "tras la prueba, la suscripción continúa por US$ %(price)s/mes, recurrente."
+
+#: templates/site/landing.html:550
+msgid "Cancelamento:"
+msgstr "Cancelación:"
+
+#: templates/site/landing.html:550
+msgid ""
+"você pode cancelar a qualquer momento pelo painel. O acesso permanece até"
+" o fim do ciclo vigente."
+msgstr "puedes cancelar en cualquier momento desde el panel. El acceso se mantiene hasta el fin del ciclo vigente."
+
+#: templates/site/landing.html:551
+msgid "Limites:"
+msgstr "Límites:"
+
+#: templates/site/landing.html:551
+msgid ""
+"usuários e veículos ilimitados no plano Pro; aplicam-se apenas limites "
+"técnicos de uso justo (armazenamento de fotos, e-mails etc.)."
+msgstr "usuarios y vehículos ilimitados en el plan Pro; aplican solo límites técnicos de uso justo (almacenamiento de fotos, correos, etc.)."
+
+#: templates/site/landing.html:552
+msgid "Privacidade:"
+msgstr "Privacidad:"
+
+#: templates/site/landing.html:552
+msgid ""
+"seguimos boas práticas de proteção de dados; consulte a Política de "
+"Privacidade."
+msgstr "seguimos buenas prácticas de protección de datos; consulta la Política de Privacidad."
+
+#: templates/site/landing.html:553
+msgid "Suporte:"
+msgstr "Soporte:"
+
+#: templates/site/landing.html:553
+msgid "atendimento por e-mail; prazos podem variar conforme demanda."
+msgstr "atención por correo; los plazos pueden variar según la demanda."
+
+#: templates/site/landing.html:554
+msgid "Atualizações:"
+msgstr "Actualizaciones:"
+
+#: templates/site/landing.html:554
+msgid "podemos atualizar estes termos a qualquer momento."
+msgstr "podemos actualizar estos términos en cualquier momento."
+
+#: templates/site/landing.html:556
+msgid "Dúvidas? Fale conosco!"
+msgstr "¿Dudas? ¡Habla con nosotros!"
+
+#: templates/site/landing.html:590
+msgid "Enviando..."
+msgstr "Enviando..."
+
+#: templates/site/landing.html:591
+msgid ""
+"Pronto! Enviamos um e-mail com o link para você criar sua conta e iniciar"
+" o teste."
+msgstr "¡Listo! Enviamos un correo con el enlace para crear tu cuenta e iniciar la prueba."
+
+#: templates/site/landing.html:592
+msgid "Não foi possível enviar agora."
+msgstr "No fue posible enviar ahora."
+
+#: templates/site/landing.html:593
+msgid "Falha de rede. Tente novamente."
+msgstr "Falla de red. Intenta de nuevo."

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Confirmar parceria</h3>
+  <a class="btn btn-outline-secondary" href="{{ url_for('admin.partners_home', tenant_slug=g.tenant.slug) }}">Cancelar</a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <p class="mb-3">Você está prestes a vincular sua locadora com:</p>
+
+    <div class="d-flex align-items-center gap-3 mb-3">
+      {% if invite.inviter_tenant.logo_path %}
+        <img src="{{ url_for('static', filename=invite.inviter_tenant.logo_path) }}" alt="logo"
+             style="height:48px;width:auto">
+      {% endif %}
+      <div>
+        <div class="fw-semibold">{{ invite.inviter_tenant.name }}</div>
+        <div class="text-muted small">{{ invite.inviter_tenant.slug }}</div>
+        {% if invite.note %}
+          <div class="text-muted mt-1"><em>Nota:</em> {{ invite.note }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <form method="post" action="{{ url_for('admin.partners_accept', tenant_slug=g.tenant.slug) }}">
+      <input type="hidden" name="code" value="{{ invite.code }}">
+      <button class="btn btn-primary">Confirmar parceria</button>
+      <a class="btn btn-light" href="{{ url_for('admin.partners_home', tenant_slug=g.tenant.slug) }}">Voltar</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

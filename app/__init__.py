@@ -1,21 +1,48 @@
 # app/__init__.py
 from __future__ import annotations
+from pathlib import Path
 
 import os
 from datetime import date, datetime
 
-from flask import Flask, redirect, url_for, g, request
+from flask import (
+    Flask, redirect, url_for, g, request, current_app, session
+)
 from dotenv import load_dotenv, find_dotenv
 from flask_migrate import Migrate
-from . import models_site
+
+# i18n
+from flask_babel import Babel, gettext, ngettext, get_locale
+
+from . import models_site  # noqa: F401
 from .config import Config
 from .extensions import db, login_manager
 from app.admin.routes_email_test import emailtest_bp
 
-migrate = Migrate()
-
-# importa utils uma única vez; o filtro imgsrc vem daqui
 from . import utils
+
+migrate = Migrate()
+babel = Babel()
+
+
+# --- helper p/ gerar URL da mesma página trocando o lang ---
+def locale_url(lang_code: str) -> str:
+    try:
+        ep = request.endpoint or "site.landing"
+
+        # path vars (ex.: <tenant_slug>) + lang
+        path_args = dict(request.view_args or {})
+        path_args["lang"] = lang_code
+
+        # query string atual (sem duplicar lang)
+        qs = request.args.to_dict(flat=True) if request.args else {}
+        qs.pop("lang", None)
+
+        # monta a URL preservando endpoint, path args e query
+        return url_for(ep, **path_args, **qs)
+    except Exception:
+        # fallback
+        return url_for("site.landing", lang=lang_code)
 
 
 def create_app() -> Flask:
@@ -31,9 +58,42 @@ def create_app() -> Flask:
     app.config.from_object(Config())
     app.config.setdefault("TEMPLATES_AUTO_RELOAD", True)
 
-    from .filters import imgsrc
-    app.jinja_env.filters['imgsrc'] = imgsrc
+    # ---------- i18n / Babel ----------
+    app.config.setdefault("LANGUAGES", ["pt", "en", "es"])
+    app.config.setdefault("BABEL_DEFAULT_LOCALE", "pt")
+    app.config.setdefault("BABEL_DEFAULT_TIMEZONE", "America/Sao_Paulo")
+    _trans_dir = str((Path(app.root_path) / ".." / "translations").resolve())
+    app.config["BABEL_TRANSLATION_DIRECTORIES"] = _trans_dir
+
+    # Seletor de locale: ?lang= -> session -> Accept-Language -> default
+    def _select_locale():
+        langs = current_app.config.get("LANGUAGES", ["pt", "en", "es"])
+        qlang = request.args.get("lang")
+        if qlang and qlang in langs:
+            session["lang"] = qlang
+            return qlang
+        slang = session.get("lang")
+        if slang in langs:
+            return slang
+        return (
+            request.accept_languages.best_match(langs)
+            or current_app.config.get("BABEL_DEFAULT_LOCALE", "pt")
+        )
+
+    babel.init_app(app, locale_selector=_select_locale)
+
+    # Helpers do Jinja (inclui locale_url!)
+    app.jinja_env.globals.update(
+        _=gettext,
+        ngettext=ngettext,
+        get_locale=get_locale,
+        locale_url=locale_url,
+    )
+    app.jinja_env.add_extension("jinja2.ext.i18n")
+
     # --------- Filtros Jinja ----------
+    from .filters import imgsrc
+    app.jinja_env.filters["imgsrc"] = imgsrc
     app.add_template_filter(utils.imgsrc, "imgsrc")
 
     def datefmt_long_pt(value):
@@ -66,7 +126,6 @@ def create_app() -> Flask:
 
     @app.template_filter("static_rel")
     def static_rel(path: str | None) -> str:
-        """Remove 'static/' e a barra inicial para uso em url_for('static', filename=...)."""
         if not path:
             return ""
         p = str(path).lstrip("/")
@@ -74,18 +133,31 @@ def create_app() -> Flask:
             p = p[7:]
         return p
 
-    # --------- Contexto comum nos templates ----------
+    # --------- Contexto comum ----------
     @app.context_processor
     def inject_common():
         def env(name, default=""):
             return os.getenv(name, default)
 
         t = getattr(g, "tenant", None)
+
+        wa = getattr(g, "tenant_wa_public", None)
+        if (not wa) and t:
+            try:
+                from app.services.tenant_settings import load_tenant_whatsapp
+                wa = load_tenant_whatsapp(current_app.instance_path, t.slug) or ""
+            except Exception:
+                wa = ""
+
         return {
-            "config": app.config,
+            "config": current_app.config,
             "env": env,
             "tenant": t,
-            "current_tenant": t,  # alias p/ templates legados
+            "current_tenant": t,      # alias legado
+            "tenant_wa_public": wa,   # legado
+            "wa_cfg_public": wa,      # usado no base_public
+            "LANGUAGES": current_app.config.get("LANGUAGES", ["pt", "en", "es"]),
+            "current_locale": str(get_locale() or "pt"),
         }
 
     # --------- Extensões ----------
@@ -105,7 +177,7 @@ def create_app() -> Flask:
         if p.startswith("/static/http:/") and not p.startswith("/static/http://"):
             return redirect("http://" + p[len("/static/http:/"):], code=302)
 
-    # --------- CSP mínima para páginas com editores ----------
+    # --------- CSP mínima ----------
     @app.after_request
     def apply_csp(resp):
         if request.endpoint in ("admin.settings", "admin.contract_preview", "admin.contract_validate") \
@@ -117,11 +189,11 @@ def create_app() -> Flask:
         return resp
 
     # --------- Blueprints ----------
-    from .site import site_bp              # /landing, /signup
-    from .public import public_bp          # /<tenant_slug>/
-    from .auth import auth_bp              # /<tenant_slug>/auth
-    from .admin import admin_bp            # /<tenant_slug>/admin
-    from .superadmin import superadmin_bp  # /superadmin
+    from .site import site_bp
+    from .public import public_bp
+    from .auth import auth_bp
+    from .admin import admin_bp
+    from .superadmin import superadmin_bp
 
     app.register_blueprint(site_bp)
     app.register_blueprint(public_bp,  url_prefix="/<tenant_slug>")
@@ -134,6 +206,5 @@ def create_app() -> Flask:
     @app.get("/")
     def index():
         return redirect(url_for("site.landing"))
-    
 
     return app

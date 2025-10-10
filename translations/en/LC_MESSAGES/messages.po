@@ -1,0 +1,1107 @@
+msgid ""
+msgstr ""
+"Project-Id-Version:  4uFleet\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-09 10:09-0400\n"
+"PO-Revision-Date: 2025-10-09 00:00+0000\n"
+"Last-Translator: \n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: templates/base.html:169
+msgid "Sair"
+msgstr "Sign out"
+
+#: templates/base_public.html:8
+msgid "Car Rental — Public"
+msgstr "Car Rental — Public"
+
+#: templates/base_public.html:90
+msgid "CAR RENTAL"
+msgstr "CAR RENTAL"
+
+#: templates/base_public.html:95
+#, python-format
+msgid "Aluguel de carros — %(tenant)s"
+msgstr "Car rental — %(tenant)s"
+
+#: templates/base_public.html:95
+msgid "Aluguel de carros"
+msgstr "Car rental"
+
+#: templates/base_public.html:107
+msgid "Idioma"
+msgstr "Language"
+
+#: templates/base_public.html:132 templates/base_public.html:151 templates/site/landing.html:507 templates/site/landing.html:542 templates/site/landing.html:560
+msgid "Fechar"
+msgstr "Close"
+
+
+#: templates/base_public.html:150
+msgid "Finalizar solicitação"
+msgstr "Submit request"
+
+#: templates/base_public.html:171
+msgid "Olá! Preciso de ajuda com minha reserva."
+msgstr "Hi! I need help with my booking."
+
+#: templates/base_public.html:173 templates/site/landing.html:581
+msgid "Falar no WhatsApp"
+msgstr "Chat on WhatsApp"
+
+#: templates/base_public.html:198
+msgid "Página"
+msgstr "Page"
+
+# ======= HOME =======
+#: templates/site/home.html:2
+msgid "4uFleet Pro — Software completo para locadoras (ilimitado)"
+msgstr "4uFleet Pro — Complete software for rental companies (unlimited)"
+
+#: templates/site/home.html:78
+msgid "Multi-filiais sem atrito"
+msgstr "Multi-branch without friction"
+
+#: templates/site/home.html:79
+msgid "White-label por tenant"
+msgstr "White-label per tenant"
+
+#: templates/site/home.html:80 templates/site/home.html:170
+msgid "RBAC & Auditoria"
+msgstr "RBAC & Audit"
+
+#: templates/site/home.html:81 templates/site/home.html:220 \
+#: templates/site/home.html:456
+msgid "API & Webhooks"
+msgstr "API & Webhooks"
+
+#: templates/site/home.html:82 templates/site/home.html:455
+msgid "SMTP por tenant"
+msgstr "SMTP per tenant"
+
+#: templates/site/home.html:85
+msgid ""
+"4uFleet Pro — escale sua locadora com integrações, segurança e operação "
+"zero atrito"
+msgstr "4uFleet Pro — scale your rental business with integrations, security, and low-friction operations"
+
+#: templates/site/home.html:87
+msgid ""
+"\n"
+"      Do orçamento ao contrato assinado: calendário, bloqueios, tarifas, "
+"repasses, checklist com fotos, PDF, e-mails e relatórios — tudo no mesmo "
+"lugar.\n"
+"      "
+msgstr ""
+"From quote to signed contract: calendar, blocks, pricing, payouts, photo "
+"checklists, PDF, emails and reports — all in one place."
+
+#: templates/site/home.html:94
+msgid "Assinar Pro — US$ 89,90/mês"
+msgstr "Subscribe to Pro — $89.90/month"
+
+#: templates/site/home.html:97 templates/site/home.html:444
+msgid "Ver demo (1:10)"
+msgstr "Watch demo (1:10)"
+
+#: templates/site/home.html:100
+msgid "Usuários e veículos ilimitados. Cancele quando quiser."
+msgstr "Unlimited users and vehicles. Cancel anytime."
+
+# ======= SEÇÕES =======
+#: templates/site/home.html:107 templates/site/landing.html:178
+msgid "Locadoras ativas"
+msgstr "Active rental companies"
+
+#: templates/site/home.html:112 templates/site/landing.html:184
+msgid "Estados Unidos"
+msgstr "United States"
+
+#: templates/site/home.html:113 templates/site/landing.html:190
+msgid "Canadá"
+msgstr "Canada"
+
+#: templates/site/home.html:114 templates/site/landing.html:196
+msgid "Europa"
+msgstr "Europe"
+
+#: templates/site/home.html:128
+msgid "O que muda do “básico” para o Pro"
+msgstr "What changes from basic to Pro"
+
+#: templates/site/home.html:129
+msgid "Operação que aguenta crescimento"
+msgstr "Operations that can handle growth"
+
+#: templates/site/home.html:131
+msgid ""
+"O Pro foi desenhado para locadoras que querem escala e padronização, sem "
+"abrir mão de marca própria e segurança."
+msgstr "Pro is designed for rental companies that want scale and standardization without giving up brand and security."
+
+#: templates/site/home.html:134
+msgid "White-label por filial (cores, logos, domínios e SMTP)"
+msgstr "White-label per branch (colors, logos, domains and SMTP)"
+
+#: templates/site/home.html:135
+msgid "Permissões (RBAC) e trilhas de auditoria"
+msgstr "Permissions (RBAC) and audit trails"
+
+#: templates/site/home.html:136
+msgid "Importadores CSV (frota, clientes, reservas) com validação"
+msgstr "CSV importers (fleet, customers, bookings) with validation"
+
+#: templates/site/home.html:137
+msgid "API & Webhooks para automações e ERPs"
+msgstr "API & Webhooks for automations and ERPs"
+
+#: templates/site/home.html:140
+msgid "Ver preço"
+msgstr "See pricing"
+
+#: templates/site/home.html:141 templates/site/home.html:402
+msgid "Testar antes"
+msgstr "Try first"
+
+#: templates/site/home.html:148
+msgid "Spotlight"
+msgstr "Spotlight"
+
+#: templates/site/home.html:159
+msgid "Poder nas rotinas que mais importam"
+msgstr "Power in the routines that matter most"
+
+#: templates/site/home.html:160
+msgid "Menos atrito, mais controle: do balcão ao financeiro."
+msgstr "Less friction, more control: from counter to finance."
+
+#: templates/site/home.html:165
+msgid "Check-in/out com fotos"
+msgstr "Photo check-in/out"
+
+#: templates/site/home.html:165
+msgid "Mapa do carro, múltiplas fotos, observações e assinatura."
+msgstr "Vehicle map, multiple photos, notes and signature."
+
+#: templates/site/home.html:166
+msgid "Contrato digital em PDF"
+msgstr "Digital PDF contract"
+
+#: templates/site/home.html:166
+msgid "Modelo editável com variáveis; gere e assine em segundos."
+msgstr "Editable template with variables; generate and sign in seconds."
+
+#: templates/site/home.html:167 templates/site/home.html:392
+msgid "Calendário e bloqueios"
+msgstr "Calendar and blocks"
+
+#: templates/site/home.html:167
+msgid "Entregas, devoluções, manutenção e indisponibilidades."
+msgstr "Pickups, returns, maintenance and unavailability."
+
+#: templates/site/home.html:168 templates/site/home.html:393
+msgid "Tarifas, adicionais e repasses"
+msgstr "Rates, add-ons and payouts"
+
+#: templates/site/home.html:168
+msgid "Preço por categoria, diárias, taxas, caução e split interno."
+msgstr "Category pricing, daily rates, fees, deposit and internal split."
+
+#: templates/site/home.html:169
+msgid "E-mails transacionais (SMTP)"
+msgstr "Transactional emails (SMTP)"
+
+#: templates/site/home.html:169
+msgid "SMTP por tenant (Office/Google) com identidade própria."
+msgstr "Per-tenant SMTP (Office/Google) with your brand identity."
+
+#: templates/site/home.html:170
+msgid "Perfis e trilhas de alteração para ações críticas."
+msgstr "Profiles and change trails for critical actions."
+
+#: templates/site/home.html:194
+msgid "Pronto para crescer"
+msgstr "Ready to grow"
+
+#: templates/site/home.html:195
+msgid ""
+"White-label por filial, importadores e trilhas de auditoria — "
+"diferenciais para escala."
+msgstr "White-label per branch, importers and audit trails — differentiators for scale."
+
+#: templates/site/home.html:203
+msgid "Recurso"
+msgstr "Feature"
+
+#: templates/site/home.html:204
+msgid "Incluso"
+msgstr "Included"
+
+#: templates/site/home.html:205
+msgid "Detalhes"
+msgstr "Details"
+
+#: templates/site/home.html:210
+msgid "White-label por tenant/filial"
+msgstr "White-label per tenant/branch"
+
+#: templates/site/home.html:212
+msgid "cores/logos"
+msgstr "colors/logos"
+
+#: templates/site/home.html:212
+msgid "SMTP"
+msgstr "SMTP"
+
+#: templates/site/home.html:212
+msgid "domínio"
+msgstr "domain"
+
+#: templates/site/home.html:215
+msgid "Importadores (CSV)"
+msgstr "Importers (CSV)"
+
+#: templates/site/home.html:217
+msgid "Frota, clientes e reservas com validação e relatório de inconsistências"
+msgstr "Fleet, customers and bookings with validation and inconsistency report"
+
+#: templates/site/home.html:222
+msgid "Eventos de reserva, contrato, checklist e devolução"
+msgstr "Booking, contract, checklist and return events"
+
+#: templates/site/home.html:225
+msgid "Permissões (RBAC)"
+msgstr "Permissions (RBAC)"
+
+#: templates/site/home.html:227
+msgid "visualizar • cadastrar • editar • excluir • exportar • admin"
+msgstr "view • create • edit • delete • export • admin"
+
+#: templates/site/home.html:230
+msgid "App mobile"
+msgstr "Mobile app"
+
+#: templates/site/home.html:232
+msgid "Checklist offline + sincronização posterior (roadmap)"
+msgstr "Offline checklist + later sync (roadmap)"
+
+#: templates/site/home.html:239
+msgid "* “Roadmap” indica funcionalidades planejadas/próximas entregas."
+msgstr "* “Roadmap” indicates planned/next deliveries."
+
+#: templates/site/home.html:247
+msgid "Integrações que cortam trabalho manual"
+msgstr "Integrations that cut manual work"
+
+#: templates/site/home.html:248
+msgid "Pagamentos, documentos, contabilidade e comunicação — conectados."
+msgstr "Payments, documents, accounting and communication — connected."
+
+#: templates/site/home.html:253
+msgid "Pagamentos"
+msgstr "Payments"
+
+#: templates/site/home.html:253
+msgid "Stripe (recorrência e links de cobrança)"
+msgstr "Stripe (recurrence and payment links)"
+
+#: templates/site/home.html:254
+msgid "Documentos"
+msgstr "Documents"
+
+#: templates/site/home.html:254
+msgid "Modelos com variáveis; assinatura em balcão"
+msgstr "Templates with variables; counter signature"
+
+#: templates/site/home.html:255
+msgid "E-mail/SMTP"
+msgstr "Email/SMTP"
+
+#: templates/site/home.html:255
+msgid "Office365, Google Workspace (por tenant)"
+msgstr "Office 365, Google Workspace (per tenant)"
+
+#: templates/site/home.html:256
+msgid "Fiscal/Contábil"
+msgstr "Tax/Accounting"
+
+#: templates/site/home.html:256
+msgid "Exportações CSV/Excel; webhooks para ERPs"
+msgstr "CSV/Excel exports; webhooks to ERPs"
+
+#: templates/site/home.html:257 templates/site/home.html:465
+msgid "Mapas/Endereços"
+msgstr "Maps/Addresses"
+
+#: templates/site/home.html:257
+msgid "Autocomplete e normalização de endereço"
+msgstr "Autocomplete and address normalization"
+
+#: templates/site/home.html:258
+msgid "Webhooks"
+msgstr "Webhooks"
+
+#: templates/site/home.html:258
+msgid "Eventos: reserva, contrato, checklist, devolução"
+msgstr "Events: booking, contract, checklist, return"
+
+#: templates/site/home.html:284
+msgid "Relatórios que guiam decisões"
+msgstr "Reports that guide decisions"
+
+#: templates/site/home.html:285
+msgid ""
+"Desempenho por categoria, utilização de frota, manutenção, recebíveis e "
+"receita."
+msgstr "Category performance, fleet utilization, maintenance, receivables and revenue."
+
+#: templates/site/home.html:287
+msgid "KPI por período e filial"
+msgstr "KPIs by period and branch"
+
+#: templates/site/home.html:288
+msgid "Exportar para CSV/Excel"
+msgstr "Export to CSV/Excel"
+
+#: templates/site/home.html:289
+msgid "Logs e trilhas de auditoria"
+msgstr "Logs and audit trails"
+
+#: templates/site/home.html:294
+msgid "Utilização da frota"
+msgstr "Fleet utilization"
+
+#: templates/site/home.html:295
+msgid "Receita por categoria"
+msgstr "Revenue by category"
+
+#: templates/site/home.html:296
+msgid "Ticket médio"
+msgstr "Average ticket"
+
+#: templates/site/home.html:297
+msgid "Atrasos & incidências"
+msgstr "Delays & incidents"
+
+#: templates/site/home.html:308
+msgid "Como começar em 3 passos"
+msgstr "How to start in 3 steps"
+
+#: templates/site/home.html:309
+msgid "Fluxo rápido da criação à operação."
+msgstr "A fast flow from creation to operation."
+
+#: templates/site/home.html:316
+msgid "Criar conta e identidade"
+msgstr "Create account and identity"
+
+#: templates/site/home.html:317
+msgid "Defina cores, logo, domínio e SMTP do seu tenant."
+msgstr "Set colors, logo, domain and SMTP for your tenant."
+
+#: templates/site/home.html:325
+msgid "Importar dados & configurar tarifas"
+msgstr "Import data & configure rates"
+
+#: templates/site/home.html:326
+msgid "Frota, clientes e políticas; adicionais e caução."
+msgstr "Fleet, customers and policies; add-ons and deposit."
+
+#: templates/site/home.html:334
+msgid "Fechar contratos com fotos & PDF"
+msgstr "Close rentals with photos & PDF"
+
+#: templates/site/home.html:335
+msgid "Checklist com evidências, assinatura e e-mails automáticos."
+msgstr "Checklist with evidence, signature and automated emails."
+
+#: templates/site/home.html:341 templates/site/home.html:445
+msgid "Começar agora"
+msgstr "Get started"
+
+#: templates/site/home.html:350
+msgid "Histórias reais"
+msgstr "Real stories"
+
+#: templates/site/home.html:351
+msgid "Quem usa, recomenda. Resultados em poucos dias."
+msgstr "Users recommend it. Results in a few days."
+
+#: templates/site/home.html:356
+msgid ""
+"Migramos num fim de semana. O checklist com fotos salvou o nosso caução "
+"duas vezes."
+msgstr "We migrated over a weekend. The photo checklist saved our deposit twice."
+
+#: templates/site/home.html:362
+msgid ""
+"Contrato digital e e-mails automáticos acabaram com o retrabalho. "
+"Atendimento subiu muito."
+msgstr "Digital contracts and automated emails ended rework. Customer service improved a lot."
+
+#: templates/site/home.html:368
+msgid ""
+"Com calendário e tarifário por categoria, parei de errar preço. Escalamos"
+" sem dor."
+msgstr "With the calendar and category pricing, I stopped misquoting. We scaled without pain."
+
+# ======= CARD DE PREÇO =======
+#: templates/site/home.html:380
+msgid "Plano Pro"
+msgstr "Pro plan"
+
+#: templates/site/home.html:381
+msgid "Preço simples, ilimitado"
+msgstr "Simple, unlimited pricing"
+
+#: templates/site/home.html:382
+msgid "Sem limite de usuários. Sem limite de veículos."
+msgstr "No limit on users. No limit on vehicles."
+
+#: templates/site/home.html:388
+msgid "US$ 89,90"
+msgstr "$89.90"
+
+#: templates/site/home.html:388
+msgid "/ mês"
+msgstr "/ month"
+
+#: templates/site/home.html:389
+msgid ""
+"Contrato PDF • Checklists com fotos • SMTP por tenant • API & Webhooks • "
+"Auditoria"
+msgstr "PDF contract • Photo checklists • Per-tenant SMTP • API & Webhooks • Audit"
+
+#: templates/site/home.html:394
+msgid "Importadores de dados (CSV)"
+msgstr "Data importers (CSV)"
+
+#: templates/site/home.html:395
+msgid "Logs e permissões por perfil"
+msgstr "Logs and permissions by role"
+
+#: templates/site/home.html:399
+msgid "Assinar agora"
+msgstr "Subscribe now"
+
+#: templates/site/home.html:405
+msgid "Cancelamento a qualquer momento."
+msgstr "Cancel anytime."
+
+# ======= SUPORTE =======
+#: templates/site/home.html:418
+msgid "Dúvidas? Implementamos com você"
+msgstr "Questions? We can implement it with you"
+
+#: templates/site/home.html:419
+msgid "Migração de dados, configuração de políticas e treinamento do time."
+msgstr "Data migration, policy setup and team training."
+
+#: templates/site/home.html:422
+msgid "Olá! Quero conhecer o 4uFleet Pro e entender a implementação."
+msgstr "Hi! I want to learn about 4uFleet Pro and the implementation."
+
+#: templates/site/home.html:434
+msgid "Mapa do Site"
+msgstr "Sitemap"
+
+#: templates/site/home.html:435
+msgid "Atalhos para tudo que você precisa, em um só lugar."
+msgstr "Shortcuts to everything you need, in one place."
+
+# ======= FOOTER / MAPA DO SITE =======
+#: templates/site/home.html:440 templates/site/landing.html:471
+msgid "Produto"
+msgstr "Product"
+
+#: templates/site/home.html:442
+msgid "Visão geral"
+msgstr "Overview"
+
+#: templates/site/home.html:443
+msgid "Preços (Plano Pro)"
+msgstr "Pricing (Pro plan)"
+
+#: templates/site/home.html:449 templates/site/landing.html:473
+msgid "Recursos"
+msgstr "Features"
+
+#: templates/site/home.html:451
+msgid "Contrato PDF"
+msgstr "PDF contract"
+
+#: templates/site/home.html:452 templates/site/landing.html:214
+msgid "Checklists com fotos"
+msgstr "Photo checklists"
+
+#: templates/site/home.html:453
+msgid "Calendário & bloqueios"
+msgstr "Calendar & blocks"
+
+#: templates/site/home.html:454
+msgid "Tarifas & repasses"
+msgstr "Rates & payouts"
+
+#: templates/site/home.html:460
+msgid "Integrações"
+msgstr "Integrations"
+
+#: templates/site/home.html:462
+msgid "Stripe (pagamentos)"
+msgstr "Stripe (payments)"
+
+#: templates/site/home.html:463
+msgid "E-mail (Office/Google)"
+msgstr "Email (Office/Google)"
+
+#: templates/site/home.html:464
+msgid "Exportações CSV/Excel"
+msgstr "CSV/Excel exports"
+
+#: templates/site/home.html:466
+msgid "Webhooks (eventos)"
+msgstr "Webhooks (events)"
+
+#: templates/site/home.html:470
+msgid "Empresa"
+msgstr "Company"
+
+#: templates/site/home.html:472
+msgid "Contato comercial"
+msgstr "Sales contact"
+
+#: templates/site/home.html:473
+msgid "Olá! Quero conhecer o 4uFleet Pro."
+msgstr "Hi! I want to learn about 4uFleet Pro."
+
+#: templates/site/home.html:475
+msgid "Criar conta"
+msgstr "Create account"
+
+#: templates/site/home.html:476 templates/site/landing.html:493
+msgid "Termos de uso"
+msgstr "Terms of use"
+
+#: templates/site/home.html:477
+msgid "Política de Privacidade"
+msgstr "Privacy Policy"
+
+#: templates/site/home.html:484
+msgid "* Ajuste os paths conforme suas rotas ativas."
+msgstr "* Adjust paths according to your active routes."
+
+# ======= LANDING =======
+
+# TÍTULO/HEAD
+#: templates/site/landing.html:2
+msgid "4uFleet — Car rental software"
+msgstr "4uFleet — Car rental software"
+
+# HERO (sem “100% FREE”)
+#: templates/site/landing.html:89
+msgid "Teste grátis de 7 dias"
+msgstr "7-day free trial"
+
+#: templates/site/landing.html:91
+msgid ""
+"O sistema de locação que acelera sua operação — simples, moderno e "
+"ilimitado."
+msgstr "The rental system that accelerates your operation — simple, modern, and unlimited."
+
+#: templates/site/landing.html:94
+msgid ""
+"\n"
+"          Reservas, checklist com fotos e assinatura, contrato PDF, "
+"repasses e régua de cobrança — tudo em uma plataforma unificada.\n"
+"          "
+msgstr ""
+"Bookings, photo checklists with signature, PDF contract, payouts and "
+"dunning — all in one unified platform."
+
+#: templates/site/landing.html:100
+msgid "Contrato assinado em PDF"
+msgstr "Signed PDF contract"
+
+#: templates/site/landing.html:101
+msgid "Checklists com mapa do carro"
+msgstr "Checklists with vehicle damage map"
+
+#: templates/site/landing.html:102 templates/site/landing.html:218
+msgid "E-mails transacionais"
+msgstr "Transactional emails"
+
+#: templates/site/landing.html
+msgid "Iniciar teste de 7 dias"
+msgstr "Start 7-day trial"
+
+#: templates/site/landing.html:114 templates/site/landing.html:332
+msgid "Ver termos"
+msgstr "See terms"
+
+#: templates/site/landing.html:117
+msgid "Ver vídeo (1:10)"
+msgstr "Watch video (1:10)"
+
+#: templates/site/landing.html:121
+msgid "Teste de 7 dias • Ativação imediata"
+msgstr "7-day trial • Instant activation"
+
+# CARD DE PREÇO / PRO
+#: templates/site/landing.html:129
+msgid "Assinatura Pro"
+msgstr "Pro subscription"
+
+#: templates/site/landing.html:131
+msgid "mês"
+msgstr "month"
+
+#: templates/site/landing.html:133
+msgid "Inclui teste gratuito de 7 dias. Após o período, a cobrança é mensal."
+msgstr "Includes a 7-day free trial. After the period, billing is monthly."
+
+#: templates/site/landing.html:137
+msgid "Usuários ilimitados"
+msgstr "Unlimited users"
+
+#: templates/site/landing.html:138
+msgid "Veículos e categorias ilimitados"
+msgstr "Unlimited fleet and categories"
+
+#: templates/site/landing.html:139
+msgid "Templates de contrato editáveis"
+msgstr "Editable contract templates"
+
+#: templates/site/landing.html:140
+msgid "Notificações por e-mail"
+msgstr "Email notifications"
+
+#: templates/site/landing.html:147
+msgid "Começar agora — 7 dias grátis"
+msgstr "Get started — 7-day trial"
+
+#: templates/site/landing.html:151
+msgid "Cancele quando quiser. Sem taxa de instalação."
+msgstr "Cancel anytime. No setup fee."
+
+# PROVA SOCIAL
+#: templates/site/landing.html:159
+msgid "Confiado por locadoras independentes"
+msgstr "Trusted by independent rental companies"
+
+#: templates/site/landing.html:208
+msgid "Tudo que você precisa para operar bem"
+msgstr "Everything you need to operate well"
+
+#: templates/site/landing.html:209
+msgid "Foco em velocidade, segurança e simplicidade."
+msgstr "Built for speed, security, and simplicity."
+
+#: templates/site/landing.html:214
+msgid "Registre danos com evidências fotográficas, mapa do carro e assinatura."
+msgstr "Record damages with photos, vehicle map, and signature."
+
+#: templates/site/landing.html:215
+msgid "Contrato em PDF"
+msgstr "PDF contract"
+
+#: templates/site/landing.html:215
+msgid "Modelo editável, geração instantânea e assinatura no balcão."
+msgstr "Editable template, instant generation, and counter signature."
+
+#: templates/site/landing.html:216
+msgid "Calendário de reservas"
+msgstr "Booking calendar"
+
+#: templates/site/landing.html:216
+msgid "Visão clara de entregas, devoluções e manutenções."
+msgstr "Clear view of pickups, returns, and maintenance."
+
+#: templates/site/landing.html:217
+msgid "Tarifas e repasses"
+msgstr "Rates and payouts"
+
+#: templates/site/landing.html:217
+msgid "Controle de preços, adicionais e repasses."
+msgstr "Control prices, add-ons, and payouts."
+
+#: templates/site/landing.html:218
+msgid "Envio por SMTP do seu tenant, com identidade própria."
+msgstr "Send via your tenant’s SMTP with your brand identity."
+
+#: templates/site/landing.html:219
+msgid "Auditoria e logs"
+msgstr "Audit trails and logs"
+
+#: templates/site/landing.html:219
+msgid "Rastreabilidade de ações críticas no sistema."
+msgstr "Traceability for critical actions in the system."
+
+# VÍDEO
+#: templates/site/landing.html:246
+msgid "Demo"
+msgstr "Demo"
+
+#: templates/site/landing.html:250
+msgid "Assistir demo"
+msgstr "Watch demo"
+
+#: templates/site/landing.html:255
+msgid "Visão rápida em 60 segundos"
+msgstr "A quick 60-second tour"
+
+#: templates/site/landing.html:256
+msgid ""
+"Conheça o fluxo de ponta a ponta: da reserva ao contrato assinado — com "
+"checagem e fotos."
+msgstr "See the end-to-end flow: from booking to signed contract — with photo checks."
+
+#: templates/site/landing.html:260
+msgid "Onboarding em minutos"
+msgstr "Onboarding in minutes"
+
+#: templates/site/landing.html:260
+msgid "Crie sua conta e publique a frota em 15 minutos."
+msgstr "Create your account and publish your fleet in 15 minutes."
+
+#: templates/site/landing.html:264
+msgid "Nuvem segura"
+msgstr "Secure cloud"
+
+#: templates/site/landing.html:264
+msgid "Backups, SSL e atualizações contínuas."
+msgstr "Backups, SSL, and continuous updates."
+
+#: templates/site/landing.html:268
+msgid "Sem limite de uso"
+msgstr "No usage limit"
+
+#: templates/site/landing.html:268
+msgid "Usuários e veículos ilimitados no plano Pro."
+msgstr "Unlimited users and vehicles on the Pro plan."
+
+# GALERIA
+#: templates/site/landing.html:280
+msgid "Interface moderna e clara"
+msgstr "Modern, clean interface"
+
+#: templates/site/landing.html:281
+msgid "Alguns prints da aplicação."
+msgstr "A few app screenshots."
+
+#: templates/site/landing.html:290
+msgid "Tela"
+msgstr "Screen"
+
+# COMO FUNCIONA / TERMOS
+#: templates/site/landing.html:309
+msgid "Como funciona o teste e a assinatura"
+msgstr "How the trial and subscription work"
+
+#: templates/site/landing.html:312
+msgid "7 dias de teste com todos os recursos."
+msgstr "7-day trial with all features."
+
+#: templates/site/landing.html:315
+#, python-format
+msgid ""
+"Após o teste, a assinatura continua por <strong>US$ "
+"%(price)s</strong>/mês."
+msgstr "After the trial, the subscription continues for <strong>$%(price)s</strong>/month."
+
+#: templates/site/landing.html:318
+msgid "Usuários e veículos ilimitados, sem taxas ocultas."
+msgstr "Unlimited users and vehicles, no hidden fees."
+
+#: templates/site/landing.html:321
+msgid "Cancele quando quiser, direto pelo painel."
+msgstr "Cancel anytime, right from the dashboard."
+
+#: templates/site/landing.html:329 templates/site/landing.html:559
+msgid "Iniciar meu teste"
+msgstr "Start my trial"
+
+#: templates/site/landing.html:338
+msgid "Em 3 passos"
+msgstr "In 3 steps"
+
+#: templates/site/landing.html:342
+msgid "Crie sua conta"
+msgstr "Create your account"
+
+#: templates/site/landing.html:344
+msgid "Acesse"
+msgstr "Go to"
+
+#: templates/site/landing.html:349
+msgid "e ative sua locadora."
+msgstr "and activate your rental company."
+
+#: templates/site/landing.html:355
+msgid "Cadastre frota e tarifas"
+msgstr "Add fleet and rates"
+
+#: templates/site/landing.html:355
+msgid "Defina preços, adicionais e posicione sua assinatura no contrato."
+msgstr "Set prices, add-ons, and position your signature in the contract."
+
+#: templates/site/landing.html:359
+msgid "Finalize os aluguéis no sistema"
+msgstr "Finalize rentals in the system"
+
+#: templates/site/landing.html:359
+msgid "Checklist com fotos, contrato PDF e comunicação por e-mail."
+msgstr "Photo checklist, PDF contract and email communication."
+
+# SUPORTE
+#: templates/site/landing.html:373
+msgid "Dúvidas na implementação?"
+msgstr "Questions about implementation?"
+
+#: templates/site/landing.html:374
+msgid ""
+"Fale direto com nossa equipe — vamos profissionalizar sua operação e dar "
+"mais confiança ao seu cliente."
+msgstr ""
+"Talk directly to our team — we’ll professionalize your operation and boost customer confidence."
+
+#: templates/site/landing.html:377 templates/site/landing.html:579
+msgid "Olá! Tenho dúvidas sobre a implementação do 4uFleet. Podemos falar?"
+msgstr "Hi! I have questions about implementing 4uFleet. Can we talk?"
+
+# TESTIMONIAIS
+#: templates/site/landing.html:389
+msgid "Quem usa, recomenda"
+msgstr "Teams love it"
+
+#: templates/site/landing.html:390
+msgid "Feedback de locadoras que simplificaram a operação."
+msgstr "Feedback from rental companies that simplified operations."
+
+#: templates/site/landing.html:395
+msgid ""
+"Implementamos em um fim de semana. O check-in com fotos salvou meu "
+"depósito em duas ocasiões."
+msgstr "We implemented over a weekend. The photo check-in saved our deposit twice."
+
+#: templates/site/landing.html:396
+msgid "Sócia, JetCar"
+msgstr "Partner, JetCar"
+
+#: templates/site/landing.html:401
+msgid ""
+"O contrato digital e os e-mails automáticos eliminaram ligações e papel. "
+"Fluxo muito mais confiável."
+msgstr "Digital contracts and automated emails eliminated calls and paperwork. Far more reliable flow."
+
+#: templates/site/landing.html:402
+msgid "Gerente, EasyDrive"
+msgstr "Manager, EasyDrive"
+
+#: templates/site/landing.html:407
+msgid ""
+"Com o calendário e as tarifas por categoria, parei de errar preço. "
+"Crescemos com previsibilidade."
+msgstr "With the calendar and category pricing, I stopped misquoting. We grew with predictability."
+
+#: templates/site/landing.html:408
+msgid "Owner, BlueRent"
+msgstr "Owner, BlueRent"
+
+# FAQ (ajuste para o novo modelo)
+#: templates/site/landing.html:419
+msgid "Perguntas frequentes"
+msgstr "Frequently asked questions"
+
+#: templates/site/landing.html:425
+msgid "Como funciona o teste de 7 dias?"
+msgstr "How does the 7-day trial work?"
+
+#: templates/site/landing.html:428
+msgid ""
+"Você tem acesso completo por 7 dias. Ao final do período, a assinatura é "
+"ativada automaticamente, a menos que você cancele antes do vencimento."
+msgstr "You have full access for 7 days. At the end, the subscription is activated automatically unless you cancel before it ends."
+
+#: templates/site/landing.html:433
+msgid "Posso cancelar quando quiser?"
+msgstr "Can I cancel anytime?"
+
+#: templates/site/landing.html:435
+msgid ""
+"Sim. O cancelamento pode ser feito a qualquer momento pelo painel, sem "
+"multa."
+msgstr "Yes. You can cancel anytime from the dashboard, with no fees."
+
+#: templates/site/landing.html:439
+msgid "Tem limite de frota ou usuários?"
+msgstr "Any limit on fleet or users?"
+
+#: templates/site/landing.html:441
+msgid "Não. O plano Pro inclui usuários e veículos ilimitados."
+msgstr "No. The Pro plan includes unlimited users and vehicles."
+
+#: templates/site/landing.html:453
+msgid "Pronto para começar seu teste de 7 dias?"
+msgstr "Ready to start your 7-day trial?"
+
+#: templates/site/landing.html:454
+msgid "Leva poucos minutos para configurar e colocar sua operação no ar."
+msgstr "It only takes a few minutes to set up and get your operation running."
+
+#: templates/site/landing.html:456
+msgid "Iniciar meu teste agora"
+msgstr "Start my trial now"
+
+#: templates/site/landing.html:468
+msgid "Plano Pro com teste gratuito de 7 dias."
+msgstr "Pro plan with a 7-day free trial."
+
+# FOOTER / MAPA DO SITE
+#: templates/site/landing.html:474
+msgid "Screenshots"
+msgstr "Screenshots"
+
+#: templates/site/landing.html:475
+msgid "Como funciona"
+msgstr "How it works"
+
+#: templates/site/landing.html:476
+msgid "FAQ"
+msgstr "FAQ"
+
+#: templates/site/landing.html:480
+msgid "Suporte"
+msgstr "Support"
+
+#: templates/site/landing.html:482
+msgid "Contato"
+msgstr "Contact"
+
+#: templates/site/landing.html:484 templates/site/landing.html:515
+msgid "Telefone"
+msgstr "Phone"
+
+#: templates/site/landing.html:488
+msgid "Ação"
+msgstr "Action"
+
+# MODAIS
+#: templates/site/landing.html:506
+msgid "Comece seu teste em minutos"
+msgstr "Start your trial in minutes"
+
+#: templates/site/landing.html:511
+msgid "Seu nome"
+msgstr "Your name"
+
+#: templates/site/landing.html:519
+msgid "E-mail"
+msgstr "Email"
+
+#: templates/site/landing.html:523
+msgid "Enviaremos um e-mail com o link para criar sua conta e iniciar o teste."
+msgstr "We'll email you a link to create your account and start the trial."
+
+#: templates/site/landing.html:528
+msgid "Cancelar"
+msgstr "Cancel"
+
+#: templates/site/landing.html:529 templates/site/landing.html:635
+msgid "Enviar"
+msgstr "Send"
+
+#: templates/site/landing.html:541
+#, python-format
+msgid "Termos de uso — Assinatura Pro %(brand)s"
+msgstr "Terms of use — %(brand)s Pro Subscription"
+
+#: templates/site/landing.html:546
+msgid "Período de teste:"
+msgstr "Trial period:"
+
+#: templates/site/landing.html:546
+msgid "7 dias com acesso completo. O teste inicia na ativação da conta."
+msgstr "7 days with full access. The trial starts when the account is activated."
+
+#: templates/site/landing.html:547
+msgid "Cobrança:"
+msgstr "Billing:"
+
+#: templates/site/landing.html:548
+#, python-format
+msgid "após o teste, a assinatura continua por US$ %(price)s/mês, recorrente."
+msgstr "after the trial, the subscription continues at $%(price)s/month, recurring."
+
+#: templates/site/landing.html:550
+msgid "Cancelamento:"
+msgstr "Cancellation:"
+
+#: templates/site/landing.html:550
+msgid ""
+"você pode cancelar a qualquer momento pelo painel. O acesso permanece até"
+" o fim do ciclo vigente."
+msgstr "you can cancel anytime from the dashboard. Access remains until the end of the current cycle."
+
+#: templates/site/landing.html:551
+msgid "Limites:"
+msgstr "Limits:"
+
+#: templates/site/landing.html:551
+msgid ""
+"usuários e veículos ilimitados no plano Pro; aplicam-se apenas limites "
+"técnicos de uso justo (armazenamento de fotos, e-mails etc.)."
+msgstr "unlimited users and vehicles on the Pro plan; only fair-use technical limits apply (photo storage, emails, etc.)."
+
+#: templates/site/landing.html:552
+msgid "Privacidade:"
+msgstr "Privacy:"
+
+#: templates/site/landing.html:552
+msgid ""
+"seguimos boas práticas de proteção de dados; consulte a Política de "
+"Privacidade."
+msgstr "we follow good data protection practices; see the Privacy Policy."
+
+#: templates/site/landing.html:553
+msgid "Suporte:"
+msgstr "Support:"
+
+#: templates/site/landing.html:553
+msgid "atendimento por e-mail; prazos podem variar conforme demanda."
+msgstr "support via email; response times may vary depending on demand."
+
+#: templates/site/landing.html:554
+msgid "Atualizações:"
+msgstr "Updates:"
+
+#: templates/site/landing.html:554
+msgid "podemos atualizar estes termos a qualquer momento."
+msgstr "we may update these terms at any time."
+
+#: templates/site/landing.html:556
+msgid "Dúvidas? Fale conosco!"
+msgstr "Questions? Contact us!"
+
+#: templates/site/landing.html:590
+msgid "Enviando..."
+msgstr "Sending..."
+
+#: templates/site/landing.html:591
+msgid ""
+"Pronto! Enviamos um e-mail com o link para você criar sua conta e iniciar"
+" o teste."
+msgstr "Done! We’ve sent an email with the link to create your account and start the trial."
+
+#: templates/site/landing.html:592
+msgid "Não foi possível enviar agora."
+msgstr "We couldn’t send it now."
+
+#: templates/site/landing.html:593
+msgid "Falha de rede. Tente novamente."
+msgstr "Network error. Please try again."

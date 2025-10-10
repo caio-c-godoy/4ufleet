@@ -1,0 +1,559 @@
+{% extends "base.html" %}
+{% block title %}{{ _('4uFleet Pro — Software completo para locadoras (ilimitado)') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root{
+    --ink:#0b1220; --muted:#64748b; --primary:#0d6efd; --accent:#7c3aed; --good:#22c55e;
+    --ring:#e5e7eb; --bg:#0a0f1e; --card:#0f1629;
+  }
+  *{scroll-margin-top:86px}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative; min-height:94vh; display:grid; place-items:center; overflow:hidden; color:#e5edff; isolation:isolate;
+    background:
+      radial-gradient(1200px 540px at 12% -10%, rgba(13,110,253,.30), transparent 60%),
+      radial-gradient(900px 520px at 88% -10%, rgba(124,58,237,.25), transparent 60%),
+      linear-gradient(180deg, #0b1220, #0a0f1e 45%, #0a0f1e);
+  }
+  .hero .veil{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(2,6,23,.55), rgba(2,6,23,.25) 40%, rgba(2,6,23,0) 70%); z-index:1; }
+  .hero-canvas{ position:absolute; inset:0; z-index:0; opacity:.35; }
+  .hero-svg{ position:relative; z-index:2; width:min(1200px, 92vw); height:auto; }
+  .box{ position:relative; z-index:3; text-align:center; padding: clamp(16px, 3vw, 32px); margin-top:-.5rem; }
+
+  .pill{ display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px;
+         background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.22); backdrop-filter: blur(8px);
+         color:#fff; font-weight:600; font-size:13px; }
+  .hero h1{ font-size: clamp(34px, 5.4vw, 68px); line-height:1.02; letter-spacing:.2px; margin:.35rem 0 .6rem; }
+  .hero p{ color:#c8d3ff; font-size: clamp(16px, 1.6vw, 20px); }
+  .btn-hero-primary{ box-shadow: 0 12px 30px rgba(13,110,253,.35); }
+
+  .stats{ margin-top:18px; display:flex; gap:18px; justify-content:center; flex-wrap:wrap; }
+  .stat{ display:flex; gap:10px; align-items:center; padding:10px 14px; border:1px solid rgba(255,255,255,.25);
+         background:rgba(255,255,255,.06); border-radius:12px; backdrop-filter: blur(8px); }
+  .num{ font-weight:800; font-size: clamp(26px,3.8vw,38px); letter-spacing:-.5px; color:#9ec1ff; line-height:1; }
+  .label{ color:#e5edff; font-size:13px; opacity:.85 }
+
+  /* ---------- SEÇÕES ---------- */
+  .section{ padding:92px 0; background:#fff; }
+  .section-light{ background:linear-gradient(180deg, #f7f9ff, #ffffff); }
+  .section-dark{ background:linear-gradient(180deg, #0a0f1e, #0b1220); color:#c7d2fe; }
+  .muted{ color:#6b7280; }
+
+  /* ---------- FEATURES ---------- */
+  .card-ff{ border:1px solid var(--ring); border-radius:18px; background:#fff; height:100%;
+            box-shadow:0 10px 30px rgba(2,6,23,.06); transform: translateY(8px); opacity:0; }
+  .card-ff.in{ transform:none; opacity:1; transition: transform .6s cubic-bezier(.21,.79,.35,1), opacity .6s; }
+  .icon{ width:46px; height:46px; display:grid; place-items:center; border-radius:12px;
+         background:linear-gradient(135deg,#eef4ff,#f7f9ff); color:#305df5; font-size:20px; box-shadow: inset 0 0 0 1px #e7efff; }
+
+  /* ---------- SHOWCASE ---------- */
+  .showcase .tile{ border:1px solid #e5e7eb; border-radius:18px; background:#fff; overflow:hidden;
+                   box-shadow:0 18px 44px rgba(2,6,23,.10); transform-style:preserve-3d; transition: transform .2s ease, box-shadow .2s ease; }
+  .showcase .tile:hover{ transform: perspective(800px) rotateX(3deg) rotateY(-3deg) translateY(-4px); box-shadow:0 24px 56px rgba(2,6,23,.14); }
+
+  /* ---------- JOURNEY ---------- */
+  .journey .step{ display:flex; align-items:flex-start; gap:14px; padding:16px; border-radius:14px; background:#ffffff;
+                  border:1px solid #e5e7eb; box-shadow:0 8px 22px rgba(2,6,23,.06); transform:translateY(18px); opacity:0; }
+  .journey .step.in{ transform:none; opacity:1; transition:.6s cubic-bezier(.21,.79,.35,1); }
+  .journey .dot{ width:24px; height:24px; border-radius:999px; display:grid; place-items:center;
+                 color:#fff; font-size:12px; background:linear-gradient(135deg,#2563eb,#7c3aed); box-shadow:0 8px 22px rgba(37,99,235,.35) }
+  .journey .arrow{ height:56px; opacity:.35 }
+
+  /* ---------- RIBBON ---------- */
+  .ribbon{ overflow:hidden; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .ribbon-track{ display:flex; gap:42px; align-items:center; white-space:nowrap; will-change: transform; }
+  .ribbon .i{ display:inline-flex; gap:10px; align-items:center; border:1px solid #e5e7eb; padding:10px 14px; border-radius:12px; background:#fff; }
+
+  /* ---------- PRICE ---------- */
+  .price-card{ border:1px solid #cfe2ff; background:linear-gradient(180deg,#eff6ff,#ffffff); border-radius:18px;
+               box-shadow:0 16px 38px rgba(13,110,253,.15); }
+
+  /* ---------- LANG SWITCHER (independente, espaçado) ---------- */
+  .lang-fab{ position:fixed; top:28px; right:28px; z-index:3000; display:flex; gap:8px; }
+  .lang-fab .btn{ padding:.35rem .6rem; line-height:1.2; border-radius:.6rem; border:1px solid rgba(255,255,255,.35);
+                   background:rgba(10,15,30,.55); backdrop-filter: blur(8px); color:#fff; font-weight:700; font-size:.85rem;
+                   box-shadow:0 6px 18px rgba(0,0,0,.25); }
+  .lang-fab .btn.active{ background:rgba(255,255,255,.22); }
+  .lang-flag{ width:16px; height:11px; object-fit:cover; margin-right:.35rem; vertical-align:-1px; }
+
+  .hover-rise{ transition: transform .15s ease, box-shadow .15s ease }
+  .hover-rise:hover{ transform: translateY(-2px); box-shadow:0 12px 28px rgba(2,6,23,.12) }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# === seletor de idioma (independente) === #}
+<div class="lang-fab" aria-label="{{ _('Idioma') }}">
+  {% set langs = LANGUAGES or ['pt','en','es'] %}
+  {% for code,label in [('pt','PT'),('en','EN'),('es','ES')] if code in langs %}
+    <a class="btn d-inline-flex align-items-center {% if (current_locale|string) == code %}active{% endif %}"
+       href="{{ locale_url(code) }}">
+      <img class="lang-flag"
+           src="{{ url_for('static', filename='img/flags/' ~ code ~ '.svg') }}"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';"
+           alt="{{ label }}">
+      <span style="display:none">{{ label }}</span>
+    </a>
+  {% endfor %}
+</div>
+
+<!-- ===================== HERO ===================== -->
+<section id="hero" class="hero">
+  <canvas class="hero-canvas" id="heroParticles" aria-hidden="true"></canvas>
+  <div class="veil" aria-hidden="true"></div>
+
+  <!-- Estrada neon + carro (realista) -->
+  <svg class="hero-svg" viewBox="0 0 1400 520" role="img" aria-label="{{ _('Demonstração animada: carro percorrendo a pista') }}">
+    <defs>
+      <linearGradient id="roadGrad" x1="0" x2="1">
+        <stop offset="0" stop-color="#2563eb"/><stop offset="1" stop-color="#7c3aed"/>
+      </linearGradient>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <radialGradient id="wheelGrad" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#cbd5e1"/><stop offset="100%" stop-color="#0b1220"/>
+      </radialGradient>
+      <linearGradient id="carBodyGrad" x1="0" x2="1">
+        <stop offset="0" stop-color="#0ea5e9"/><stop offset="1" stop-color="#2563eb"/>
+      </linearGradient>
+    </defs>
+
+    <!-- Pista da esquerda pra direita (autoRotate correto) -->
+    <path id="roadPath" d="M 60 420 C 340 360, 640 440, 920 380 S 1280 360, 1340 420"
+          fill="none" stroke="url(#roadGrad)" stroke-width="14" opacity=".68" filter="url(#glow)"></path>
+
+    <!-- Carro detalhado -->
+    <g id="carGroup" transform="translate(0,0)">
+      <!-- sombra no chão -->
+      <ellipse id="shadow" cx="20" cy="28" rx="70" ry="12" fill="rgba(0,0,0,.35)"></ellipse>
+      <!-- chassi -->
+      <g id="carBody">
+        <rect x="-86" y="-24" rx="12" ry="12" width="200" height="48" fill="url(#carBodyGrad)"/>
+        <path d="M-68 -24 L-18 -46 H64 Q94 -46 112 -24 Z" fill="#0c1326"/>
+        <!-- vidros -->
+        <rect x="-4" y="-18" width="70" height="22" rx="4" fill="#9bd7ff" opacity=".9"/>
+        <rect x="-72" y="-18" width="58" height="22" rx="4" fill="#8ac7ff" opacity=".85"/>
+        <!-- farol -->
+        <g id="headlight" transform="translate(102,-4)">
+          <rect x="0" y="0" width="16" height="10" rx="2" fill="#a7f3d0"/>
+          <path d="M 8 4 L 80 -12 L 80 20 Z" fill="rgba(167,243,208,.18)"/>
+        </g>
+        <!-- lanterninha -->
+        <rect x="-92" y="-6" width="10" height="12" rx="2" fill="#ff6b6b"/>
+        <!-- maçaneta / sensor -->
+        <circle cx="110" cy="-6" r="6" fill="#22c55e"/>
+      </g>
+      <!-- rodas (com “raios”) -->
+      <g id="wheels">
+        <g id="w1" transform="translate(-46,22)">
+          <circle r="18" fill="url(#wheelGrad)"/>
+          <g stroke="#94a3b8" stroke-width="2" opacity=".9">
+            <line x1="0" y1="-14" x2="0" y2="14"/><line x1="-14" y1="0" x2="14" y2="0"/>
+            <line x1="-10" y1="-10" x2="10" y2="10"/><line x1="-10" y1="10" x2="10" y2="-10"/>
+          </g>
+        </g>
+        <g id="w2" transform="translate(88,22)">
+          <circle r="18" fill="url(#wheelGrad)"/>
+          <g stroke="#94a3b8" stroke-width="2" opacity=".9">
+            <line x1="0" y1="-14" x2="0" y2="14"/><line x1="-14" y1="0" x2="14" y2="0"/>
+            <line x1="-10" y1="-10" x2="10" y2="10"/><line x1="-10" y1="10" x2="10" y2="-10"/>
+          </g>
+        </g>
+      </g>
+    </g>
+  </svg>
+
+  <div class="box container">
+    <div class="d-flex justify-content-center flex-wrap gap-2 mb-2">
+      <span class="pill"><i class="bi bi-rocket-takeoff"></i> {{ _('Zero atrito na operação') }}</span>
+      <span class="pill"><i class="bi bi-brush"></i> {{ _('White-label por tenant') }}</span>
+      <span class="pill"><i class="bi bi-shield-check"></i> {{ _('RBAC & auditoria') }}</span>
+      <span class="pill"><i class="bi bi-braces"></i> {{ _('API & Webhooks') }}</span>
+    </div>
+
+    <h1>{{ _('4uFleet Pro — a experiência premium para sua locadora') }}</h1>
+    <p>{% trans %}Do orçamento ao contrato assinado: calendário, bloqueios, tarifas, repasses, checklist com fotos, PDF, e-mails e relatórios — tudo no mesmo lugar.{% endtrans %}</p>
+
+    <div class="d-flex flex-wrap justify-content-center gap-2 mt-2">
+      <button id="btnStripe" class="btn btn-primary btn-lg px-4 btn-hero-primary" data-plan="4UFLEET_PRO_MONTHLY" data-price="89.90" data-currency="USD">
+        {{ _('Assinar Pro — US$ 89,90/mês') }}
+      </button>
+      <a class="btn btn-outline-light btn-lg px-4" data-bs-toggle="modal" data-bs-target="#videoModal">
+        <i class="bi bi-play-circle me-1"></i> {{ _('Ver demo (1:10)') }}
+      </a>
+    </div>
+
+    <div class="stats" id="hero-stats">
+      <div class="stat"><div class="num" data-counter data-target="128">0</div><div class="label">{{ _('EUA') }}</div></div>
+      <div class="stat"><div class="num" data-counter data-target="64">0</div><div class="label">{{ _('Canadá') }}</div></div>
+      <div class="stat"><div class="num" data-counter data-target="228">0</div><div class="label">{{ _('Europa') }}</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SHOWCASE ===================== -->
+<section class="section">
+  <div class="container showcase">
+    <div class="text-center mb-4">
+      <h2>{{ _('Operação bonita, moderna e muito rápida') }}</h2>
+      <p class="muted">{{ _('Layouts pensados para balcão e gestão — sem fricção.') }}</p>
+    </div>
+
+    <div class="row g-4">
+      {% set shots = [
+        ('img/placeholder-wide.jpg', _('Calendário visual e bloqueios')),
+        ('img/placeholder-wide.jpg', _('Checklist com fotos e assinatura')),
+        ('img/placeholder-wide.jpg', _('Contrato PDF e histórico'))
+      ] %}
+      {% for src,caption in shots %}
+      <div class="col-12 col-md-4">
+        <figure class="tile hover-rise">
+          <img class="img-fluid" src="{{ url_for('static', filename=src) }}" alt="{{ caption }}"
+               onerror="this.src='{{ url_for('static', filename='img/video-cover.jpg') }}'">
+          <figcaption class="p-3 muted small">{{ caption }}</figcaption>
+        </figure>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FEATURES ===================== -->
+<section class="section section-light">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>{{ _('Poder nas rotinas que mais importam') }}</h2>
+      <p class="muted">{{ _('Menos atrito, mais controle: do balcão ao financeiro.') }}</p>
+    </div>
+
+    <div class="row g-4">
+      {% set features = [
+        ('bi-clipboard2-check', _('Check-in/out com fotos'), _('Mapa do carro, múltiplas fotos, observações e assinatura.')),
+        ('bi-filetype-pdf', _('Contrato digital em PDF'), _('Modelo editável com variáveis; gere e assine em segundos.')),
+        ('bi-calendar3', _('Calendário e bloqueios'), _('Entregas, devoluções, manutenção e indisponibilidades.')),
+        ('bi-cash-coin', _('Tarifas, adicionais e repasses'), _('Preço por categoria, diárias, taxas, caução e split interno.')),
+        ('bi-envelope-paper', _('E-mails transacionais (SMTP)'), _('SMTP por tenant (Office/Google) com identidade própria.')),
+        ('bi-shield-lock', _('RBAC & Auditoria'), _('Perfis e trilhas de alteração para ações críticas.'))
+      ] %}
+      {% for icon, title, desc in features %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card-ff p-4 hover-rise js-in">
+          <div class="d-flex align-items-center gap-3 mb-2">
+            <div class="icon"><i class="bi {{ icon }}"></i></div>
+            <h5 class="mb-0">{{ title }}</h5>
+          </div>
+          <p class="muted mb-3">{{ desc }}</p>
+          <img class="img-fluid rounded border"
+               src="{{ url_for('static', filename='img/feature-' ~ loop.index|string ~ '.jpg') }}"
+               alt="{{ title }}" onerror="this.style.display='none'">
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ===================== JORNADA ===================== -->
+<section class="section">
+  <div class="container journey">
+    <div class="text-center mb-4">
+      <h2>{{ _('Da cotação à chave, em minutos') }}</h2>
+      <p class="muted">{{ _('Uma história simples que seu cliente adora — e seu time também.') }}</p>
+    </div>
+
+    <div class="row g-3 align-items-center justify-content-center">
+      <div class="col-md-10 col-lg-9">
+        <div class="step js-in">
+          <div class="dot">1</div>
+          <div><strong>{{ _('Cliente solicita & confirma') }}</strong><br><span class="muted">{{ _('Capte o lead, ajuste datas e bloqueios, confirme a reserva.') }}</span></div>
+        </div>
+        <div class="text-center my-2"><img class="arrow" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/><path d='m12 5 7 7-7 7'/></svg>" alt=""></div>
+        <div class="step js-in">
+          <div class="dot">2</div>
+          <div><strong>{{ _('Checklist com fotos') }}</strong><br><span class="muted">{{ _('Mapa do carro, observações e assinatura no balcão.') }}</span></div>
+        </div>
+        <div class="text-center my-2"><img class="arrow" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/><path d='m12 5 7 7-7 7'/></svg>" alt=""></div>
+        <div class="step js-in">
+          <div class="dot">3</div>
+          <div><strong>{{ _('Contrato PDF assinado') }}</strong><br><span class="muted">{{ _('Modelo com variáveis; gere e assine em segundos.') }}</span></div>
+        </div>
+        <div class="text-center my-2"><img class="arrow" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/><path d='m12 5 7 7-7 7'/></svg>" alt=""></div>
+        <div class="step js-in">
+          <div class="dot">4</div>
+          <div><strong>{{ _('Chave entregue') }}</strong><br><span class="muted">{{ _('Fim do atrito. Início da fidelidade.') }}</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== RIBBON ===================== -->
+<section class="section section-light">
+  <div class="container">
+    <div class="text-center mb-3">
+      <h2>{{ _('Integrações que cortam trabalho manual') }}</h2>
+      <p class="muted">{{ _('Pagamentos, documentos, contabilidade e comunicação — conectados.') }}</p>
+    </div>
+
+    <div class="ribbon">
+      <div class="ribbon-track" id="ribbonTrack" aria-hidden="true">
+        {% set ints = [
+          ('bi-credit-card', _('Pagamentos'), _('Stripe')),
+          ('bi-envelope-paper', _('E-mail/SMTP'), _('Office 365 / Google')),
+          ('bi-receipt', _('Fiscal/Contábil'), _('CSV/Excel + Webhooks')),
+          ('bi-geo', _('Mapas/Endereços'), _('Autocomplete')),
+          ('bi-bell', _('Webhooks'), _('Eventos do ciclo do aluguel'))
+        ] %}
+        {% for icon, title, desc in ints %}
+        <div class="i"><i class="bi {{ icon }}"></i> <strong class="ms-1">{{ title }}</strong> <span class="text-muted ms-2">{{ desc }}</span></div>
+        {% endfor %}
+        {% for icon, title, desc in ints %}
+        <div class="i"><i class="bi {{ icon }}"></i> <strong class="ms-1">{{ title }}</strong> <span class="text-muted ms-2">{{ desc }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== KPIs ===================== -->
+<section class="section">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-6">
+        <h2>{{ _('Relatórios que guiam decisões') }}</h2>
+        <p class="muted">{{ _('Desempenho por categoria, utilização de frota, manutenção, recebíveis e receita.') }}</p>
+        <ul class="list-unstyled">
+          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i> {{ _('KPI por período e filial') }}</li>
+          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i> {{ _('Exportar para CSV/Excel') }}</li>
+          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i> {{ _('Logs e trilhas de auditoria') }}</li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <div class="row g-3">
+          <div class="col-6"><div class="card-ff p-3 text-center"><div class="muted small">{{ _('Utilização da frota') }}</div><div class="num" data-counter data-target="92">0</div></div></div>
+          <div class="col-6"><div class="card-ff p-3 text-center"><div class="muted small">{{ _('Receita / cat.') }}</div><div class="num" data-counter data-target="128">0</div></div></div>
+          <div class="col-6"><div class="card-ff p-3 text-center"><div class="muted small">{{ _('Ticket médio') }}</div><div class="num" data-counter data-target="37">0</div></div></div>
+          <div class="col-6"><div class="card-ff p-3 text-center"><div class="muted small">{{ _('Atrasos') }}</div><div class="num" data-counter data-target="5">0</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PREÇO (PLANO ÚNICO) ===================== -->
+<section id="pricing" class="section section-light">
+  <div class="container">
+    <div class="text-center mb-4">
+      <span class="badge rounded-pill px-3 py-2" style="background:#e7f1ff;color:#0a58ca;border:1px solid #cfe2ff;font-weight:700">{{ _('Plano único') }}</span>
+      <h2 class="mt-2">{{ _('Preço simples, tudo incluso') }}</h2>
+      <p class="muted">{{ _('Sem limite de usuários. Sem limite de veículos.') }}</p>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+        <div class="price-card p-4 p-lg-5 text-center">
+          <div style="font-size:56px;font-weight:800;letter-spacing:-.6px">US$ 89,90 <span class="text-muted fs-6 fw-normal">{{ _('/ mês') }}</span></div>
+          <div class="muted">{{ _('Contrato PDF • Checklists com fotos • SMTP por tenant • API & Webhooks • Auditoria') }}</div>
+          <hr>
+          <div class="vstack gap-2 text-start mx-auto" style="max-width:520px">
+            <div><i class="bi bi-check2-circle text-success me-2"></i> {{ _('Calendário e bloqueios') }}</div>
+            <div><i class="bi bi-check2-circle text-success me-2"></i> {{ _('Tarifas, adicionais e repasses') }}</div>
+            <div><i class="bi bi-check2-circle text-success me-2"></i> {{ _('Importadores de dados (CSV)') }}</div>
+            <div><i class="bi bi-check2-circle text-success me-2"></i> {{ _('Logs e permissões por perfil') }}</div>
+          </div>
+          <div class="d-grid gap-2 mt-4">
+            <button id="btnStripe2" class="btn btn-primary btn-lg" data-plan="4UFLEET_PRO_MONTHLY" data-price="89.90" data-currency="USD">
+              {{ _('Assinar agora') }}
+            </button>
+            <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#preSignupModal">
+              {{ _('Testar antes') }}
+            </button>
+          </div>
+          <div class="small text-muted mt-2">{{ _('Cancelamento a qualquer momento.') }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CTA SUPORTE ===================== -->
+<section class="section">
+  <div class="container">
+    <div class="d-flex flex-wrap align-items-center gap-3 p-3" style="border:1px solid #dbeafe;background:linear-gradient(180deg,#eff6ff,#ffffff);border-radius:16px">
+      <i class="bi bi-question-circle-fill fs-4 text-primary"></i>
+      <div class="me-auto">
+        <strong>{{ _('Dúvidas? Implementamos com você') }}</strong>
+        <div class="muted small">{{ _('Migração de dados, configuração de políticas e treinamento do time.') }}</div>
+      </div>
+      <a class="btn btn-success"
+         href="https://wa.me/14072321476?text={{ _('Olá! Quero conhecer o 4uFleet Pro e entender a implementação.')|urlencode }}"
+         target="_blank" rel="noopener">
+        <i class="bi bi-whatsapp me-1"></i> WhatsApp
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SITEMAP (mantido) ===================== -->
+<section class="section section-light">
+  <div class="container sitemap">
+    <div class="text-center mb-4">
+      <h2>{{ _('Mapa do Site') }}</h2>
+      <p class="muted">{{ _('Atalhos para tudo que você precisa, em um só lugar.') }}</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-6 col-md-3">
+        <h6>{{ _('Produto') }}</h6>
+        <ul class="list-unstyled mb-0">
+          <li><a href="#hero">{{ _('Visão geral') }}</a></li>
+          <li><a href="#pricing">{{ _('Preços (Plano Pro)') }}</a></li>
+          <li><a href="#" data-bs-toggle="modal" data-bs-target="#videoModal">{{ _('Ver demo (1:10)') }}</a></li>
+          <li><a href="#" data-bs-toggle="modal" data-bs-target="#preSignupModal">{{ _('Começar agora') }}</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-md-3">
+        <h6>{{ _('Recursos') }}</h6>
+        <ul class="list-unstyled mb-0">
+          <li><a href="#pricing">{{ _('Contrato PDF') }}</a></li>
+          <li><a href="#pricing">{{ _('Checklists com fotos') }}</a></li>
+          <li><a href="#pricing">{{ _('Calendário & bloqueios') }}</a></li>
+          <li><a href="#pricing">{{ _('Tarifas & repasses') }}</a></li>
+          <li><a href="#pricing">{{ _('SMTP por tenant') }}</a></li>
+          <li><a href="#pricing">{{ _('API & Webhooks') }}</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-md-3">
+        <h6>{{ _('Integrações') }}</h6>
+        <ul class="list-unstyled mb-0">
+          <li><a href="#pricing">{{ _('Stripe (pagamentos)') }}</a></li>
+          <li><a href="#pricing">{{ _('E-mail (Office/Google)') }}</a></li>
+          <li><a href="#pricing">{{ _('Exportações CSV/Excel') }}</a></li>
+          <li><a href="#pricing">{{ _('Mapas/Endereços') }}</a></li>
+          <li><a href="#pricing">{{ _('Webhooks (eventos)') }}</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-md-3">
+        <h6>{{ _('Empresa') }}</h6>
+        <ul class="list-unstyled mb-0">
+          <li><a href="tel:+14072321476">{{ _('Contato comercial') }}</a></li>
+          <li><a href="https://wa.me/14072321476?text={{ _('Olá! Quero conhecer o 4uFleet Pro.')|urlencode }}" target="_blank" rel="noopener">WhatsApp</a></li>
+          <li><a href="/login">Login</a></li>
+          <li><a href="/signup">{{ _('Criar conta') }}</a></li>
+          <li><a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">{{ _('Termos de uso') }}</a></li>
+          <li><a href="/politica-de-privacidade">{{ _('Política de Privacidade') }}</a></li>
+          <li><a href="/sitemap.xml" target="_blank" rel="nofollow">Sitemap XML (SEO)</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <hr class="my-4">
+    <div class="mini" style="font-size:12px; color:#64748b">{{ _('* Ajuste os paths conforme suas rotas ativas.') }}</div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/MotionPathPlugin.min.js"></script>
+<script>
+  // Partículas leves no hero
+  (function(){
+    const c = document.getElementById('heroParticles'); if(!c) return;
+    const ctx = c.getContext('2d'); let w,h,px=[];
+    function resize(){ w = c.width = c.clientWidth; h = c.height = c.clientHeight; px = Array.from({length:90},()=>({
+      x: Math.random()*w, y: Math.random()*h*.8, r: Math.random()*2+0.5, vx:(Math.random()-.5)*0.2, vy:(Math.random()-.2)*0.2, a: Math.random()*.6+.2
+    })); }
+    function frame(){ ctx.clearRect(0,0,w,h); px.forEach(p=>{ p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0) p.x=w; if(p.x>w) p.x=0; if(p.y<0) p.y=h*.8; if(p.y>h*.8) p.y=0;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fillStyle='rgba(158,193,255,'+p.a+')'; ctx.fill(); });
+      requestAnimationFrame(frame); }
+    resize(); frame(); addEventListener('resize', resize);
+  })();
+
+  // Carro seguindo a estrada + detalhes
+  (function(){
+    if(!window.gsap || !window.MotionPathPlugin) return;
+    gsap.registerPlugin(MotionPathPlugin);
+
+    const car = document.getElementById('carGroup');
+    const road = document.getElementById('roadPath');
+
+    // Giro das rodas
+    gsap.to(['#w1','#w2'], { rotation:360, transformOrigin:'50% 50%', repeat:-1, ease:'none', duration:1.1 });
+
+    // Headlight “sweep”
+    gsap.to('#headlight path', { opacity:0.28, duration:0.8, repeat:-1, yoyo:true, ease:'sine.inOut' });
+
+    // Bounce sutil do chassi
+    gsap.to('#carBody', { y:-1.5, duration:.6, yoyo:true, repeat:-1, ease:'sine.inOut' });
+    gsap.to('#shadow',  { scaleX:.95, duration:.6, yoyo:true, repeat:-1, transformOrigin:'50% 50%', ease:'sine.inOut' });
+
+    // Move o carro pela estrada, com autoRotate alinhado e “dirigindo em pé”
+    gsap.to(car, {
+      motionPath: { path: road, align: road, autoRotate: true, alignOrigin: [0.5, 0.5] },
+      duration: 13, repeat: -1, ease: "none"
+    });
+  })();
+
+  // Counters
+  (function(){
+    const fmt = new Intl.NumberFormat(undefined,{maximumFractionDigits:0});
+    function runCounters(scope){
+      (scope||document).querySelectorAll('[data-counter]').forEach(el=>{
+        const target = Number(el.getAttribute('data-target')||'0');
+        const start = performance.now(), dur = 1200 + (Math.random()*600|0);
+        function tick(now){
+          const p = Math.min(1,(now-start)/dur), eased = 1 - Math.pow(1-p,3);
+          el.textContent = fmt.format(Math.round(target*eased));
+          if(p<1) requestAnimationFrame(tick);
+        } requestAnimationFrame(tick);
+      });
+    }
+    const hero = document.getElementById('hero-stats'); if(hero) runCounters(hero);
+    const io = new IntersectionObserver((ents,ob)=>{ ents.forEach(e=>{ if(e.isIntersecting){ runCounters(e.target); ob.unobserve(e.target); }}) }, {threshold:.3});
+    document.querySelectorAll('.section').forEach(s=>io.observe(s));
+  })();
+
+  // Scroll effects (cards & steps) + ribbon infinita
+  (function(){
+    const hasGSAP = window.gsap && window.ScrollTrigger;
+    const cards = document.querySelectorAll('.js-in');
+    const steps = document.querySelectorAll('.journey .step');
+
+    if(!hasGSAP){
+      const io = new IntersectionObserver((ents,ob)=>{ ents.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); ob.unobserve(e.target);} }); }, {threshold:.2});
+      cards.forEach(el=>io.observe(el)); steps.forEach(el=>io.observe(el));
+    } else {
+      gsap.registerPlugin(ScrollTrigger);
+      cards.forEach(el=>{
+        gsap.fromTo(el,{y:24,opacity:0},{y:0,opacity:1,duration:.7,ease:"power3.out",
+          scrollTrigger:{trigger:el,start:"top 85%"}})
+      });
+      steps.forEach((el,i)=>{
+        gsap.fromTo(el,{y:28,opacity:0},{y:0,opacity:1,duration:.7,delay:i*.05,ease:"power3.out",
+          scrollTrigger:{trigger:el,start:"top 85%"}})
+      });
+      const track = document.getElementById('ribbonTrack');
+      if(track){
+        const w = track.scrollWidth/2;
+        gsap.to(track,{x:-w, duration:18, ease:"none", repeat:-1});
+      }
+    }
+  })();
+
+  // Stripe -> abre pré-signup (mantido)
+  function hookStripe(id){
+    document.getElementById(id)?.addEventListener('click', ()=>{
+      const m = new bootstrap.Modal(document.getElementById('preSignupModal')); m.show();
+    });
+  }
+  hookStripe('btnStripe'); hookStripe('btnStripe2');
+</script>
+{% endblock %}
