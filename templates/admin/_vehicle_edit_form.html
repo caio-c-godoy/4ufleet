@@ -1,14 +1,6 @@
-<div class="modal-header d-flex align-items-center justify-content-between">
-  <h5 class="modal-title mb-0">Editar veículo</h5>
-  <div class="d-flex align-items-center gap-2">
-    <!-- Botão Compartilhar (abre em nova aba) -->
-    <a class="btn btn-sm btn-outline-primary"
-       target="_blank"
-       href="{{ url_for('admin.vehicle_share', tenant_slug=g.tenant.slug, vehicle_id=vehicle.id) }}">
-      <i class="bi bi-people"></i> Compartilhar
-    </a>
-    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-  </div>
+<div class="modal-header">
+  <h5 class="modal-title">Editar veículo</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 
 <form id="vehicleEditForm"
@@ -33,9 +25,9 @@
         <input name="plate" class="form-control" value="{{ vehicle.plate or '' }}">
       </div>
       <div class="mb-3">
-        <label class="form-label">Cor</label>
-        <input type="text" class="form-control" name="color" value="{{ vehicle.color or '' }}" placeholder="Ex.: Branco Pérola">
-      </div>
+      <label class="form-label">Cor</label>
+      <input type="text" class="form-control" name="color" value="{{ vehicle.color or '' }}" placeholder="Ex.: Branco Pérola">
+    </div>
       <div class="col-12">
         <label class="form-label">Categoria</label>
         <select name="category_id" class="form-select">

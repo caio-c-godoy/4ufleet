@@ -19,11 +19,6 @@ from . import site_bp  # blueprint criado em app/site/__init__.py
 from app.auth.routes import _send_confirmation_email
 from app.services.mailer import send_platform_mail_html
 
-from sqlalchemy import and_, or_, exists, not_
-from sqlalchemy.orm import joinedload
-
-from app.models import Vehicle, VehicleShare, Reservation
-
 
 # -------------------- Utils locais --------------------
 def slugify(value: str) -> str:
@@ -52,22 +47,6 @@ def _save_logo(file_storage, slug: str) -> str | None:
     file_storage.save(dest)
     # caminho relativo a /static
     return f"uploads/branding/{slug}/{name}".replace("\\", "/")
-
-@site_bp.get("/")
-@site_bp.get("/home")
-def home():
-    return render_template("site/home.html")
-
-@site_bp.get("/lang/<code>")
-def set_lang(code):
-    from flask import current_app
-    langs = current_app.config["LANGUAGES"]
-    if code in langs:
-        session["lang"] = code
-    # redireciona para onde o usuário estava
-    dest = request.referrer or url_for("site.home")
-    return redirect(dest)
-
 
 
 # -------------------- LANDING --------------------
@@ -260,124 +239,3 @@ def pre_signup():
             current_app.logger.exception("Falha ao notificar equipe comercial (pre-signup)")
 
     return jsonify(ok=True)
-
-
-# ====== PASSO 5: Busca pública com veículos compartilhados ======
-
-def _parse_date(s: str) -> datetime | None:
-    if not s:
-        return None
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
-        try:
-            return datetime.strptime(s, fmt)
-        except ValueError:
-            continue
-    return None
-
-def get_available_vehicles_for_tenant(
-    tenant_id: int,
-    start_dt: datetime | None,
-    end_dt: datetime | None,
-    min_seats: int | None = None,
-    category_id: int | None = None
-):
-    """
-    Retorna uma query com veículos disponíveis para o tenant:
-    - Veículos do próprio tenant
-    - Veículos compartilhados ativamente com o tenant (VehicleShare.active = TRUE)
-    Aplica filtro de disponibilidade via subconsulta em Reservation (agenda única por vehicle_id).
-    """
-    # 1) Conjunto-base: veículos do tenant OU compartilhados com ele
-    #    (sem duplicar veículos; agenda é única por vehicle_id)
-    q_own = db.session.query(Vehicle.id).filter(Vehicle.tenant_id == tenant_id)
-
-    q_shared = (
-        db.session.query(Vehicle.id)
-        .join(VehicleShare, VehicleShare.vehicle_id == Vehicle.id)
-        .filter(
-            VehicleShare.shared_with_tenant_id == tenant_id,
-            VehicleShare.active.is_(True),
-        )
-    )
-
-    # unify (ids)
-    sub_ids = q_own.union(q_shared).subquery()
-
-    # 2) Query principal sobre Vehicle usando os IDs unificados
-    q = (
-        db.session.query(Vehicle)
-        .options(joinedload(Vehicle.category))
-        .filter(Vehicle.id.in_(db.session.query(sub_ids.c.id)))
-        .filter(Vehicle.active.is_(True))
-    )
-
-    # 3) Filtros opcionais (assentos, categoria)
-    if min_seats:
-        # ajuste o campo conforme seu model (ex.: Vehicle.seats)
-        q = q.filter(getattr(Vehicle, "seats", None) >= min_seats)
-    if category_id:
-        q = q.filter(getattr(Vehicle, "category_id", None) == category_id)
-
-    # 4) Filtro de disponibilidade por data (quando informado)
-    #    Remove veículos que tenham alguma reserva que COLIDA com [start_dt, end_dt]
-    #    Overlap: (res.start <= end) AND (res.end >= start)
-    if start_dt and end_dt and end_dt >= start_dt:
-        overlap_exists = (
-            db.session.query(Reservation.id)
-            .filter(Reservation.vehicle_id == Vehicle.id)
-            .filter(
-                and_(
-                    Reservation.start_date <= end_dt,
-                    Reservation.end_date >= start_dt,
-                )
-            )
-            # opcional: filtre só status que bloqueiam (ajuste para seus valores)
-            # .filter(Reservation.status.in_(["confirmed", "paid", "booked"]))
-        ).exists()
-
-        q = q.filter(not_(overlap_exists))
-
-    # 5) Ordenação amigável
-    q = q.order_by(Vehicle.tenant_id, Vehicle.name.asc())
-
-    return q
-
-# --------- ROTA PÚBLICA EXEMPLO (use se não tiver uma) ---------
-@site_bp.route("/search", methods=["GET"])
-def site_search():
-    # captura parâmetros
-    pickup_str = request.args.get("pickup")      # ex.: 2025-09-30
-    dropoff_str = request.args.get("dropoff")    # ex.: 2025-10-05
-    seats_str = request.args.get("seats")        # ex.: "7"
-    category_str = request.args.get("category")  # opcional
-
-    start_dt = _parse_date(pickup_str)
-    end_dt = _parse_date(dropoff_str)
-    min_seats = int(seats_str) if seats_str and seats_str.isdigit() else None
-    category_id = int(category_str) if category_str and category_str.isdigit() else None
-
-    # tenant atual do site público
-    tenant = g.tenant  # já usado no seu app; assume que o middleware define g.tenant
-    if not tenant:
-        abort(404)
-
-    vehicles_q = get_available_vehicles_for_tenant(
-        tenant_id=tenant.id,
-        start_dt=start_dt,
-        end_dt=end_dt,
-        min_seats=min_seats,
-        category_id=category_id
-    )
-
-    vehicles = vehicles_q.all()
-
-    # Renderize com seu template público de catálogo/lista (ajuste o nome se necessário)
-    return render_template(
-        "site/search_results.html",
-        vehicles=vehicles,
-        pickup=pickup_str,
-        dropoff=dropoff_str,
-        seats=min_seats,
-        category_id=category_id,
-        tenant=tenant
-    )

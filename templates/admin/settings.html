@@ -23,11 +23,13 @@
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="tab-mail" data-bs-toggle="tab" data-bs-target="#pane-mail" type="button" role="tab">E-mail</button>
   </li>
+  
   <li class="nav-item" role="presentation">
-    <button class="nav-link" id="tab-i18n" data-bs-toggle="tab" data-bs-target="#pane-i18n" type="button" role="tab">
-      Idioma
-    </button>
-  </li>
+  <button class="nav-link" id="tab-i18n" data-bs-toggle="tab" data-bs-target="#pane-i18n" type="button" role="tab">
+    Idioma
+  </button>
+    </li>
+
   <!-- NOVA ABA: Links & Embed -->
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="tab-links" data-bs-toggle="tab" data-bs-target="#pane-links" type="button" role="tab">Links &amp; Embed</button>
@@ -46,10 +48,8 @@
 
   <!-- BRANDING -->
   <div class="tab-pane fade show active" id="pane-branding" role="tabpanel" aria-labelledby="tab-branding">
-
-    <!-- Card: Branding (cores, logo, WhatsApp) -->
     <div class="card">
-      <div class="card-header">Branding (cores, logotipo e contato)</div>
+      <div class="card-header">Branding (cores e logotipo)</div>
       <div class="card-body">
         <form action="{{ url_for('admin.settings', tenant_slug=g.tenant.slug) }}" method="post" enctype="multipart/form-data" class="row g-3">
           <input type="hidden" name="_section" value="branding">
@@ -92,266 +92,206 @@
             </div>
           </div>
 
-          <!-- NOVO: WhatsApp -->
-          <div class="col-md-6">
-            <label class="form-label">WhatsApp (formato internacional)</label>
-            <input
-              type="tel"
-              name="whatsapp_phone"
-              class="form-control"
-              placeholder="+15551234567"
-              value="{{ tenant_wa or '' }}"
-            >
-            <div class="form-text">
-              Informe com DDI (E.164), ex.: <code>+55...</code> ou <code>+1...</code>. Este número será usado no botão do WhatsApp no site público.
-            </div>
-          </div>
-
-             <!-- ▶️ WhatsApp (site público) -->
-      <hr class="my-4">
-
-      <input type="hidden" name="_section" value="branding">
-
-      <div class="row g-3 align-items-center">
-        <div class="col-12">
-          <div class="form-check form-switch">
-            <input
-              class="form-check-input"
-              type="checkbox"
-              id="whatsapp_enabled"
-              name="whatsapp_enabled"
-              value="1"
-              {% if wa_cfg and wa_cfg.enabled %}checked{% endif %}
-            >
-            <label class="form-check-label fw-semibold" for="whatsapp_enabled">
-              Exibir botão flutuante do WhatsApp no site público
-            </label>
-            <div class="form-text">
-              Quando habilitado, um botão flutuante aparecerá nas páginas públicas deste tenant.
-            </div>
-          </div>
-        
-
-        <div class="col-md-6">
-          <label class="form-label" for="whatsapp_phone">Número do WhatsApp (formato internacional E.164)</label>
-          <input
-            type="tel"
-            class="form-control"
-            id="whatsapp_phone"
-            name="whatsapp_phone"
-            placeholder="+15551234567"
-            value="{{ (wa_cfg.phone if wa_cfg else '') or tenant_wa or '' }}"
-          >
-          <div class="form-text">
-            Ex.: <code>+55...</code> (Brasil) ou <code>+1...</code> (EUA). Apenas números e o sinal de <code>+</code>.
-          </div>
-        </div>
-      </div>
-
-   </div>
           <div class="col-12">
-            <button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar Branding</button>
+            <button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar branding</button>
           </div>
         </form>
       </div>
     </div>
+  </div>
+  <!-- ========== Airports atendidos (por tenant) ========== -->
+<div class="card mt-4">
+  <div class="card-header">
+    <strong>Locais de atendimento (Aeroportos)</strong>
+  </div>
+  <div class="card-body">
 
-      
+    <p class="text-muted small mb-2">
+      Pesquise pelo aeroporto e clique para adicionar. A lista abaixo define os locais que aparecerão na página pública.
+    </p>
 
-    <!-- Card: Airports atendidos (agora DENTRO da aba Branding) -->
-    <div class="card mt-4">
-      <div class="card-header">
-        <strong>Locais de atendimento (Aeroportos)</strong>
-      </div>
-      <div class="card-body">
-
-        <p class="text-muted small mb-2">
-          Pesquise pelo aeroporto e clique para adicionar. A lista abaixo define os locais que aparecerão na página pública.
-        </p>
-
-        <!-- URLs dos endpoints (renderizadas por Jinja) -->
-        <div
-          id="airports-config"
-          data-get="{{ url_for('admin.admin_get_airports_served', tenant_slug=g.tenant.slug) }}"
-          data-post="{{ url_for('admin.admin_set_airports_served', tenant_slug=g.tenant.slug) }}"
-          data-suggest="{{ url_for('public.airports_json', tenant_slug=g.tenant.slug) }}">
-        </div>
-
-        <!-- input + sugestões -->
-        <div class="position-relative" style="max-width: 680px;">
-          <input
-            id="airport-search"
-            type="text"
-            class="form-control"
-            placeholder="Comece a digitar (ex.: MIA, Orlando, JFK...)"
-            autocomplete="off">
-          <div id="airport-suggest" class="list-group position-absolute w-100 shadow-sm" style="z-index: 30; max-height: 240px; overflow:auto; display:none;"></div>
-        </div>
-
-        <!-- chips -->
-        <div id="airport-chips" class="d-flex flex-wrap gap-2 mt-3"></div>
-
-        <!-- ações -->
-        <div class="mt-3 d-flex gap-2">
-          <button id="btn-save-airports" class="btn btn-primary btn-sm">Salvar locais</button>
-          <button id="btn-clear-airports" class="btn btn-outline-secondary btn-sm">Limpar tudo</button>
-          <div id="airports-flash" class="ms-2 small"></div>
-        </div>
-      </div>
+    <!-- URLs dos endpoints (renderizadas por Jinja) -->
+    <div
+      id="airports-config"
+      data-get="{{ url_for('admin.admin_get_airports_served', tenant_slug=g.tenant.slug) }}"
+      data-post="{{ url_for('admin.admin_set_airports_served', tenant_slug=g.tenant.slug) }}"
+      data-suggest="{{ url_for('public.airports_json', tenant_slug=g.tenant.slug) }}">
     </div>
 
-    <script>
-    (() => {
-      const root    = document.getElementById('airports-config');
-      if (!root) return;
+    <!-- input + sugestões -->
+    <div class="position-relative" style="max-width: 680px;">
+      <input
+        id="airport-search"
+        type="text"
+        class="form-control"
+        placeholder="Comece a digitar (ex.: MIA, Orlando, JFK...)"
+        autocomplete="off">
+      <div id="airport-suggest" class="list-group position-absolute w-100 shadow-sm" style="z-index: 30; max-height: 240px; overflow:auto; display:none;"></div>
+    </div>
 
-      const GET_URL    = root.dataset.get;
-      const POST_URL   = root.dataset.post;
-      const SUGGEST_URL= root.dataset.suggest;
+    <!-- chips -->
+    <div id="airport-chips" class="d-flex flex-wrap gap-2 mt-3"></div>
 
-      const $input   = document.getElementById('airport-search');
-      const $list    = document.getElementById('airport-suggest');
-      const $chips   = document.getElementById('airport-chips');
-      const $saveBtn = document.getElementById('btn-save-airports');
-      const $clearBtn= document.getElementById('btn-clear-airports');
-      const $flash   = document.getElementById('airports-flash');
+    <!-- ações -->
+    <div class="mt-3 d-flex gap-2">
+      <button id="btn-save-airports" class="btn btn-primary btn-sm">Salvar locais</button>
+      <button id="btn-clear-airports" class="btn btn-outline-secondary btn-sm">Limpar tudo</button>
+      <div id="airports-flash" class="ms-2 small"></div>
+    </div>
+  </div>
+</div>
 
-      /** estado local */
-      let selected = []; // array de strings exatamente como voltam do /airports.json, ex: "Miami International Airport (MIA) - Miami"
+<script>
+(() => {
+  const root    = document.getElementById('airports-config');
+  if (!root) return;
 
-      function flash(msg, type="muted") {
-        $flash.className = "ms-2 small text-" + type;
-        $flash.textContent = msg || "";
-        if (msg) setTimeout(() => { $flash.textContent = ""; }, 4000);
-      }
+  const GET_URL    = root.dataset.get;
+  const POST_URL   = root.dataset.post;
+  const SUGGEST_URL= root.dataset.suggest;
 
-      function renderChips() {
-        $chips.innerHTML = "";
-        selected.forEach((label, idx) => {
-          const chip = document.createElement('span');
-          chip.className = "badge rounded-pill bg-secondary";
-          chip.style.fontSize = "0.9rem";
-          chip.style.display = "inline-flex";
-          chip.style.alignItems = "center";
-          chip.style.gap = ".4rem";
-          chip.textContent = label;
+  const $input   = document.getElementById('airport-search');
+  const $list    = document.getElementById('airport-suggest');
+  const $chips   = document.getElementById('airport-chips');
+  const $saveBtn = document.getElementById('btn-save-airports');
+  const $clearBtn= document.getElementById('btn-clear-airports');
+  const $flash   = document.getElementById('airports-flash');
 
-          const x = document.createElement('button');
-          x.type = "button";
-          x.className = "btn-close btn-close-white btn-sm ms-1";
-          x.style.filter = "invert(1)";
-          x.ariaLabel = "Remover";
-          x.onclick = () => {
-            selected.splice(idx, 1);
-            renderChips();
-          };
-          chip.appendChild(x);
-          $chips.appendChild(chip);
-        });
-      }
+  /** estado local */
+  let selected = []; // array de strings exatamente como voltam do /airports.json, ex: "Miami International Airport (MIA) - Miami"
 
-      function addIfNotExists(label) {
-        if (!label) return;
-        if (selected.includes(label)) return;
-        selected.push(label);
+  function flash(msg, type="muted") {
+    $flash.className = "ms-2 small text-" + type;
+    $flash.textContent = msg || "";
+    if (msg) setTimeout(() => { $flash.textContent = ""; }, 4000);
+  }
+
+  function renderChips() {
+    $chips.innerHTML = "";
+    selected.forEach((label, idx) => {
+      const chip = document.createElement('span');
+      chip.className = "badge rounded-pill bg-secondary";
+      chip.style.fontSize = "0.9rem";
+      chip.style.display = "inline-flex";
+      chip.style.alignItems = "center";
+      chip.style.gap = ".4rem";
+      chip.textContent = label;
+
+      const x = document.createElement('button');
+      x.type = "button";
+      x.className = "btn-close btn-close-white btn-sm ms-1";
+      x.style.filter = "invert(1)";
+      x.ariaLabel = "Remover";
+      x.onclick = () => {
+        selected.splice(idx, 1);
         renderChips();
-      }
+      };
+      chip.appendChild(x);
+      $chips.appendChild(chip);
+    });
+  }
 
-      function showSuggest(items) {
-        if (!items || !items.length) {
-          $list.style.display = "none";
-          $list.innerHTML = "";
-          return;
-        }
+  function addIfNotExists(label) {
+    if (!label) return;
+    if (selected.includes(label)) return;
+    selected.push(label);
+    renderChips();
+  }
+
+  function showSuggest(items) {
+    if (!items || !items.length) {
+      $list.style.display = "none";
+      $list.innerHTML = "";
+      return;
+    }
+    $list.innerHTML = "";
+    items.slice(0, 20).forEach(txt => {
+      const a = document.createElement('button');
+      a.type = "button";
+      a.className = "list-group-item list-group-item-action";
+      a.textContent = txt;
+      a.onclick = () => {
+        addIfNotExists(txt);
+        $input.value = "";
+        $list.style.display = "none";
         $list.innerHTML = "";
-        items.slice(0, 20).forEach(txt => {
-          const a = document.createElement('button');
-          a.type = "button";
-          a.className = "list-group-item list-group-item-action";
-          a.textContent = txt;
-          a.onclick = () => {
-            addIfNotExists(txt);
-            $input.value = "";
-            $list.style.display = "none";
-            $list.innerHTML = "";
-            $input.focus();
-          };
-          $list.appendChild(a);
-        });
-        $list.style.display = "block";
+        $input.focus();
+      };
+      $list.appendChild(a);
+    });
+    $list.style.display = "block";
+  }
+
+  /** debounce simples */
+  let tId = null;
+  $input.addEventListener('input', (e) => {
+    const q = (e.target.value || "").trim();
+    if (tId) clearTimeout(tId);
+    if (q.length < 2) {
+      $list.style.display = "none";
+      $list.innerHTML = "";
+      return;
+    }
+    tId = setTimeout(async () => {
+      try {
+        const res = await fetch(`${SUGGEST_URL}?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
+        const data = await res.json();
+        showSuggest(data.items || []);
+      } catch (err) {
+        console.error(err);
+        showSuggest([]);
       }
+    }, 200);
+  });
 
-      /** debounce simples */
-      let tId = null;
-      $input.addEventListener('input', (e) => {
-        const q = (e.target.value || "").trim();
-        if (tId) clearTimeout(tId);
-        if (q.length < 2) {
-          $list.style.display = "none";
-          $list.innerHTML = "";
-          return;
-        }
-        tId = setTimeout(async () => {
-          try {
-            const res = await fetch(`${SUGGEST_URL}?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
-            const data = await res.json();
-            showSuggest(data.items || []);
-          } catch (err) {
-            console.error(err);
-            showSuggest([]);
-          }
-        }, 200);
+  document.addEventListener('click', (ev) => {
+    if (!$list.contains(ev.target) && ev.target !== $input) {
+      $list.style.display = "none";
+    }
+  });
+
+  /** carregar lista atual do tenant */
+  (async () => {
+    try {
+      const res = await fetch(GET_URL, { credentials: 'same-origin' });
+      const data = await res.json();
+      selected = Array.isArray(data.items) ? data.items.slice(0, 200) : [];
+      renderChips();
+    } catch (e) {
+      console.error(e);
+      selected = [];
+      renderChips();
+    }
+  })();
+
+  /** salvar */
+  $saveBtn.addEventListener('click', async () => {
+    try {
+      const res = await fetch(POST_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ items: selected })
       });
+      const data = await res.json();
+      if (data.ok) {
+        flash(`Salvo! (${data.count} locais)`, "success");
+      } else {
+        flash("Falha ao salvar.", "danger");
+      }
+    } catch (e) {
+      console.error(e);
+      flash("Erro ao salvar.", "danger");
+    }
+  });
 
-      document.addEventListener('click', (ev) => {
-        if (!$list.contains(ev.target) && ev.target !== $input) {
-          $list.style.display = "none";
-        }
-      });
-
-      /** carregar lista atual do tenant */
-      (async () => {
-        try {
-          const res = await fetch(GET_URL, { credentials: 'same-origin' });
-          const data = await res.json();
-          selected = Array.isArray(data.items) ? data.items.slice(0, 200) : [];
-          renderChips();
-        } catch (e) {
-          console.error(e);
-          selected = [];
-          renderChips();
-        }
-      })();
-
-      /** salvar */
-      $saveBtn.addEventListener('click', async () => {
-        try {
-          const res = await fetch(POST_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ items: selected })
-          });
-          const data = await res.json();
-          if (data.ok) {
-            flash(`Salvo! (${data.count} locais)`, "success");
-          } else {
-            flash("Falha ao salvar.", "danger");
-          }
-        } catch (e) {
-          console.error(e);
-          flash("Erro ao salvar.", "danger");
-        }
-      });
-
-      /** limpar tudo */
-      $clearBtn.addEventListener('click', () => {
-        selected = [];
-        renderChips();
-      });
-    })();
-    </script>
-  </div> <!-- /pane-branding -->
+  /** limpar tudo */
+  $clearBtn.addEventListener('click', () => {
+    selected = [];
+    renderChips();
+  });
+})();
+</script>
 
   <!-- PAYMENTS -->
   <div class="tab-pane fade" id="pane-payments" role="tabpanel" aria-labelledby="tab-payments">
@@ -519,88 +459,88 @@
     </div>
   </div>
 
-  <!-- MAIL -->
+  <!-- MAIL (AGORA DENTRO de .tab-content) -->
   <div class="tab-pane fade" id="pane-mail" role="tabpanel" aria-labelledby="tab-mail">
-    <div class="card">
-      <div class="card-header">E-mail por tenant (SMTP seguro no Key Vault)</div>
-      <div class="card-body">
-        <form action="{{ url_for('admin.settings', tenant_slug=g.tenant.slug) }}" method="post" class="row g-3" autocomplete="off">
-          <input type="hidden" name="_section" value="mail">
+  <div class="card">
+    <div class="card-header">E-mail por tenant (SMTP seguro no Key Vault)</div>
+    <div class="card-body">
+      <form action="{{ url_for('admin.settings', tenant_slug=g.tenant.slug) }}" method="post" class="row g-3" autocomplete="off">
+        <input type="hidden" name="_section" value="mail">
 
-          <div class="col-md-6">
-            <label class="form-label">Remetente (Nome)</label>
-            <input type="text" name="mail_from_name" class="form-control" value="{{ t.mail_from_name or t.name or '' }}">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Remetente (E-mail)</label>
-            <input type="email" name="mail_from_email" class="form-control" value="{{ t.mail_from_email or '' }}" placeholder="ex.: reservas@minhalocadora.com">
-          </div>
+        <div class="col-md-6">
+          <label class="form-label">Remetente (Nome)</label>
+          <input type="text" name="mail_from_name" class="form-control" value="{{ t.mail_from_name or t.name or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Remetente (E-mail)</label>
+          <input type="email" name="mail_from_email" class="form-control" value="{{ t.mail_from_email or '' }}" placeholder="ex.: reservas@minhalocadora.com">
+        </div>
 
-          <div class="col-md-5">
-            <label class="form-label">SMTP Host</label>
-            <input type="text" name="smtp_host" class="form-control" placeholder="smtp.seuprovedor.com"
-                   value="{{ mail_cfg.host if mail_cfg else '' }}">
+        <div class="col-md-5">
+          <label class="form-label">SMTP Host</label>
+          <input type="text" name="smtp_host" class="form-control" placeholder="smtp.seuprovedor.com"
+                 value="{{ mail_cfg.host if mail_cfg else '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Porta</label>
+          <input type="number" name="smtp_port" class="form-control" placeholder="587"
+                 value="{{ mail_cfg.port if mail_cfg else '' }}">
+        </div>
+        <div class="col-md-2 d-flex align-items-center">
+          <div class="form-check mt-4">
+            <input class="form-check-input" type="checkbox" name="smtp_tls" id="smtpTLS"
+                   {% if not mail_cfg or mail_cfg.use_tls %}checked{% endif %}>
+            <label class="form-check-label" for="smtpTLS">TLS</label>
           </div>
-          <div class="col-md-2">
-            <label class="form-label">Porta</label>
-            <input type="number" name="smtp_port" class="form-control" placeholder="587"
-                   value="{{ mail_cfg.port if mail_cfg else '' }}">
+        </div>
+        <div class="col-md-2 d-flex align-items-center">
+          <div class="form-check mt-4">
+            <input class="form-check-input" type="checkbox" name="smtp_ssl" id="smtpSSL"
+                   {% if mail_cfg and mail_cfg.use_ssl %}checked{% endif %}>
+            <label class="form-check-label" for="smtpSSL">SSL</label>
           </div>
-          <div class="col-md-2 d-flex align-items-center">
-            <div class="form-check mt-4">
-              <input class="form-check-input" type="checkbox" name="smtp_tls" id="smtpTLS"
-                     {% if not mail_cfg or mail_cfg.use_tls %}checked{% endif %}>
-              <label class="form-check-label" for="smtpTLS">TLS</label>
-            </div>
-          </div>
-          <div class="col-md-2 d-flex align-items-center">
-            <div class="form-check mt-4">
-              <input class="form-check-input" type="checkbox" name="smtp_ssl" id="smtpSSL"
-                     {% if mail_cfg and mail_cfg.use_ssl %}checked{% endif %}>
-              <label class="form-check-label" for="smtpSSL">SSL</label>
-            </div>
-          </div>
+        </div>
 
-          <div class="col-md-6">
-            <label class="form-label">Usuário</label>
-            <input type="text" name="smtp_user" class="form-control" placeholder="usuario"
-                   value="{{ mail_cfg.user if mail_cfg else '' }}" autocomplete="off">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Senha</label>
-            <input type="password" name="smtp_pass" class="form-control" placeholder="senha" autocomplete="new-password">
-            <div class="form-text">As credenciais ficam guardadas no Key Vault. O sistema armazena apenas o alias.</div>
-          </div>
+        <div class="col-md-6">
+          <label class="form-label">Usuário</label>
+          <input type="text" name="smtp_user" class="form-control" placeholder="usuario"
+                 value="{{ mail_cfg.user if mail_cfg else '' }}" autocomplete="off">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Senha</label>
+          <input type="password" name="smtp_pass" class="form-control" placeholder="senha" autocomplete="new-password">
+          <div class="form-text">As credenciais ficam guardadas no Key Vault. O sistema armazena apenas o alias.</div>
+        </div>
 
-          <div class="col-12 d-flex align-items-center flex-wrap gap-2">
-            <button class="btn btn-primary">
-              <i class="bi bi-check2"></i> Salvar e-mail no Key Vault
+        <div class="col-12 d-flex align-items-center flex-wrap gap-2">
+          <button class="btn btn-primary">
+            <i class="bi bi-check2"></i> Salvar e-mail no Key Vault
+          </button>
+
+          <!-- NOVO: campo "Para (teste)" -->
+          <div class="input-group" style="max-width:460px">
+            <span class="input-group-text">Para (teste)</span>
+            <input type="email" id="mailTestTo" class="form-control"
+                   value="{{ current_user.email or t.mail_from_email or '' }}"
+                   placeholder="email que receberá o teste">
+            <button type="button" class="btn btn-outline-secondary" id="btnMailTest"
+                    data-url="{{ url_for('admin.mail_test', tenant_slug=g.tenant.slug) }}">
+              Enviar e-mail de teste
             </button>
-
-            <!-- Para (teste) -->
-            <div class="input-group" style="max-width:460px">
-              <span class="input-group-text">Para (teste)</span>
-              <input type="email" id="mailTestTo" class="form-control"
-                     value="{{ current_user.email or t.mail_from_email or '' }}"
-                     placeholder="email que receberá o teste">
-              <button type="button" class="btn btn-outline-secondary" id="btnMailTest"
-                      data-url="{{ url_for('admin.mail_test', tenant_slug=g.tenant.slug) }}">
-                Enviar e-mail de teste
-              </button>
-            </div>
-
-            {% if t.mail_secret_id %}
-              <span class="badge text-bg-light">Alias: <code>{{ t.mail_secret_id }}</code></span>
-            {% else %}
-              <span class="text-muted small">Nenhum alias salvo para este tenant.</span>
-            {% endif %}
           </div>
-        </form>
-      </div>
+
+          {% if t.mail_secret_id %}
+            <span class="badge text-bg-light">Alias: <code>{{ t.mail_secret_id }}</code></span>
+          {% else %}
+            <span class="text-muted small">Nenhum alias salvo para este tenant.</span>
+          {% endif %}
+        </div>
+      </form>
     </div>
   </div>
+</div>
 
-  <!-- LINKS & EMBED -->
+    <!-- LINKS & EMBED -->
   <div class="tab-pane fade" id="pane-links" role="tabpanel" aria-labelledby="tab-links">
     <div class="card">
       <div class="card-header">Links do Tenant &amp; Código de Incorporação</div>
@@ -654,216 +594,234 @@
     </div>
   </div>
 
+
+
   <!-- USERS -->
-  <div class="tab-pane fade" id="pane-users" role="tabpanel" aria-labelledby="tab-users">
-    <div class="row g-3">
-      <div class="col-lg-5">
-        <div class="card h-100">
-          <div class="card-header">Novo usuário</div>
-          <div class="card-body">
-            <form action="{{ url_for('admin.settings', tenant_slug=g.tenant.slug) }}" method="post" class="row g-3">
-              <input type="hidden" name="_section" value="user_new">
-              <div class="col-12">
-                <label class="form-label">E-mail</label>
-                <input type="email" name="email" class="form-control" required>
-              </div>
-              <div class="col-12">
-                <label class="form-label">Senha</label>
-                <input type="password" name="password" class="form-control" required>
-              </div>
-
-              <div class="col-12">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="is_admin" id="isAdmin">
-                  <label class="form-check-label" for="isAdmin">Administrador (acesso total)</label>
-                </div>
-                <div class="form-text">
-                  Dica: se marcar “Administrador”, as permissões abaixo são ignoradas.
-                </div>
-              </div>
-
-              <!-- MATRIZ DE PERMISSÕES POR MÓDULO -->
-              <div class="col-12">
-                <div class="d-flex align-items-center justify-content-between">
-                  <label class="form-label mb-0">Permissões por módulo</label>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnPermClear">Limpar tudo</button>
-                </div>
-
-                <div class="table-responsive mt-2">
-                  <table class="table table-sm align-middle">
-                    <thead class="table-light">
-                      <tr>
-                        <th style="min-width:180px">Módulo</th>
-                        <th class="text-center">
-                          Ver<br>
-                          <input type="checkbox" class="form-check-input perm-col" data-col="view" title="Marcar coluna 'Ver'">
-                        </th>
-                        <th class="text-center">
-                          Criar<br>
-                          <input type="checkbox" class="form-check-input perm-col" data-col="create" title="Marcar coluna 'Criar'">
-                        </th>
-                        <th class="text-center">
-                          Editar<br>
-                          <input type="checkbox" class="form-check-input perm-col" data-col="edit" title="Marcar coluna 'Editar'">
-                        </th>
-                        <th class="text-center">
-                          Excluir<br>
-                          <input type="checkbox" class="form-check-input perm-col" data-col="delete" title="Marcar coluna 'Excluir'">
-                        </th>
-                        <th class="text-center">
-                          Cancelar<br>
-                          <input type="checkbox" class="form-check-input perm-col" data-col="cancel" title="Marcar coluna 'Cancelar'">
-                        </th>
-                        <th class="text-center">
-                          Enviar link pgto<br>
-                          <input type="checkbox" class="form-check-input perm-col" data-col="send_payment" title="Marcar coluna 'Enviar link'">
-                        </th>
-                        <th class="text-center">
-                          Exportar<br>
-                          <input type="checkbox" class="form-check-input perm-col" data-col="export" title="Marcar coluna 'Exportar'">
-                        </th>
-                        <th class="text-center">
-                          Tudo<br>
-                          <input type="checkbox" class="form-check-input perm-col" data-col="all" title="Marcar todas colunas">
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {% set modules = [
-                        ('vehicles', 'Veículos'),
-                        ('categories', 'Categorias'),
-                        ('rates', 'Tarifas'),
-                        ('reservations', 'Reservas'),
-                        ('payments', 'Pagamentos'),
-                        ('contracts', 'Contratos'),
-                        ('checklists', 'Checklists'),
-                        ('users', 'Usuários')
-                      ] %}
-                      {% for key,label in modules %}
-                        <tr data-module="{{ key }}">
-                          <td class="fw-semibold">
-                            {{ label }}
-                            <div class="small text-muted">({{ key }})</div>
-                          </td>
-                          {% for action in ['view','create','edit','delete','cancel','send_payment','export'] %}
-                            <td class="text-center">
-                              <input
-                                type="checkbox"
-                                class="form-check-input perm-cell"
-                                name="perms[{{ key }}][{{ action }}]"
-                                value="1"
-                                data-action="{{ action }}"
-                              >
-                            </td>
-                          {% endfor %}
-                          <td class="text-center">
-                            <input type="checkbox" class="form-check-input perm-row-all" title="Marcar todas as ações deste módulo">
-                          </td>
-                        </tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-                <div class="form-text">
-                  As permissões definidas aqui serão salvas no cadastro do usuário (escopo deste tenant).
-                </div>
-              </div>
-
-              <div class="col-12">
-                <button class="btn btn-primary">
-                  <i class="bi bi-person-plus"></i> Criar usuário
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-lg-7">
-        <div class="card h-100">
-          <div class="card-header">Usuários da empresa</div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-sm table-hover mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>E-mail</th>
-                    <th class="text-center">Admin</th>
-                    <th class="text-end">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for u in users %}
-                    <tr>
-                      <td class="align-middle">{{ u.email }}</td>
-                      <td class="text-center align-middle">
-                        {% if u.is_admin %}
-                          <span class="badge text-bg-success">Sim</span>
-                        {% else %}
-                          <span class="badge text-bg-secondary">Não</span>
-                        {% endif %}
-                      </td>
-                      <td class="text-end">
-                        <!-- Permissões -->
-                        <button
-                          class="btn btn-sm btn-outline-primary me-1"
-                          data-bs-toggle="modal"
-                          data-bs-target="#editPermsModal"
-                          data-user-id="{{ u.id }}"
-                          data-user-email="{{ u.email }}"
-                          title="Editar permissões"
-                        >
-                          <i class="bi bi-shield-lock"></i> Permissões
-                        </button>
-
-                        <!-- Ativar -->
-                        <form action="{{ url_for('admin.user_activate') }}"
-                              method="post"
-                              class="d-inline"
-                              onsubmit="return confirm('Ativar/confirmar o usuário {{ u.email }}?');">
-                          <input type="hidden" name="user_id" value="{{ u.id }}">
-                          <button type="submit"
-                                  class="btn btn-sm btn-outline-success me-1"
-                                  title="Ativar usuário (marcar como confirmado)">
-                            <i class="bi bi-check2-circle"></i>
-                          </button>
-                        </form>
-
-                        <!-- Excluir -->
-                        <form action="{{ url_for('admin.user_delete') }}"
-                              method="post"
-                              class="d-inline"
-                              onsubmit="return confirm('Excluir o usuário {{ u.email }}? Esta ação não pode ser desfeita.');">
-                          <input type="hidden" name="user_id" value="{{ u.id }}">
-                          {% if u.id != current_user.id %}
-                            <button type="submit"
-                                    class="btn btn-sm btn-outline-danger"
-                                    title="Excluir usuário">
-                              <i class="bi bi-trash"></i>
-                            </button>
-                          {% else %}
-                            <button type="button"
-                                    class="btn btn-sm btn-outline-danger"
-                                    title="Você não pode excluir a si mesmo"
-                                    disabled>
-                              <i class="bi bi-trash"></i>
-                            </button>
-                          {% endif %}
-                        </form>
-                      </td>
-                    </tr>
-                  {% else %}
-                    <tr><td colspan="3" class="text-muted p-3">Nenhum usuário cadastrado.</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+<div class="tab-pane fade" id="pane-users" role="tabpanel" aria-labelledby="tab-users">
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="card h-100">
+        <div class="card-header">Novo usuário</div>
+        <div class="card-body">
+          <form action="{{ url_for('admin.settings', tenant_slug=g.tenant.slug) }}" method="post" class="row g-3">
+            <input type="hidden" name="_section" value="user_new">
+            <div class="col-12">
+              <label class="form-label">E-mail</label>
+              <input type="email" name="email" class="form-control" required>
             </div>
-          </div>
+            <div class="col-12">
+              <label class="form-label">Senha</label>
+              <input type="password" name="password" class="form-control" required>
+            </div>
+
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="is_admin" id="isAdmin">
+                <label class="form-check-label" for="isAdmin">Administrador (acesso total)</label>
+              </div>
+              <div class="form-text">
+                Dica: se marcar “Administrador”, as permissões abaixo são ignoradas.
+              </div>
+            </div>
+
+            <!-- MATRIZ DE PERMISSÕES POR MÓDULO -->
+            <div class="col-12">
+              <div class="d-flex align-items-center justify-content-between">
+                <label class="form-label mb-0">Permissões por módulo</label>
+                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnPermClear">Limpar tudo</button>
+              </div>
+
+              <div class="table-responsive mt-2">
+                <table class="table table-sm align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="min-width:180px">Módulo</th>
+                      <th class="text-center">
+                        Ver<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="view" title="Marcar coluna 'Ver'">
+                      </th>
+                      <th class="text-center">
+                        Criar<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="create" title="Marcar coluna 'Criar'">
+                      </th>
+                      <th class="text-center">
+                        Editar<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="edit" title="Marcar coluna 'Editar'">
+                      </th>
+                      <th class="text-center">
+                        Excluir<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="delete" title="Marcar coluna 'Excluir'">
+                      </th>
+                      <th class="text-center">
+                        Cancelar<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="cancel" title="Marcar coluna 'Cancelar'">
+                      </th>
+                      <th class="text-center">
+                        Enviar link pgto<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="send_payment" title="Marcar coluna 'Enviar link'">
+                      </th>
+                      <th class="text-center">
+                        Exportar<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="export" title="Marcar coluna 'Exportar'">
+                      </th>
+                      <th class="text-center">
+                        Tudo<br>
+                        <input type="checkbox" class="form-check-input perm-col" data-col="all" title="Marcar todas colunas">
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% set modules = [
+                      ('vehicles', 'Veículos'),
+                      ('categories', 'Categorias'),
+                      ('rates', 'Tarifas'),
+                      ('reservations', 'Reservas'),
+                      ('payments', 'Pagamentos'),
+                      ('contracts', 'Contratos'),
+                      ('checklists', 'Checklists'),
+                      ('users', 'Usuários')
+                    ] %}
+                    {% for key,label in modules %}
+                      <tr data-module="{{ key }}">
+                        <td class="fw-semibold">
+                          {{ label }}
+                          <div class="small text-muted">({{ key }})</div>
+                        </td>
+                        {% for action in ['view','create','edit','delete','cancel','send_payment','export'] %}
+                          <td class="text-center">
+                            <input
+                              type="checkbox"
+                              class="form-check-input perm-cell"
+                              name="perms[{{ key }}][{{ action }}]"
+                              value="1"
+                              data-action="{{ action }}"
+                            >
+                          </td>
+                        {% endfor %}
+                        <td class="text-center">
+                          <input type="checkbox" class="form-check-input perm-row-all" title="Marcar todas as ações deste módulo">
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              <div class="form-text">
+                As permissões definidas aqui serão salvas no cadastro do usuário (escopo deste tenant).
+              </div>
+            </div>
+
+            <div class="col-12">
+  <button class="btn btn-primary">
+    <i class="bi bi-person-plus"></i> Criar usuário
+  </button>
+</div>
+</form>
+</div>
+</div>
+</div>
+
+<div class="col-lg-7">
+  <div class="card h-100">
+    <div class="card-header">Usuários da empresa</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>E-mail</th>
+              <th class="text-center">Admin</th>
+              <th class="text-end">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+              <tr>
+                <td class="align-middle">{{ u.email }}</td>
+                <td class="text-center align-middle">
+                  {% if u.is_admin %}
+                    <span class="badge text-bg-success">Sim</span>
+                  {% else %}
+                    <span class="badge text-bg-secondary">Não</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <!-- Permissões -->
+                  <button
+                    class="btn btn-sm btn-outline-primary me-1"
+                    data-bs-toggle="modal"
+                    data-bs-target="#editPermsModal"
+                    data-user-id="{{ u.id }}"
+                    data-user-email="{{ u.email }}"
+                    title="Editar permissões"
+                  >
+                    <i class="bi bi-shield-lock"></i> Permissões
+                  </button>
+<!-- ATIVAR (aparece sempre; backend trata os campos existentes) -->
+<form action="{{ url_for('admin.user_activate') }}"
+      method="post"
+      class="d-inline"
+      onsubmit="return confirm('Ativar/confirmar o usuário {{ u.email }}?');">
+  <input type="hidden" name="user_id" value="{{ u.id }}">
+  <button type="submit"
+          class="btn btn-sm btn-outline-success me-1"
+          title="Ativar usuário (marcar como confirmado)">
+    <i class="bi bi-check2-circle"></i>
+  </button>
+</form>
+
+                  <!-- Excluir (não permite excluir a si mesmo; proteção extra no backend impede último admin) -->
+                  <form action="{{ url_for('admin.user_delete') }}"
+                        method="post"
+                        class="d-inline"
+                        onsubmit="return confirm('Excluir o usuário {{ u.email }}? Esta ação não pode ser desfeita.');">
+                    <input type="hidden" name="user_id" value="{{ u.id }}">
+                    {% if u.id != current_user.id %}
+                      <button type="submit"
+                              class="btn btn-sm btn-outline-danger"
+                              title="Excluir usuário">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    {% else %}
+                      <!-- opcional: mostrar um botão desabilitado para indicar que é você -->
+                      <button type="button"
+                              class="btn btn-sm btn-outline-danger"
+                              title="Você não pode excluir a si mesmo"
+                              disabled>
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    {% endif %}
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="text-muted p-3">Nenhum usuário cadastrado.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+
+  <!-- Modal (placeholder) para edição — conteúdo dinâmico por fetch -->
+  <div class="modal fade" id="editPermsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 class="modal-title">Permissões do usuário</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="editPermsBody">
+          <div class="text-center text-muted py-5">Carregando…</div>
         </div>
       </div>
-
-    </div> <!-- /row -->
-  </div> <!-- /pane-users -->
+    </div>
+  </div>
+</div>
 
 </div> <!-- /tab-content -->
 
@@ -1134,6 +1092,7 @@
   /*   PERMISSÕES POR MÓDULO - JS    */
   /* =============================== */
 
+  // helper: intercepta submit do form do modal e salva via fetch
   function bindUserPermsForm(container) {
     const form = container.querySelector('#userPermsForm');
     if (!form) return;
@@ -1161,6 +1120,7 @@
     });
   }
 
+  // Marcar coluna inteira (inclui um "all" que marca todas as colunas)
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.perm-col').forEach(colChk => {
       colChk.addEventListener('change', e => {
@@ -1183,6 +1143,7 @@
       });
     });
 
+    // Marcar linha inteira (por módulo) e sincronizar o select-all da linha
     document.querySelectorAll('tbody tr[data-module]').forEach(tr => {
       const rowAll = tr.querySelector('.perm-row-all');
       const cells = tr.querySelectorAll('.perm-cell');
@@ -1199,6 +1160,7 @@
       });
     });
 
+    // Limpar tudo
     const btnClear = document.getElementById('btnPermClear');
     if (btnClear) {
       btnClear.addEventListener('click', () => {
@@ -1206,6 +1168,7 @@
       });
     }
 
+    // Modal de edição de permissões (carrega HTML e faz bind do form)
     const editPermsModal = document.getElementById('editPermsModal');
     if (editPermsModal) {
       editPermsModal.addEventListener('show.bs.modal', (ev) => {
@@ -1225,7 +1188,6 @@
     }
   });
 </script>
-
 <script>
 (function () {
   const btn = document.getElementById("btnMailTest");
@@ -1240,7 +1202,7 @@
     const to = (toInput?.value || "").trim();
     if (!to) { alert("Informe um e-mail para o teste."); toInput?.focus(); return; }
 
-    const url = btn.dataset.url;
+    const url = btn.dataset.url;              // /<tenant>/admin/settings/mail.test
     const old = btn.innerHTML;
     btn.disabled = true; btn.innerHTML = "Enviando…";
 
@@ -1249,7 +1211,7 @@
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": getCsrf(),
+          "X-CSRFToken": getCsrf(),           // Flask-WTF
           "X-CSRF-Token": getCsrf(),
         },
         credentials: "same-origin",

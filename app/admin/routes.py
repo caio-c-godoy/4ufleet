@@ -1,4 +1,4 @@
-﻿# app/admin/routes.py
+# app/admin/routes.py
 from datetime import datetime, timedelta, date
 import os
 import re
@@ -6,57 +6,52 @@ import unicodedata
 from uuid import uuid4
 from urllib.parse import urlparse
 from pathlib import Path
+from . import admin_bp
+from sqlalchemy.exc import IntegrityError
+from jinja2.sandbox import SandboxedEnvironment
 from functools import wraps
-import json
 import base64, io
-
+from PIL import Image, ImageDraw, ImageFont
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from weasyprint import HTML
+import json
+from app.services.mailer import save_tenant_mail_creds, get_tenant_mail_creds, send_test_mail
+from . import admin_bp
+from azure.storage.blob import BlobServiceClient, ContentSettings
+from app.storage import load_tenant_airports, save_tenant_airports
+from azure.identity import DefaultAzureCredential
 from flask import (
     render_template, request, redirect, url_for, flash,
     g, abort, jsonify, current_app, send_file, render_template_string
 )
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-
 from sqlalchemy import (
-    select, func, and_, or_, delete,
+    select, func, and_, or_,
     MetaData, Table, Column, Integer, String, DateTime, Boolean, Text
 )
-    # noqa: E402
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload
-from sqlalchemy.orm.attributes import InstrumentedAttribute
-
-from jinja2.sandbox import SandboxedEnvironment
-from weasyprint import HTML
-from PIL import Image, ImageDraw, ImageFont
-
-from azure.storage.blob import BlobServiceClient, ContentSettings
-from azure.identity import DefaultAzureCredential
-
-from secrets import token_urlsafe
 
 from app.extensions import db
 from app.models import (
-    Tenant, VehicleCategory, Rate, Vehicle, Reservation, Lead,
-    OperatorChecklist, VehicleShare, PartnerInvite, TenantPartner
-)
-from app.services.mailer import save_tenant_mail_creds, get_tenant_mail_creds, send_test_mail
-from app.services.payments import save_tenant_payment_creds
-from app.storage import load_tenant_airports, save_tenant_airports
-
-# Configs/WhatsApp por tenant (usar apenas do service; não redefinir aqui)
-from app.services.tenant_settings import (
-    load_wa_config,
-    save_wa_config,
-    save_tenant_whatsapp,  # compatibilidade com whatsapp.txt (opcional)
+    Tenant, VehicleCategory, Rate, Vehicle, Reservation, Lead, OperatorChecklist
 )
 
 # pega o blueprint já criado em app/admin/__init__.py
 from . import admin_bp
 
-# ==========================
-# Mapeamento de permissões
-# ==========================
+# >>> NOVO: serviço para salvar credenciais no Key Vault
+from app.services.payments import save_tenant_payment_creds
+
+
+import json
+from flask import jsonify, render_template_string, current_app  # garanta estes 3
+
+# --- Constantes já usadas ---
+# --- Guard universal para o blueprint admin (cola no app/admin/routes.py) ---
+from flask import request, abort, current_app
+from flask_login import current_user
+
+# Endpoint -> módulo (por prefixo do endpoint)
 _ENDPOINT_MODULE_PREFIX = {
     "admin.vehicles":      "vehicles",
     "admin.vehicle_":      "vehicles",
@@ -72,10 +67,11 @@ _ENDPOINT_MODULE_PREFIX = {
     "admin.contract_":     "contracts",
     "admin.checklists":    "checklists",
     "admin.checklist_":    "checklists",
-    "admin.operator_":     "checklists",
-    "admin.leads":         "reservations",
+    "admin.operator_":     "checklists",   # operator_checklists_index etc.
+    "admin.leads":         "reservations", # ajuste se tiver módulo leads próprio
 }
 
+# keywords -> ação
 _ACTION_KEYWORDS = {
     "new": "create", "create": "create", "add": "create", "clone": "create",
     "edit": "edit", "update": "edit",
@@ -85,6 +81,7 @@ _ACTION_KEYWORDS = {
     "export": "export", "download": "export",
 }
 
+# endpoints liberados (admin-only ou já protegidos)
 _ALLOW_ENDPOINTS = {
     "admin.dashboard",
     "admin.settings",
@@ -103,10 +100,13 @@ def _infer_module_from_endpoint(ep: str | None) -> str | None:
 
 def _infer_action(method: str, endpoint: str | None, subpath: str) -> str:
     ep = (endpoint or "").lower()
+
+    # prioridade 1: palavra no endpoint
     for k, act in _ACTION_KEYWORDS.items():
         if k in ep:
             return act
 
+    # prioridade 2: por método + path
     if method == "GET":
         sp = subpath.lower()
         if "export" in sp or sp.endswith(".csv") or sp.endswith(".xlsx"):
@@ -118,30 +118,35 @@ def _infer_action(method: str, endpoint: str | None, subpath: str) -> str:
                 return _ACTION_KEYWORDS[seg]
         return "edit"
 
-
 @admin_bp.before_request
 def _enforce_permissions_admin_blueprint():
     """
     Enforça permissão em TODAS as rotas do blueprint admin.
+    Não depende de g.tenant (removeu o early-return).
     """
     ep = request.endpoint or ""
     if not ep.startswith("admin."):
         return
 
+    # sem login? deixa o fluxo normal (login_required das rotas cuida disso)
     if not current_user.is_authenticated:
         return
 
+    # admin passa livre
     if getattr(current_user, "is_admin", False):
         return
 
+    # whitelisted
     if ep in _ALLOW_ENDPOINTS:
         return
 
+    # path relativo depois de /admin/
     path = request.path
     sub = ""
     if "/admin/" in path:
         sub = path.split("/admin/", 1)[1]
 
+    # descobre módulo por endpoint, fallback por path
     module = _infer_module_from_endpoint(ep)
     if not module and sub:
         first = sub.split("/", 1)[0].lower()
@@ -153,15 +158,17 @@ def _enforce_permissions_admin_blueprint():
             "payments": "payments",
             "contracts": "contracts",
             "checklists": "checklists",
-            "operator": "checklists",
+            "operator": "checklists",   # /admin/operator/...
             "leads": "reservations",
         }.get(first)
 
+    # se não souber mapear, não bloqueia (evita falso positivo)
     if not module:
         return
 
     action = _infer_action(request.method, ep, sub)
 
+    # checa permissão do usuário
     perms = getattr(current_user, "permissions", {}) or {}
     allowed = bool(perms.get(module, {}).get(action, 0) == 1)
 
@@ -173,6 +180,7 @@ def _enforce_permissions_admin_blueprint():
             module, action, ep, request.path
         )
         abort(403)
+
 
 PERM_MODULES = [
     ("vehicles", "Veículos"), ("categories", "Categorias"), ("rates", "Tarifas"),
@@ -193,14 +201,22 @@ def _build_permissions_from_form(form) -> dict:
 def _empty_perms() -> dict:
     return {m: {a: 0 for a in PERM_ACTIONS} for m, _ in PERM_MODULES}
 
+
 def _normalize_perms(perms_any) -> dict:
+    """
+    Aceita dict ou JSON string; normaliza para:
+      {module: {action: 0/1(int)}}
+    Tudo que for truthy ('1','true',True,'on') vira 1; restante 0.
+    """
     if not perms_any:
-        return _empty_perms()
+        return {m: {a: 0 for a in PERM_ACTIONS} for m, _ in PERM_MODULES}
+
+    # se veio string, tenta decodificar
     if isinstance(perms_any, str):
         try:
             perms_any = json.loads(perms_any)
         except Exception:
-            return _empty_perms()
+            return {m: {a: 0 for a in PERM_ACTIONS} for m, _ in PERM_MODULES}
 
     out = {}
     for mod, _ in PERM_MODULES:
@@ -213,9 +229,17 @@ def _normalize_perms(perms_any) -> dict:
     return out
 
 def _save_perms_to_user(u, perms_dict) -> bool:
+    """
+    Tenta salvar nas seguintes opções:
+      1) u.permissions (JSON/dict ou string)
+      2) u.meta['permissions'] (dict ou string)
+      3) u.settings['permissions'] (dict ou string)
+    Retorna True se conseguiu persistir em alguma delas.
+    """
     # 1) Campo direto
     if hasattr(u, "permissions"):
         try:
+            # se já há string, grava JSON string
             if isinstance(getattr(u, "permissions"), str):
                 u.permissions = json.dumps(perms_dict, ensure_ascii=False)
             else:
@@ -223,10 +247,12 @@ def _save_perms_to_user(u, perms_dict) -> bool:
             return True
         except Exception:
             pass
+
     # 2) Meta
     try:
         if not hasattr(u, "meta") or not isinstance(getattr(u, "meta"), dict):
             setattr(u, "meta", {})
+        # se meta['permissions'] já é string, manter string
         if isinstance(u.meta.get("permissions"), str):
             u.meta["permissions"] = json.dumps(perms_dict, ensure_ascii=False)
         else:
@@ -234,6 +260,7 @@ def _save_perms_to_user(u, perms_dict) -> bool:
         return True
     except Exception:
         pass
+
     # 3) Settings
     try:
         if not hasattr(u, "settings") or not isinstance(getattr(u, "settings"), dict):
@@ -245,18 +272,33 @@ def _save_perms_to_user(u, perms_dict) -> bool:
         return True
     except Exception:
         pass
+
     return False
 
 def _load_perms_from_user(u) -> dict:
+    """
+    Carrega permissões de u.permissions / u.meta / u.settings
+    Aceita dict ou JSON string. Sempre normaliza para ints 0/1.
+    """
+    # 1) Direto
     base = getattr(u, "permissions", None)
     if base:
         return _normalize_perms(base)
-    if hasattr(u, "meta") and isinstance(getattr(u, "meta"), dict) and "permissions" in u.meta:
-        return _normalize_perms(u.meta.get("permissions"))
-    if hasattr(u, "settings") and isinstance(getattr(u, "settings"), dict) and "permissions" in u.settings:
-        return _normalize_perms(u.settings.get("permissions"))
-    return _empty_perms()
 
+    # 2) Meta
+    if hasattr(u, "meta") and isinstance(getattr(u, "meta"), dict):
+        if "permissions" in u.meta:
+            return _normalize_perms(u.meta.get("permissions"))
+
+    # 3) Settings
+    if hasattr(u, "settings") and isinstance(getattr(u, "settings"), dict):
+        if "permissions" in u.settings:
+            return _normalize_perms(u.settings.get("permissions"))
+
+    # vazio
+    return _normalize_perms(None)
+
+    
 def user_can(u, module: str, action: str) -> bool:
     try:
         if getattr(u, "is_admin", False):
@@ -265,38 +307,33 @@ def user_can(u, module: str, action: str) -> bool:
         return bool(perms.get(module, {}).get(action, 0) == 1)
     except Exception:
         return False
-    
-
-def _vehicle_to_dict(v):
-    return {
-        "id": v.id,
-        "plate": getattr(v, "plate", None) or getattr(v, "license_plate", None),
-        "brand": getattr(v, "brand", None),
-        "model": getattr(v, "model", None),
-        "year": getattr(v, "year", None),
-        "status": getattr(v, "status", None) or getattr(v, "situation", None) or getattr(v, "state", None),
-        "category_id": getattr(v, "category_id", None),
-        "tenant_id": getattr(v, "tenant_id", None),
-        "image_url": getattr(v, "image_url", None),
-    }
-
 
 @admin_bp.app_context_processor
 def inject_can():
+    # nos templates: {% if can('rates','create') %} ... {% endif %}
     return { "can": lambda module, action: user_can(current_user, module, action) }
 
 def require_perm(module: str, action: str):
+    """
+    Uso:
+      @admin_bp.get("/rates")
+      @login_required
+      @require_perm("rates","view")
+      def rates(): ...
+    """
     def deco(fn):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            if not user_can(current_user, module, action):
-                abort(403)
-            return fn(*args, **kwargs)
-        return wrapper
+      @wraps(fn)
+      def wrapper(*args, **kwargs):
+          if not user_can(current_user, module, action):
+              abort(403)
+          return fn(*args, **kwargs)
+      return wrapper
     return deco
 
+# Página 403 simples (opcional)
 @admin_bp.app_errorhandler(403)
 def _err_403(e):
+    # troque por render_template("errors/403.html"), se tiver
     return (
         "<div style='padding:24px;font:14px/1.4 system-ui'>"
         "<h3>Você não tem permissão para acessar esta página.</h3>"
@@ -306,13 +343,12 @@ def _err_403(e):
         {"Content-Type": "text/html; charset=utf-8"},
     )
 
-# ==========================
-# Upload/branding/imagens
-# ==========================
+
 ALLOWED_IMG_EXTS = {"jpg", "jpeg", "png", "webp", "gif"}
 
 def _allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMG_EXTS
+
 
 @admin_bp.route("/settings/login-hero", methods=["GET", "POST"], endpoint="settings_login_hero")
 @login_required
@@ -320,21 +356,27 @@ def settings_login_hero():
     tenant: Tenant = g.tenant
 
     if request.method == "POST":
-        # textos
+        # -------- textos --------
         tenant.login_hero_enabled = bool(request.form.get("login_hero_enabled"))
         tenant.login_hero_kicker  = (request.form.get("login_hero_kicker") or "").strip() or None
         tenant.login_hero_title   = (request.form.get("login_hero_title") or "").strip() or None
         tenant.login_hero_desc    = (request.form.get("login_hero_desc") or "").strip() or None
 
-        # URL direta tem prioridade
+        # -------- URL direta (Blob/CDN) tem prioridade se preenchida --------
         url_val = (request.form.get("login_hero_image_url") or "").strip()
         if url_val:
             tenant.login_hero_image = url_val
+            # se antes era arquivo local, apaga o antigo
+            try:
+                parsed_old = urlparse((tenant.login_hero_image or "").strip())
+                # nada a fazer aqui; já apontamos para URL
+            except Exception:
+                pass
             db.session.commit()
             flash("Configurações atualizadas.", "success")
             return redirect(url_for("admin.settings_login_hero", tenant_slug=tenant.slug))
 
-        # upload opcional
+        # -------- upload de imagem (opcional) --------
         file = request.files.get("login_hero_image")
         if file and file.filename:
             if not _allowed_file(file.filename):
@@ -344,6 +386,7 @@ def settings_login_hero():
                     filename = secure_filename(file.filename)
                     ext = (filename.rsplit(".", 1)[1] if "." in filename else "jpg").lower()
 
+                    # caminho relativo ao /static
                     rel_dir  = Path("uploads") / "tenant" / tenant.slug
                     rel_path = rel_dir / f"login-hero.{ext}"
 
@@ -353,12 +396,13 @@ def settings_login_hero():
 
                     # apaga versões antigas de outros formatos
                     for old in dst_dir.glob("login-hero.*"):
-                        try:
-                            old.unlink()
-                        except Exception:
-                            pass
+                        try: old.unlink()
+                        except Exception: pass
 
+                    # salva novo
                     file.save(dst_dir / rel_path.name)
+
+                    # grava o caminho RELATIVO (servido por /static)
                     tenant.login_hero_image = str(rel_path).replace("\\", "/")
                     flash("Imagem enviada com sucesso.", "success")
                 except Exception:
@@ -369,7 +413,9 @@ def settings_login_hero():
         flash("Configurações atualizadas.", "success")
         return redirect(url_for("admin.settings_login_hero", tenant_slug=tenant.slug))
 
+    # GET
     return render_template("admin/settings_login_hero.html", tenant=tenant)
+
 
 @admin_bp.post("/settings/login-hero/remove-image", endpoint="settings_login_hero_remove_image")
 @login_required
@@ -385,6 +431,7 @@ def settings_login_hero_remove_image():
 
     try:
         if not is_external:
+            # arquivo local dentro de /static
             static_folder = Path(current_app.static_folder).resolve()
             file_path = (static_folder / img).resolve()
             if static_folder in file_path.parents and file_path.exists():
@@ -398,9 +445,8 @@ def settings_login_hero_remove_image():
         flash("Não foi possível remover a imagem agora.", "warning")
 
     return redirect(url_for("admin.settings_login_hero", tenant_slug=tenant.slug))
-
 # =============================================================================
-# Helpers multitenant
+# Helpers multitenant: captura <tenant_slug> e injeta automaticamente no url_for
 # =============================================================================
 @admin_bp.url_value_preprocessor
 def _pull_tenant(endpoint, values):
@@ -421,6 +467,7 @@ def _load_tenant():
     if not slug:
         abort(404)
     g.tenant = Tenant.query.filter_by(slug=slug).first_or_404()
+
 
 # =============================================================================
 # Utilidades
@@ -468,15 +515,105 @@ def _maint_table():
     meta.create_all(db.engine)
     return t
 
-# ====== Armazenamento de imagens (Azure Blob + fallback local) ===============
+def _uploads_dir():
+    static_root = os.path.abspath(os.path.join(current_app.root_path, "..", "static"))
+    path = os.path.join(static_root, "uploads", "vehicles")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+def _save_vehicle_image(file_storage):
+    if not file_storage or not file_storage.filename:
+        return None
+    fn = secure_filename(file_storage.filename)
+    base, ext = os.path.splitext(fn)
+    new_name = f"{uuid.uuid4().hex}{ext.lower()}"
+    full_path = os.path.join(_uploads_dir(), new_name)
+    file_storage.save(full_path)
+    return f"uploads/vehicles/{new_name}"
+
+def _delete_vehicle_image(image_url):
+    if not image_url:
+        return
+    static_root = os.path.abspath(os.path.join(current_app.root_path, "..", "static"))
+    full_path = os.path.join(static_root, image_url.replace("/", os.sep))
+    try:
+        if os.path.isfile(full_path):
+            os.remove(full_path)
+    except Exception:
+        pass
+
+def _recompute_vehicle_status(vehicle):
+    """Marca como 'booked' se tem reserva confirmada futura, senão 'available'."""
+    now = datetime.utcnow()
+    has_active = (
+        Reservation.query
+        .filter_by(tenant_id=g.tenant.id, vehicle_id=vehicle.id, status="confirmed")
+        .filter(Reservation.dropoff_dt > now)
+        .count() > 0
+    )
+    vehicle.status = "booked" if has_active else "available"
+    db.session.commit()
+
+# Branding paths
+def _branding_dir() -> Path:
+    p = Path(current_app.root_path).parent / "static" / "uploads" / "branding" / g.tenant.slug
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+def _save_logo(file_storage):
+    """
+    Salva o logo no Azure Blob (se configurado) e retorna URL pública.
+    Caso contrário, salva local e retorna /static/uploads/branding/<tenant>/<arquivo>.
+    """
+    if not file_storage or file_storage.filename == "":
+        return None
+
+    ext = (file_storage.filename.rsplit(".", 1)[-1] or "").lower()
+    if ext not in ("png", "jpg", "jpeg", "webp", "svg"):
+        raise ValueError("Formato de logo não suportado.")
+
+    # Tenta Azure Blob primeiro (usa os mesmos clients do upload de veículos)
+    container_client, container_name, base_url = _blob_clients()  # já existe neste arquivo
+    if container_client and base_url:
+        from uuid import uuid4
+        filename = f"logo-{uuid4().hex}.{ext}"
+        blob_path = f"branding/{g.tenant.slug}/{filename}"
+
+        try:
+            # content-type correto
+            from azure.storage.blob import ContentSettings
+            content = ContentSettings(content_type=file_storage.mimetype or "application/octet-stream")
+
+            # upload sobrescrevendo se necessário
+            container_client.upload_blob(
+                name=blob_path,
+                data=file_storage.stream,
+                overwrite=True,
+                content_settings=content,
+            )
+            # URL pública (container precisa estar com acesso de leitura 'Blob' ou via CDN/SAS)
+            return f"{base_url}/{container_name}/{blob_path}"
+        except Exception:
+            current_app.logger.exception("Falha ao subir logo no Blob — usando fallback local.")
+
+    # Fallback local (comportamento antigo)
+    dest = _branding_dir() / f"logo.{ext}"
+    file_storage.save(dest)
+    rel = Path("uploads") / "branding" / g.tenant.slug / dest.name
+    return str(rel).replace("\\", "/")
+
+
+
+# ====== Armazenamento de imagens (Azure Blob + fallback local) ==================
 
 def _blob_clients():
     """
     Tenta criar clients para Storage via:
     1) Connection string (AZURE_STORAGE_CONN), ou
     2) Managed Identity (DefaultAzureCredential) + AZURE_STORAGE_ACCOUNT.
-    Retorna (container_client, container_name, base_url) ou (None, None, None).
+    Retorna (container_client, container_name, base_url) ou (None, None, None) para fallback local.
     """
+    import os
     conn = os.getenv("AZURE_STORAGE_CONN")
     account = os.getenv("AZURE_STORAGE_ACCOUNT")
     container = os.getenv("AZURE_STORAGE_CONTAINER", "vehicles")
@@ -494,14 +631,18 @@ def _blob_clients():
         current_app.logger.exception("Falha construindo clientes do Blob.")
     return None, None, None
 
+
 def _local_vehicle_dir() -> Path:
-    """Pasta local para fallback: /static/uploads/vehicles/<tenant_slug>"""
-    root = Path(current_app.root_path).parent
+    """
+    Pasta local para fallback: /static/uploads/vehicles/<tenant_slug>
+    """
+    root = Path(current_app.root_path).parent  # projeto/
     p = root / "static" / "uploads" / "vehicles" / g.tenant.slug
     p.mkdir(parents=True, exist_ok=True)
     return p
 
-def _save_vehicle_image(file_storage) -> str | None:
+
+def _save_vehicle_image(file_storage) -> str:
     """
     Salva a imagem no Azure Blob (se configurado) e retorna URL pública.
     Caso contrário, salva local e retorna /static/uploads/vehicles/<tenant>/<arquivo>.
@@ -533,13 +674,19 @@ def _save_vehicle_image(file_storage) -> str | None:
     target = local_dir / safe_name
     file_storage.stream.seek(0)
     file_storage.save(target)
-    return f"/static/uploads/vehicles/{g.tenant.slug}/{safe_name}"
+    # URL pública para servir pelo static
+    rel_url = f"/static/uploads/vehicles/{g.tenant.slug}/{safe_name}"
+    return rel_url
+
 
 def _delete_vehicle_image(image_url: str) -> None:
-    """Remove a imagem anterior (Blob ou local)."""
+    """
+    Tenta remover a imagem anterior (Blob ou local). Não explode em caso de erro.
+    """
     if not image_url:
         return
     try:
+        # Se for URL do Blob
         if image_url.startswith("http") and ".blob.core.windows.net" in image_url:
             # .../<container>/<tenant>/<arquivo>
             parts = image_url.split(".blob.core.windows.net/")
@@ -551,6 +698,7 @@ def _delete_vehicle_image(image_url: str) -> None:
                     cclient.delete_blob(blob_name, delete_snapshots="include")
             return
 
+        # Se for caminho /static/...
         if image_url.startswith("/static/"):
             root = Path(current_app.root_path).parent
             abs_path = root / image_url.lstrip("/")
@@ -558,47 +706,9 @@ def _delete_vehicle_image(image_url: str) -> None:
                 abs_path.unlink(missing_ok=True)
     except Exception:
         current_app.logger.exception("Falha ao remover imagem antiga.")
+# =============================================================================== 
 
-# Branding paths / logo
-def _branding_dir() -> Path:
-    p = Path(current_app.root_path).parent / "static" / "uploads" / "branding" / g.tenant.slug
-    p.mkdir(parents=True, exist_ok=True)
-    return p
 
-def _save_logo(file_storage):
-    """
-    Salva o logo no Azure Blob (se configurado) e retorna URL pública.
-    Caso contrário, salva local e retorna /static/uploads/branding/<tenant>/<arquivo>.
-    """
-    if not file_storage or file_storage.filename == "":
-        return None
-
-    ext = (file_storage.filename.rsplit(".", 1)[-1] or "").lower()
-    if ext not in ("png", "jpg", "jpeg", "webp", "svg"):
-        raise ValueError("Formato de logo não suportado.")
-
-    # Azure Blob
-    container_client, container_name, base_url = _blob_clients()
-    if container_client and base_url:
-        filename = f"logo-{uuid4().hex}.{ext}"
-        blob_path = f"branding/{g.tenant.slug}/{filename}"
-        try:
-            content = ContentSettings(content_type=file_storage.mimetype or "application/octet-stream")
-            container_client.upload_blob(
-                name=blob_path,
-                data=file_storage.stream,
-                overwrite=True,
-                content_settings=content,
-            )
-            return f"{base_url}/{container_name}/{blob_path}"
-        except Exception:
-            current_app.logger.exception("Falha ao subir logo no Blob — usando fallback local.")
-
-    # Fallback local
-    dest = _branding_dir() / f"logo.{ext}"
-    file_storage.save(dest)
-    rel = Path("uploads") / "branding" / g.tenant.slug / dest.name
-    return str(rel).replace("\\", "/")
 
 # =============================================================================
 # Rotas principais
@@ -614,13 +724,19 @@ def admin_root():
 def dashboard():
     """
     Renderiza o dashboard do TENANT atual.
+    Passa 'totals' para o template (cards) e os gráficos buscam via /dashboard/data.
     """
     t = g.tenant
+
     totals = {
-        "vehicles": db.session.query(Vehicle.id).filter(Vehicle.tenant_id == t.id).count(),
-        "categories": db.session.query(VehicleCategory.id).filter(VehicleCategory.tenant_id == t.id).count(),
-        "reservations": db.session.query(Reservation.id).filter(Reservation.tenant_id == t.id).count(),
+        "vehicles": db.session.query(Vehicle.id)
+                     .filter(Vehicle.tenant_id == t.id).count(),
+        "categories": db.session.query(VehicleCategory.id)
+                     .filter(VehicleCategory.tenant_id == t.id).count(),
+        "reservations": db.session.query(Reservation.id)
+                       .filter(Reservation.tenant_id == t.id).count(),
     }
+
     return render_template("admin/dashboard.html", totals=totals)
 
 @admin_bp.get("/dashboard/data")
@@ -629,6 +745,7 @@ def dashboard_data():
     t = g.tenant
     today = datetime.utcnow().date()
     start = today - timedelta(days=6)
+
     currency = "USD"
 
     base = (Reservation.query
@@ -656,6 +773,7 @@ def dashboard_data():
     rev_labels, rev_data = series(rev_rows)
     cnt_labels, cnt_data = series(cnt_rows)
 
+    # TOP CARS — reforça escopo por tenant em todas as tabelas
     top_cars = (db.session.query(Vehicle.model, func.count(Reservation.id))
                 .join(Reservation, Reservation.vehicle_id == Vehicle.id)
                 .filter(Vehicle.tenant_id == t.id)
@@ -664,6 +782,7 @@ def dashboard_data():
                 .order_by(func.count(Reservation.id).desc())
                 .limit(5).all())
 
+    # TOP CATEGORIES — garante tenant em todas as junções
     top_cats = (db.session.query(VehicleCategory.name, func.count(Reservation.id))
                 .join(Vehicle, Vehicle.category_id == VehicleCategory.id)
                 .join(Reservation, Reservation.vehicle_id == Vehicle.id)
@@ -687,6 +806,7 @@ def dashboard_data():
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
+
 # =============================================================================
 # Configurações do Tenant (branding, pagamentos, contrato, assinatura, usuários)
 # =============================================================================
@@ -705,58 +825,21 @@ def settings():
 
         # ---------- Branding ----------
         if sec == "branding":
-            # textos/cores
-            t.name             = (request.form.get("company_name") or "").strip() or t.name
+            t.name = (request.form.get("company_name") or "").strip() or t.name
             t.brand_primary    = (request.form.get("brand_primary") or "").strip() or None
             t.brand_navbar_bg  = (request.form.get("brand_navbar_bg") or "").strip() or None
             t.brand_sidebar_bg = (request.form.get("brand_sidebar_bg") or "").strip() or None
-
-            # WhatsApp — agora salvamos no whatsapp.json (e opcionalmente no .txt para compat)
-            def _norm_wa(raw: str) -> str | None:
-                import re as _re
-                s = (raw or "").strip()
-                if not s:
-                    return None
-                s = s.replace(" ", "").replace("(", "").replace(")", "").replace("-", "")
-                if not s.startswith("+"):
-                    if _re.fullmatch(r"\+?\d{6,20}", s):
-                        pass
-                return s
-
-            wa_in      = request.form.get("whatsapp_phone")
-            wa_norm    = _norm_wa(wa_in)
-            wa_enabled = bool(request.form.get("whatsapp_enabled"))
-
-            # grava no JSON principal (whatsapp.json)
-            try:
-                save_wa_config(
-                    current_app.instance_path,
-                    g.tenant.slug,
-                    phone=wa_norm or "",
-                    enabled=wa_enabled,
-                )
-            except Exception:
-                current_app.logger.exception("Falha ao salvar whatsapp.json")
-
-            # opcional: manter compat com whatsapp.txt
-            try:
-                save_tenant_whatsapp(current_app.instance_path, g.tenant.slug, wa_norm or "")
-            except Exception:
-                current_app.logger.exception("Falha ao salvar whatsapp.txt (compat)")
-
-            # logo
             try:
                 new_logo = _save_logo(request.files.get("logo_file"))
                 if new_logo:
                     t.logo_path = new_logo
             except ValueError as e:
                 flash(str(e), "warning")
-
             db.session.commit()
             flash("Branding salvo.", "success")
             return redirect(url_for("admin.settings"))
 
-        # ---------- Pagamentos (GlobalPay) ----------
+        # ---------- Pagamentos (GlobalPay) — SEGURO (Key Vault) ----------
         if sec == "payments":
             public_key    = (request.form.get("public_key") or "").strip()
             merchant_code = (request.form.get("merchant_code") or "").strip()
@@ -787,7 +870,7 @@ def settings():
 
             return redirect(url_for("admin.settings"))
 
-        # ---------- Template do contrato ----------
+        # ---------- Template do contrato (HTML/Jinja) ----------
         if sec == "contract":
             t.contract_template_html = request.form.get("contract_template_html") or None
             db.session.commit()
@@ -816,7 +899,8 @@ def settings():
             flash("Configurações da assinatura salvas.", "success")
             return redirect(url_for("admin.settings"))
 
-        # ---------- Usuários ----------
+                # ---------- Usuários (criação + permissões por módulo) ----------
+              # ---------- Usuários (criação + permissões por módulo) ----------
         if sec == "user_new":
             email = (request.form.get("email") or "").strip().lower()
             pwd   = request.form.get("password") or ""
@@ -831,26 +915,28 @@ def settings():
                 return redirect(url_for("admin.settings"))
 
             u = User(tenant_id=t.id, email=email, is_admin=admin)
+            u.permissions = _build_permissions_from_form(request.form)
+            u.set_password(pwd)
 
             perms_dict = _build_permissions_from_form(request.form)
-            _save_perms_to_user(u, perms_dict)
-            try:
-                if hasattr(u, "permissions") and not isinstance(getattr(u, "permissions"), str):
-                    u.permissions = perms_dict
-            except Exception:
-                pass
+            saved = _save_perms_to_user(u, perms_dict)
+            if not saved:
+                current_app.logger.warning("Não foi possível salvar permissões; adicione campo JSON 'permissions' no modelo User.")
 
-            u.set_password(pwd)
             db.session.add(u)
             db.session.commit()
             flash("Usuário criado com permissões configuradas.", "success")
             return redirect(url_for("admin.settings"))
 
-        # ---------- E-mail ----------
+
+
+        # ---------- E-mail (SMTP por tenant) ----------
         if sec == "mail":
+            # remetente exibido no e-mail
             t.mail_from_name  = (request.form.get("mail_from_name")  or t.name or "").strip() or None
             t.mail_from_email = (request.form.get("mail_from_email") or "").strip() or None
 
+            # valores enviados no formulário
             smtp_host_in = (request.form.get("smtp_host") or "").strip()
             smtp_port_in = request.form.get("smtp_port", type=int)
             smtp_user_in = (request.form.get("smtp_user") or "").strip()
@@ -860,14 +946,20 @@ def settings():
             smtp_tls_in  = bool(request.form.get("smtp_tls"))
             smtp_ssl_in  = bool(request.form.get("smtp_ssl"))
 
+            # merge com o que já está salvo no alias (se houver)
             existing = get_tenant_mail_creds(t) or {}
 
             host = smtp_host_in or existing.get("host")
             user = smtp_user_in or existing.get("user")
+            # senha só troca se enviada
             password = smtp_pass_in or existing.get("password")
+            # TLS/SSL: se o checkbox não veio (unchecked), preserva valor antigo
             use_tls = (smtp_tls_in if tls_posted else existing.get("use_tls", False))
             use_ssl = (smtp_ssl_in if ssl_posted else existing.get("use_ssl", False))
-            port = (smtp_port_in or existing.get("port") or (465 if use_ssl else 587))
+            # Porta: usa a informada, senão a antiga, senão padrão de acordo com SSL/TLS
+            port = (smtp_port_in
+                    or existing.get("port")
+                    or (465 if use_ssl else 587))
 
             try:
                 if not host:
@@ -898,41 +990,20 @@ def settings():
         flash("Seção inválida.", "warning")
         return redirect(url_for("admin.settings"))
 
-    # GET ...
+    # GET ----------------------------------------------------------------------
     from app.models import User
     users = User.query.filter_by(tenant_id=g.tenant.id).order_by(User.email.asc()).all()
     mail_cfg = get_tenant_mail_creds(t) or {}
-
-    # WhatsApp para preencher o campo do formulário:
-    wa_db = None
-    try:
-        if hasattr(t, "whatsapp_phone"):
-            wa_db = t.whatsapp_phone
-        elif hasattr(t, "settings") and isinstance(t.settings, dict):
-            wa_db = t.settings.get("whatsapp_phone")
-    except Exception:
-        current_app.logger.exception("Falha lendo whatsapp_phone do Tenant (DB)")
-
-    tenant_wa = wa_db
-    if not tenant_wa:
-        try:
-            from app.services.tenant_settings import load_tenant_whatsapp
-            tenant_wa = load_tenant_whatsapp(current_app.instance_path, g.tenant.slug) or ""
-        except Exception:
-            tenant_wa = ""
-
-    # carrega config consolidada do WhatsApp (para checkbox e valores)
-    wa_cfg = load_wa_config(current_app.instance_path, g.tenant.slug)
 
     return render_template(
         "admin/settings.html",
         t=t,
         users=users,
         gp_signup=current_app.config.get("GLOBALPAY_SIGNUP_URL", "https://tryglobalpays.com"),
-        mail_cfg=mail_cfg,
-        wa_cfg=wa_cfg,
-        tenant_wa=tenant_wa,
+        mail_cfg=mail_cfg,   # <- envia o cfg atual para preencher o formulário
     )
+
+
 
 # =============================================================================
 # Categorias
@@ -956,7 +1027,7 @@ def categories():
         c = VehicleCategory(
             tenant_id=g.tenant.id,
             name=name,
-            slug=simple_slugify(name),
+            slug= simple_slugify(name),
             description=description,
             seats=seats,
             transmission=transmission,
@@ -966,7 +1037,7 @@ def categories():
         )
         db.session.add(c)
         db.session.commit()
-        flash("Categoria criado.", "success")
+        flash("Categoria criada.", "success")
         return redirect(url_for("admin.categories"))
 
     cats = (
@@ -978,11 +1049,17 @@ def categories():
     rates = Rate.query.filter_by(tenant_id=g.tenant.id).all()
     return render_template("admin/categories.html", categories=cats, rates=rates)
 
+# app/admin/routes.py
+from sqlalchemy.exc import IntegrityError
+
 @admin_bp.post("/categories/<int:category_id>/delete")
 @login_required
 def delete_category(category_id):
+    from app.models import VehicleCategory, Vehicle, Rate
+
     cat = VehicleCategory.query.filter_by(id=category_id, tenant_id=g.tenant.id).first_or_404()
 
+    # conta vínculos
     veh_count  = Vehicle.query.filter_by(tenant_id=g.tenant.id, category_id=cat.id).count()
     rate_count = Rate.query.filter_by(tenant_id=g.tenant.id, category_id=cat.id).count()
 
@@ -1010,6 +1087,7 @@ def delete_category(category_id):
         flash("Ocorreu um erro ao excluir a categoria.", "danger")
 
     return redirect(url_for("admin.categories", tenant_slug=g.tenant.slug))
+
 
 @admin_bp.get("/categories/<int:category_id>/edit.modal")
 @login_required
@@ -1050,6 +1128,7 @@ def update_category_modal(category_id):
     db.session.commit()
     return jsonify({"ok": True})
 
+
 # =============================================================================
 # Tarifas
 # =============================================================================
@@ -1086,10 +1165,12 @@ def update_rate_modal(rate_id):
         current_app.logger.exception("update_rate_modal")
         return jsonify({"error": "Falha ao salvar"}), 400
 
+# === NOVO: criar / excluir tarifas ===========================================
 @admin_bp.route("/rates/new.modal", methods=["GET", "POST"])
 @login_required
 def rate_new_modal():
     if request.method == "GET":
+        # categorias do tenant que AINDA não têm tarifa
         ids_com_tarifa = {
             cid for (cid,) in db.session.query(Rate.category_id)
             .filter_by(tenant_id=g.tenant.id).all()
@@ -1101,6 +1182,7 @@ def rate_new_modal():
         categories = [c for c in cats_all if c.id not in ids_com_tarifa]
         return render_template("admin/_rate_new_form.html", categories=categories, error=None)
 
+    # POST (salvar)
     try:
         category_id = request.form.get("category_id", type=int)
         currency = (request.form.get("currency") or "USD").upper().strip()
@@ -1108,8 +1190,10 @@ def rate_new_modal():
         min_age = int(request.form.get("min_age", "21") or 21)
         deposit_amount = float(request.form.get("deposit_amount", "0") or 0)
 
+        # valida categoria do tenant
         cat = VehicleCategory.query.filter_by(id=category_id, tenant_id=g.tenant.id).first()
         if not cat:
+            # reabre modal com erro
             ids_com_tarifa = {cid for (cid,) in db.session.query(Rate.category_id)
                               .filter_by(tenant_id=g.tenant.id).all()}
             cats_all = (VehicleCategory.query
@@ -1121,6 +1205,7 @@ def rate_new_modal():
                                    error="Categoria inválida.")
             return jsonify(ok=False, html=html)
 
+        # evita duplicar tarifa por categoria
         exists = Rate.query.filter_by(tenant_id=g.tenant.id, category_id=category_id).first()
         if exists:
             html = render_template("admin/_rate_new_form.html", categories=[],
@@ -1144,6 +1229,7 @@ def rate_new_modal():
                                error="Falha ao salvar tarifa.")
         return jsonify(ok=False, html=html)
 
+
 @admin_bp.post("/rates/<int:rate_id>/delete")
 @login_required
 def rate_delete(rate_id):
@@ -1156,6 +1242,8 @@ def rate_delete(rate_id):
 # =============================================================================
 # Veículos
 # =============================================================================
+# app/admin/routes.py
+
 @admin_bp.route("/vehicles", methods=["GET", "POST"])
 @login_required
 def vehicles():
@@ -1168,24 +1256,29 @@ def vehicles():
         color = (request.form.get("color") or "").strip() or None
         status = (request.form.get("status") or "available").strip() or "available"
 
-        # URL externa opcional
+        # URL externa opcional (se o usuário colar um link)
         image_url = (request.form.get("image_url") or "").strip() or None
 
-        # Upload de arquivo (campo "photo")
+        # Upload de arquivo (campo "photo" do formulário)
         file = request.files.get("photo")
         if file and file.filename:
             try:
-                image_url = _save_vehicle_image(file)
+                # vamos implementar esse helper no próximo passo
+                from app.services.media import save_vehicle_image_from_request
+                image_url = save_vehicle_image_from_request(file, tenant_slug=g.tenant.slug)
             except Exception:
                 current_app.logger.exception("Falha ao salvar imagem do veículo")
                 flash("Imagem não pôde ser salva; tente novamente.", "warning")
 
+        # categoria obrigatória
         cat_id = request.form.get("category_id", type=int)
         if not cat_id:
             flash("Selecione uma categoria para o veículo.", "warning")
             return redirect(url_for("admin.vehicles"))
 
-        category = VehicleCategory.query.filter_by(id=cat_id, tenant_id=g.tenant.id).first()
+        category = VehicleCategory.query.filter_by(
+            id=cat_id, tenant_id=g.tenant.id
+        ).first()
         if not category:
             flash("Categoria inválida para este tenant.", "warning")
             return redirect(url_for("admin.vehicles"))
@@ -1198,7 +1291,7 @@ def vehicles():
             model=model,
             year=year,
             status=status,
-            image_url=image_url,
+            image_url=image_url,   # <- agora vem do upload (se houver) ou do link
             color=color,
         )
         db.session.add(v)
@@ -1213,63 +1306,20 @@ def vehicles():
     # ----- LIST (GET) com paginação -----
     page = request.args.get("page", type=int) or 1
     per_page = request.args.get("per_page", type=int) or 20
-    if per_page < 5: per_page = 5
-    if per_page > 100: per_page = 100
-    if page < 1: page = 1
+    if per_page < 5:
+        per_page = 5
+    if per_page > 100:
+        per_page = 100
+    if page < 1:
+        page = 1
 
-    from sqlalchemy import or_, and_, func
-    from app.models import VehicleShare, Tenant
-
-    # base: meus veículos OU veículos compartilhados comigo (ativos)
-    base = (
+    qv = (
         Vehicle.query
-        .outerjoin(VehicleShare, VehicleShare.vehicle_id == Vehicle.id)
-        .filter(
-            or_(
-                Vehicle.tenant_id == g.tenant.id,
-                and_(
-                    VehicleShare.shared_with_tenant_id == g.tenant.id,
-                    VehicleShare.active.is_(True),
-                ),
-            )
-        )
+        .filter_by(tenant_id=g.tenant.id)
+        .order_by(Vehicle.model.asc())
     )
-
-    # total distinto (por causa do join)
-    total = db.session.query(func.count()).select_from(
-        base.with_entities(Vehicle.id).distinct().subquery()
-    ).scalar()
-
-    # paginação + ordenação
-    qv = base.with_entities(Vehicle).distinct().order_by(Vehicle.model.asc())
+    total = qv.count()
     items = qv.offset((page - 1) * per_page).limit(per_page).all()
-
-    # Metadados de compartilhamento
-    owner_ids = {v.tenant_id for v in items if getattr(v, "tenant_id", None) and v.tenant_id != g.tenant.id}
-    owners = {}
-    if owner_ids:
-        for tnt in Tenant.query.filter(Tenant.id.in_(owner_ids)).all():
-            owners[tnt.id] = {"name": (tnt.name or tnt.slug), "slug": tnt.slug}
-
-    share_info = {}
-    for v in items:
-        meta = {"shared_from": None, "shared_to": []}
-
-        if getattr(v, "tenant_id", None) != g.tenant.id:
-            if v.tenant_id in owners:
-                meta["shared_from"] = owners[v.tenant_id]
-
-        for s in (getattr(v, "shares", []) or []):
-            try:
-                if s.active and s.shared_with_tenant:
-                    meta["shared_to"].append({
-                        "name": (s.shared_with_tenant.name or s.shared_with_tenant.slug),
-                        "slug": s.shared_with_tenant.slug
-                    })
-            except Exception:
-                pass
-
-        share_info[v.id] = meta
 
     pagination = {
         "page": page,
@@ -1289,51 +1339,12 @@ def vehicles():
         .all()
     )
 
-        # --- NOVO: se pedirem JSON, respondemos JSON ---
-    wants_json = (
-            (request.args.get("format", "").lower() == "json") or
-            ("application/json" in (request.headers.get("Accept") or ""))
-        )
-    if wants_json:
-            return jsonify({
-                "items": [_vehicle_to_dict(v) for v in items],
-                "pagination": pagination
-            })
-
     return render_template(
         "admin/vehicles.html",
         categories=categories,
         vehicles=items,
         pagination=pagination,
-        share_info=share_info,
     )
-
-@admin_bp.get("/vehicles.json")
-@login_required
-def vehicles_json():
-    # mesma base de listagem do /vehicles (inclui compartilhados ativos)
-    from sqlalchemy import or_, and_, func
-    base = (
-        Vehicle.query
-        .outerjoin(VehicleShare, VehicleShare.vehicle_id == Vehicle.id)
-        .filter(
-            or_(
-                Vehicle.tenant_id == g.tenant.id,
-                and_(
-                    VehicleShare.shared_with_tenant_id == g.tenant.id,
-                    VehicleShare.active.is_(True),
-                ),
-            )
-        )
-    )
-
-    # ordena e retorna DISTINCT
-    qv = base.with_entities(Vehicle).distinct().order_by(Vehicle.model.asc())
-    items = qv.all()
-
-    data = [_vehicle_to_dict(v) for v in items]
-    return jsonify({"items": data})
-
 
 @admin_bp.route("/vehicles/<int:vehicle_id>/edit.modal", methods=["GET", "POST"])
 @login_required
@@ -1411,7 +1422,8 @@ def vehicles_maintenance_complete(vehicle_id):
     db.session.add(v)
     db.session.commit()
     flash('Manutenção concluída. Veículo disponível para entrega.', 'success')
-    return redirect(url_for('admin.maintenance_list', tenant_slug=g.tenant.slug))
+    return redirect(url_for('admin.vehicles_maintenance', tenant_slug=g.tenant.slug))
+
 
 @admin_bp.get("/vehicles/maintenance")
 @login_required
@@ -1459,31 +1471,10 @@ def vehicle_delete(vehicle_id):
     flash("Veículo removido.", "success")
     return redirect(request.referrer or url_for("admin.vehicles"))
 
+
 # =============================================================================
 # Reservas
 # =============================================================================
-def _recompute_vehicle_status(v: Vehicle) -> None:
-    """
-    Define status 'available' se não houver reservas pendentes/confirmadas
-    futuras para o veículo; senão mantém como 'booked'.
-    """
-    try:
-        now = datetime.utcnow()
-        has_active = (
-            Reservation.query
-            .filter_by(tenant_id=g.tenant.id, vehicle_id=v.id)
-            .filter(Reservation.status.in_(("pending", "confirmed")))
-            .filter(Reservation.dropoff_dt > now)
-            .first()
-            is not None
-        )
-        v.status = "booked" if has_active else "available"
-        db.session.add(v)
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        current_app.logger.exception("_recompute_vehicle_status")
-
 @admin_bp.get("/reservations")
 @login_required
 def reservations():
@@ -1494,6 +1485,7 @@ def reservations():
         .order_by(Reservation.created_at.desc())
     )
     if status in ("pending", "pending_payment", "confirmed", "cancelled", "canceled", "under_review"):
+        # aceita as duas grafias cancel(l)ed
         if status in ("cancelled", "canceled"):
             q = q.filter(Reservation.status.in_(("cancelled", "canceled")))
         else:
@@ -1516,7 +1508,7 @@ def reservation_confirm(reservation_id):
 @login_required
 def reservation_cancel(reservation_id):
     res = Reservation.query.filter_by(tenant_id=g.tenant.id, id=reservation_id).first_or_404()
-    res.status = "canceled"
+    res.status = "canceled"  # usa uma grafia consistente com o fluxo público
     if res.vehicle:
         _recompute_vehicle_status(res.vehicle)
     db.session.commit()
@@ -1524,12 +1516,9 @@ def reservation_cancel(reservation_id):
     return redirect(url_for("admin.reservations"))
 
 def _cleanup_contract_files(res_id: int, tenant_slug: str):
-    """
-    Remove artefatos em instance/uploads (privado) e também em /static/uploads (se houver legado).
-    """
-    inst_root = Path(current_app.instance_path)
-    contracts_dir  = inst_root / "uploads" / "contracts" / tenant_slug
-    signatures_dir = inst_root / "uploads" / "signatures" / tenant_slug
+    root = Path(current_app.root_path)
+    contracts_dir  = root / "static" / "uploads" / "contracts" / tenant_slug
+    signatures_dir = root / "static" / "uploads" / "signatures" / tenant_slug
 
     for p in [
         contracts_dir / f"contrato_reserva_{res_id}.pdf",
@@ -1542,33 +1531,23 @@ def _cleanup_contract_files(res_id: int, tenant_slug: str):
         except Exception:
             current_app.logger.exception("Falha ao remover arquivo de contrato: %s", p)
 
-    # fallback para legado em /static
-    static_root = Path(current_app.root_path).parent
-    for p in [
-        static_root / "static" / "uploads" / "contracts" / tenant_slug / f"contrato_reserva_{res_id}.pdf",
-        static_root / "static" / "uploads" / "contracts" / tenant_slug / f"contrato_reserva_{res_id}_SIGNED.pdf",
-        static_root / "static" / "uploads" / "contracts" / tenant_slug / f"contrato_reserva_{res_id}_audit.json",
-        static_root / "static" / "uploads" / "signatures" / tenant_slug / f"assinatura_{res_id}.png",
-    ]:
-        try:
-            p.unlink(missing_ok=True)
-        except Exception:
-            pass
-
 @admin_bp.post("/reservations/<int:reservation_id>/delete")
 @login_required
 def reservation_delete(reservation_id):
-    from app.models import Contract
+    from app.models import Contract  # import local para evitar ciclos
 
     res = Reservation.query.filter_by(tenant_id=g.tenant.id, id=reservation_id).first_or_404()
 
+    # apaga o contrato (se existir) antes da reserva
     if res.contract:
+        # tenta remover arquivo físico
         try:
             if res.contract.file_path and os.path.isfile(res.contract.file_path):
                 os.remove(res.contract.file_path)
         except Exception:
             current_app.logger.exception("Erro removendo PDF do contrato no path salvo.")
 
+        # remove demais artefatos por padrão (base/signed/png/audit)
         try:
             _cleanup_contract_files(res.id, g.tenant.slug)
         except Exception:
@@ -1581,6 +1560,7 @@ def reservation_delete(reservation_id):
     try:
         db.session.commit()
         if v:
+            # recalcula status do veículo
             _recompute_vehicle_status(v)
         flash("Reserva e contrato removidos.", "success")
     except Exception:
@@ -1589,187 +1569,6 @@ def reservation_delete(reservation_id):
         flash("Não foi possível remover a reserva.", "danger")
 
     return redirect(url_for("admin.reservations"))
-
-# =============================================================================
-# Criação manual de reservas (ADMIN, JSON)
-# =============================================================================
-try:
-    from app.storage import load_wa_config  # visto no seu repo
-except Exception:  # fallback inofensivo
-    def load_wa_config(*_args, **_kwargs):
-        return {}
-
-def _parse_dt_flex(s: str) -> datetime:
-    """
-    Aceita "YYYY-MM-DD HH:MM", "DD/MM/YYYY HH:MM", com/sem segundos,
-    e também strings ISO. Remova e deixe só os formatos que usa, se quiser.
-    """
-    s = (s or "").strip().replace("T", " ")
-    fmts = (
-        "%Y-%m-%d %H:%M",
-        "%Y-%m-%d %H:%M:%S",
-        "%d/%m/%Y %H:%M",
-        "%d/%m/%Y %H:%M:%S",
-    )
-    for f in fmts:
-        try:
-            return datetime.strptime(s, f)
-        except ValueError:
-            continue
-    # último recurso: ISO
-    return datetime.fromisoformat(s)
-
-@admin_bp.post("/reservations/create.json")
-@login_required
-def reservation_create_json():   # <-- sem tenant_slug aqui
-    current_app.logger.info(
-        "reservation_create_json body: %s",
-        request.get_data(as_text=True)
-    )
-
-    from datetime import datetime
-    try:
-        from dateutil import parser as dtparser
-    except Exception:
-        dtparser = None
-
-    from app.models import Reservation, Vehicle, VehicleCategory
-
-    data = request.get_json(silent=True) or {}
-
-    name   = (data.get("customer_name") or "").strip()
-    phone  = (data.get("phone") or "").strip()
-    email  = (data.get("email") or "").strip()
-    notes  = (data.get("notes") or "").strip()
-
-    vehicle_id   = data.get("vehicle_id")
-    category_id  = data.get("category_id")
-
-    pickup_air   = (data.get("pickup_airport") or "").strip()
-    dropoff_air  = (data.get("dropoff_airport") or "").strip()
-    pickup_dt_s  = (data.get("pickup_dt") or "").strip()
-    dropoff_dt_s = (data.get("dropoff_dt") or "").strip()
-
-    try:
-        total_price = float(data.get("total_price") or 0.0)
-    except Exception:
-        total_price = 0.0
-
-    if not name or not phone or not email:
-        return jsonify(ok=False, error="Informe nome, telefone e e-mail do cliente."), 400
-    if not pickup_dt_s or not dropoff_dt_s:
-        return jsonify(ok=False, error="Informe data/hora de retirada e devolução."), 400
-
-    def _parse_dt(s: str) -> datetime:
-        if dtparser:
-            return dtparser.parse(s)
-        return datetime.fromisoformat(s)
-
-    try:
-        pickup_dt  = _parse_dt(pickup_dt_s)
-        dropoff_dt = _parse_dt(dropoff_dt_s)
-    except Exception:
-        return jsonify(ok=False, error="Formato de data/hora inválido."), 400
-
-    if dropoff_dt <= pickup_dt:
-        return jsonify(ok=False, error="Devolução deve ser depois da retirada."), 400
-
-    # ---- veículo/categoria
-    veh = None
-    if vehicle_id:
-        veh = Vehicle.query.filter_by(id=int(vehicle_id), tenant_id=g.tenant.id).first()
-        if not veh:
-            return jsonify(ok=False, error="Veículo não encontrado."), 404
-        if not category_id:
-            category_id = getattr(veh, "category_id", None)
-
-    if not category_id:
-        cat = VehicleCategory.query.filter_by(tenant_id=g.tenant.id).first()
-        if not cat:
-            return jsonify(ok=False, error="Cadastre ao menos uma categoria."), 400
-        category_id = cat.id
-
-    # ---- conflito de agenda (se veículo definido)
-    if veh:
-        overlap = (
-            Reservation.query
-            .filter(Reservation.tenant_id == g.tenant.id)
-            .filter(Reservation.vehicle_id == veh.id)
-            .filter(Reservation.status.in_(("pending", "confirmed")))
-            .filter(Reservation.pickup_dt < dropoff_dt, Reservation.dropoff_dt > pickup_dt)
-            .first()
-        )
-        if overlap:
-            return jsonify(ok=False, error=f"Conflito com a reserva #{overlap.id} para este veículo."), 409
-
-    # ---- cria reserva
-    res = Reservation(
-        tenant_id=g.tenant.id,
-        vehicle_id=(veh.id if veh else None),
-        category_id=int(category_id),
-        customer_name=name,
-        phone=phone,
-        email=email,
-        pickup_airport=pickup_air,
-        pickup_dt=pickup_dt,
-        dropoff_airport=dropoff_air,
-        dropoff_dt=dropoff_dt,
-        status="pending",
-        total_price=total_price,
-        notes=notes,
-    )
-    db.session.add(res)
-    db.session.commit()
-
-    checkout_url = url_for(
-        "public.checkout",
-        tenant_slug=g.tenant.slug,
-        reservation_id=res.id,
-        _external=True,
-    )
-
-    # Se tiver WhatsApp configurado, recupere aqui (opcional)
-    wa_phone = (getattr(g.tenant, "whatsapp_phone", "") or "").strip()
-
-    def _fmt(dt: datetime) -> str:
-        try:
-            return dt.strftime("%d/%m %H:%M")
-        except Exception:
-            return str(dt)
-
-    vehicle_label = ""
-    if veh:
-        parts = [veh.brand or "", veh.model or "", veh.plate or ""]
-        vehicle_label = " ".join([p for p in parts if p]).strip() or "Veículo"
-
-    tenant_name = getattr(g.tenant, "name", "Locadora")
-    wa_message = (
-        f"Olá {name.split(' ')[0]}, aqui é {tenant_name}.\n"
-        f"Sua reserva #{res.id}:\n"
-        f"• Veículo: {vehicle_label or '—'}\n"
-        f"• Retirada: {pickup_air or '—'} — {_fmt(pickup_dt)}\n"
-        f"• Devolução: {dropoff_air or '—'} — {_fmt(dropoff_dt)}\n"
-        f"• Valor: US$ {total_price:.2f}\n\n"
-        f"Para assinar o contrato e realizar o pagamento, acesse:\n{checkout_url}\n\n"
-        f"Qualquer dúvida, fico à disposição."
-    )
-
-    return jsonify(ok=True, id=res.id, checkout_url=checkout_url, wa_phone=wa_phone, wa_message=wa_message)
-
-# ---------- NOVO: lista de categorias em JSON ----------
-# --- CATEGORIAS EM JSON (para o modal) ---
-@admin_bp.get("/categories.json")
-@login_required
-def admin_categories_json():
-    from app.models import VehicleCategory
-    cats = (
-        VehicleCategory.query
-        .filter_by(tenant_id=g.tenant.id)
-        .order_by(VehicleCategory.name.asc())
-        .all()
-    )
-    return jsonify(items=[{"id": c.id, "name": c.name} for c in cats])
-
 
 
 # =============================================================================
@@ -1800,6 +1599,7 @@ def calendar():
         .all()
     )
 
+    # (vehicle_id, date) -> True quando está alugado
     booked = {}
     reservations = (
         Reservation.query
@@ -1822,6 +1622,7 @@ def calendar():
         start=start,
         end=end,
     )
+
 
 # =============================================================================
 # CRM
@@ -1870,9 +1671,11 @@ def lead_delete(lead_id):
     db.session.commit()
     return jsonify({"ok": True})
 
+
 # =============================================================================
-# Contratos (admin) — Editor/Preview/Validate
+# Contratos (admin) — Editor/Preview/Validate limitados aos campos solicitados
 # =============================================================================
+
 def _tpl_env_admin() -> SandboxedEnvironment:
     env = SandboxedEnvironment(autoescape=True, trim_blocks=True, lstrip_blocks=True)
 
@@ -1895,6 +1698,7 @@ def _tpl_env_admin() -> SandboxedEnvironment:
         return dt.strftime(fmt)
 
     def datefmt_long_pt(value):
+        """Formata datas como '11 de setembro de 2025'."""
         if isinstance(value, datetime):
             d = value.date()
         elif isinstance(value, date):
@@ -1915,14 +1719,25 @@ def _tpl_env_admin() -> SandboxedEnvironment:
     env.filters["datefmt_long_pt"] = datefmt_long_pt
     return env
 
+# === Somente os campos que você pediu ===
 _ALLOWED_VARS = {
-    "cliente_nome","cliente_doc","cliente_pais","voo_numero",
-    "data_inicio","data_fim","hoje",
-    "carro_marca","carro_modelo","carro_ano","carro_cor",
-    "tenant_name","valor_total",
+    "cliente_nome",
+    "cliente_doc",
+    "cliente_pais",
+    "voo_numero",
+    "data_inicio",
+    "data_fim",
+    "hoje",
+    "carro_marca",
+    "carro_modelo",
+    "carro_ano",
+    "carro_cor",
+    "tenant_name",
+    "valor_total",  # usado como {{ valor_total|money(currency) }}
 }
 
 def _default_contract_template_admin() -> str:
+    # Template de exemplo contendo apenas os campos permitidos acima
     return """<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
@@ -1953,13 +1768,22 @@ def _default_contract_template_admin() -> str:
 </body></html>"""
 
 def _sample_context_for_preview():
+    """Contexto só para PRÉVIA na tela de Configurações."""
     today = date.today()
+
+    # nome do tenant; sem logo para não introduzir variável não permitida
     tenant_name = getattr(g.tenant, "name", "Minha Locadora")
+
+    # Nome “humano” do usuário logado (se existir)
     sample_name = None
     if getattr(current_user, "is_authenticated", False):
-        sample_name = getattr(current_user, "name", None) or (getattr(current_user, "email", "").split("@")[0] or None)
+        sample_name = getattr(current_user, "name", None)
+        if not sample_name:
+            email = getattr(current_user, "email", "")
+            sample_name = (email.split("@")[0] if email else None)
 
     return {
+        # campos permitidos
         "cliente_nome": sample_name or "Nome do Cliente",
         "cliente_doc": "000.000.000-00",
         "cliente_pais": "Brasil",
@@ -1973,6 +1797,8 @@ def _sample_context_for_preview():
         "carro_cor": "Preto",
         "tenant_name": tenant_name,
         "valor_total": 1234.56,
+
+        # necessário apenas para o filtro money(currency) no template
         "currency": "USD",
     }
 
@@ -1981,9 +1807,11 @@ def _sample_context_for_preview():
 def contract_preview():
     data = request.get_json(silent=True) or {}
     html_src = (data.get("html") or "").strip() or (g.tenant.contract_template_html or "") or _default_contract_template_admin()
+    # renderização sandbox
     env = _tpl_env_admin()
     tpl = env.from_string(html_src)
     rendered = tpl.render(**_sample_context_for_preview())
+    # garante base de assets em /static
     static_base = url_for("static", filename="")
     style_reset = "html,body{writing-mode:horizontal-tb!important;white-space:normal!important;word-break:normal!important;}"
     wrapper = (
@@ -2002,13 +1830,15 @@ def contract_preview():
 def contract_validate():
     data = request.get_json(silent=True) or {}
     html_src = (data.get("html") or "")
+    # captura {{ VAR ... }} — pega apenas o primeiro identificador após {{
     found = set()
     for m in re.finditer(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)", html_src):
         found.add(m.group(1))
     unknown = sorted([k for k in found if k not in _ALLOWED_VARS])
     return jsonify(ok=(len(unknown) == 0), unknown=unknown)
+# ======== /CONTRATO ========
 
-# ==== Checklists helpers/rotas ===============================================
+# Diretório para artefatos dos CHECKLISTS (mesma base do /static público)
 def _uploads_ck_dir(*parts: str) -> Path:
     base = Path(current_app.root_path).parent / 'static' / 'uploads'
     folder = base.joinpath(*parts)
@@ -2020,7 +1850,7 @@ def save_dataurl_image(dataurl: str, subdir: str) -> str | None:
         return None
     header, b64data = dataurl.split(',', 1)
     ext = 'png' if 'png' in header else 'jpg'
-    fname = f"{uuid4().hex}.{ext}"
+    fname = f"{uuid.uuid4().hex}.{ext}"
     filepath = _uploads_ck_dir('checklists', g.tenant.slug, subdir) / fname
     with open(filepath, 'wb') as f:
         f.write(base64.b64decode(b64data))
@@ -2034,15 +1864,17 @@ def save_uploaded_photos(files) -> list[str]:
         if not file or not getattr(file, "filename", None):
             continue
         safe = secure_filename(file.filename)
-        fname = f"{uuid4().hex}_{safe}"
+        fname = f"{uuid.uuid4().hex}_{safe}"
         dest = _uploads_ck_dir('checklists', g.tenant.slug, 'photos') / fname
         file.save(dest)
         paths.append(f"/static/uploads/checklists/{g.tenant.slug}/photos/{fname}")
     return paths
 
+
 def generate_car_map_png(marks: dict) -> str:
+    # Desenho do mapa (4 linhas x 3 colunas)
     W, H = 600, 420
-    img = Image.new('RGB', (W, H), (255, 255, 255))
+    img = Image.new('RGB', (W, H), (255, 255, 255))  # <<< usa "img" e salva com "img.save"
     d = ImageDraw.Draw(img)
 
     pad = 16
@@ -2055,6 +1887,7 @@ def generate_car_map_png(marks: dict) -> str:
         ('rear',  ['L','C','R']),
     ]
 
+    # moldura e grades
     d.rectangle([pad, pad, pad+cols*cw, pad+rows*ch], outline=(0,0,0), width=2)
     for r in range(rows):
         y1 = pad + r*ch
@@ -2066,6 +1899,7 @@ def generate_car_map_png(marks: dict) -> str:
             tag = sub[c]
             d.text((x1+6, y1+6), f"{label}:{tag}", fill=(80,80,80))
 
+    # bordas finais
     d.line([pad, pad+rows*ch, pad+cols*cw, pad+rows*ch], fill=(0,0,0), width=1)
     d.line([pad+cols*cw, pad, pad+cols*cw, pad+rows*ch], fill=(0,0,0), width=1)
 
@@ -2083,10 +1917,13 @@ def generate_car_map_png(marks: dict) -> str:
                 cx, cy = x1 + cw/2, y1 + ch/2
                 draw_x(cx, cy)
 
-    fname = f"car_map_{uuid4().hex}.png"
-    dest = _uploads_ck_dir('checklists', g.tenant.slug, 'maps') / fname
+    fname = f"car_map_{uuid.uuid4().hex}.png"
+    dest = _uploads_ck_dir('checklists', g.tenant.slug, 'maps') / fname  # <<< por tenant
     img.save(dest, format='PNG')
     return f"/static/uploads/checklists/{g.tenant.slug}/maps/{fname}"
+
+
+
 
 @admin_bp.route('/operator/checklists')
 @login_required
@@ -2094,8 +1931,10 @@ def operator_checklists_index():
     stage = (request.args.get('stage', 'entrega') or 'entrega').strip().lower()
     q = (request.args.get('q') or '').strip()
 
+    # Base
     query = Reservation.query.filter(Reservation.tenant_id == g.tenant.id)
 
+    # Filtros por estágio
     if stage in ('entrega', 'entregas'):
         query = query.filter(~Reservation.checklists.any(OperatorChecklist.stage == 'entrega'))
         active_stage = 'entrega'
@@ -2108,26 +1947,34 @@ def operator_checklists_index():
         query = query.filter(Reservation.checklists.any(OperatorChecklist.stage == 'devolucao'))
         active_stage = 'finalizadas'
     else:
+        # fallback seguro
         query = query.filter(~Reservation.checklists.any(OperatorChecklist.stage == 'entrega'))
         active_stage = 'entrega'
 
+    # Busca (condutor/placa)
     if q:
         like = f"%{q}%"
         query = query.outerjoin(Vehicle, Reservation.vehicle_id == Vehicle.id)
 
         conds = []
+        # nomes de condutor em Reservation
         for colname in ['driver_name', 'customer_name', 'condutor_nome', 'renter_name', 'nome_condutor']:
             col = getattr(Reservation, colname, None)
             if isinstance(col, InstrumentedAttribute):
                 conds.append(col.ilike(like))
+
+        # placa no Vehicle
         for colname in ['plate', 'license_plate']:
             col = getattr(Vehicle, colname, None)
             if isinstance(col, InstrumentedAttribute):
                 conds.append(col.ilike(like))
+
+        # placa também em Reservation (se existir)
         for colname in ['vehicle_plate', 'placa', 'license_plate']:
             col = getattr(Reservation, colname, None)
             if isinstance(col, InstrumentedAttribute):
                 conds.append(col.ilike(like))
+
         if conds:
             query = query.filter(or_(*conds))
 
@@ -2139,6 +1986,7 @@ def operator_checklists_index():
 
     reservations = query.order_by(pickup_col.asc()).limit(200).all()
 
+    # Mapa: reserva_id -> URL (sempre rota que regenera se faltar)
     entrega_pdfs = {}
     if reservations:
         res_ids = [r.id for r in reservations]
@@ -2161,12 +2009,14 @@ def operator_checklists_index():
             )
             vistos.add(c.reservation_id)
 
+    # SEMPRE retorna um template
     return render_template(
         'admin/operator_checklists/index.html',
         stage=active_stage,
         reservations=reservations,
         entrega_pdfs=entrega_pdfs
     )
+
 
 @admin_bp.route('/operator/checklists/new')
 @login_required
@@ -2190,15 +2040,15 @@ def operator_checklists_new():
         default_customer_email=default_customer_email
     )
 
-def _abs_static(rel_path: str) -> Path:
-    """Converte '/static/...' em caminho físico sob a raiz do projeto."""
-    return Path(current_app.root_path).parent / rel_path.lstrip('/')
-
 @admin_bp.route('/operator/checklists/<int:checklist_id>/pdf')
 @login_required
 def operator_checklist_pdf(checklist_id):
     c = OperatorChecklist.query.get_or_404(checklist_id)
     res = Reservation.query.filter_by(id=c.reservation_id, tenant_id=g.tenant.id).first_or_404()
+
+    # base física sob .../<repo_root>/static/...
+    def _abs_static(rel: str) -> Path:
+        return Path(current_app.root_path).parent / rel.lstrip('/')  # <<< usa parent
 
     # se a primeira foto não for o mapa, gera um
     car_map_path = (c.photos[0] if c.photos and str(c.photos[0]).lower().endswith('.png')
@@ -2210,6 +2060,7 @@ def operator_checklist_pdf(checklist_id):
         has_slug = f"/checklists/{g.tenant.slug}/" in c.pdf_path
         needs_render = not (file_ok and has_slug)
 
+        # tentativa de migração de caminho sem slug -> com slug
         if (not file_ok) and ("/checklists/" in c.pdf_path) and (not has_slug):
             guess = c.pdf_path.replace("/checklists/", f"/checklists/{g.tenant.slug}/")
             if _abs_static(guess).exists():
@@ -2227,6 +2078,8 @@ def operator_checklist_pdf(checklist_id):
         as_attachment=False,
         download_name=f"checklist_{c.stage}_res{res.id}.pdf"
     )
+
+
 
 @admin_bp.route('/operator/checklists', methods=['POST'])
 @login_required
@@ -2275,15 +2128,19 @@ def operator_checklists_create():
     db.session.add(checklist)
     db.session.commit()
 
+    # ---- Ações pós-salvar por estágio ----
     if stage == 'entrega':
+        # 1) PDF da entrega (se função existir)
         try:
-            pdf_path = render_checklist_pdf(checklist, res, car_map_path)
+            # render_checklist_pdf(checklist, res, car_map_path) deve retornar um path web (/static/...)
+            pdf_path = render_checklist_pdf(checklist, res, car_map_path)  # noqa: F821 (ok se definida em outro trecho)
             if pdf_path:
                 checklist.pdf_path = pdf_path
                 db.session.commit()
         except Exception as e:
             current_app.logger.exception(e)
 
+        # 2) E-mail para o cliente (se houver)
         if checklist.customer_email:
             try:
                 _send_checklist_email(checklist, res, car_map_path)
@@ -2295,23 +2152,27 @@ def operator_checklists_create():
             flash('Checklist de entrega salvo.', 'success')
 
         next_stage = 'devolucao'
+
     else:
-        def _set_first_attr_local(obj, names, value):
+        # DEVOLUÇÃO → finaliza reserva e envia veículo para manutenção (preparo e limpeza)
+        def _set_first_attr(obj, names, value):
             for n in names:
                 if hasattr(obj, n):
                     setattr(obj, n, value)
                     return n
             return None
 
-        _set_first_attr_local(res, ['status', 'situation', 'state'], 'finalizada')
-        _set_first_attr_local(res, ['finished_at', 'ended_at', 'closed_at', 'data_finalizada'], datetime.utcnow())
+        # Reserva finalizada
+        _set_first_attr(res, ['status', 'situation', 'state'], 'finalizada')
+        _set_first_attr(res, ['finished_at', 'ended_at', 'closed_at', 'data_finalizada'], datetime.utcnow())
         db.session.add(res)
 
+        # Veículo em manutenção (preparo e limpeza)
         if getattr(res, 'vehicle', None):
             v = res.vehicle
-            _set_first_attr_local(v, ['status', 'situation', 'state'], 'maintenance')
-            _set_first_attr_local(v, ['maintenance_reason', 'manutencao_motivo', 'work_note', 'obs_manutencao'], 'Preparo e limpeza')
-            _set_first_attr_local(v, ['maintenance_started_at', 'manutencao_inicio', 'work_started_at'], datetime.utcnow())
+            _set_first_attr(v, ['status', 'situation', 'state'], 'maintenance')
+            _set_first_attr(v, ['maintenance_reason', 'manutencao_motivo', 'work_note', 'obs_manutencao'], 'Preparo e limpeza')
+            _set_first_attr(v, ['maintenance_started_at', 'manutencao_inicio', 'work_started_at'], datetime.utcnow())
             db.session.add(v)
 
         db.session.commit()
@@ -2338,12 +2199,17 @@ def _send_checklist_email(checklist: OperatorChecklist, res: Reservation, car_ma
             text_alt="Segue o checklist da reserva."
         )
         if not ok:
-            current_app.logger.info("[EMAIL MOCK] (tenant=%s) To=%s Subject=%s",
-                                    g.tenant.slug, checklist.customer_email, subject)
+            current_app.logger.info(
+                "[EMAIL MOCK] (tenant=%s) To=%s Subject=%s",
+                g.tenant.slug, checklist.customer_email, subject
+            )
     except Exception:
         current_app.logger.exception("Falha ao enviar e-mail do checklist")
 
+
+
 def _first_col(model, names: list[str]):
+    """Retorna a primeira coluna existente no model pelas opções fornecidas."""
     for n in names:
         col = getattr(model, n, None)
         if isinstance(col, InstrumentedAttribute):
@@ -2351,15 +2217,24 @@ def _first_col(model, names: list[str]):
     return None
 
 def _like_or_none(col, like):
+    """Cria expressão LIKE se a coluna existir, senão retorna None."""
     if isinstance(col, InstrumentedAttribute) and like:
         return col.ilike(like)
     return None
 
 def _first_value(obj, names: list[str]):
+    """Retorna o primeiro atributo não vazio encontrado no objeto."""
     for n in names:
         v = getattr(obj, n, None)
         if v:
             return v
+    return None
+def _first_col(model, names):
+    from sqlalchemy.orm.attributes import InstrumentedAttribute
+    for n in names:
+        col = getattr(model, n, None)
+        if isinstance(col, InstrumentedAttribute):
+            return col
     return None
 
 def _set_first_attr(obj, names, value):
@@ -2370,6 +2245,7 @@ def _set_first_attr(obj, names, value):
     return None
 
 def absolute_url_for_static(rel_path: str) -> str:
+    """Converte '/static/...' em URL absoluta."""
     if not rel_path:
         return ''
     root = request.url_root.rstrip('/')
@@ -2385,26 +2261,34 @@ def render_checklist_pdf(checklist: OperatorChecklist, reservation: Reservation,
     )
     pdf_bytes = HTML(string=html, base_url=request.url_root).write_pdf()
 
-    fname = f"checklist_{checklist.stage}_{uuid4().hex}.pdf"
-    dest = _uploads_ck_dir('checklists', g.tenant.slug, 'pdfs') / fname
+    fname = f"checklist_{checklist.stage}_{uuid.uuid4().hex}.pdf"
+    dest = _uploads_ck_dir('checklists', g.tenant.slug, 'pdfs') / fname  # <<< por tenant
     with open(dest, 'wb') as f:
         f.write(pdf_bytes)
 
     return f"/static/uploads/checklists/{g.tenant.slug}/pdfs/{fname}"
 
+
+
+def _abs_static(rel_path: str) -> Path:
+    """Converte '/static/...' em caminho físico dentro de app/static."""
+    return Path(current_app.root_path) / rel_path.lstrip('/')
+
+
 @admin_bp.post("/settings/mail.test")
 @login_required
 def mail_test():
     t = g.tenant
+
+    # aceita JSON {"to": "..."} ou form
     payload = {}
     if request.is_json:
-        try:
-            payload = request.get_json(silent=True) or {}
-        except Exception:
-            payload = {}
+        try: payload = request.get_json(silent=True) or {}
+        except Exception: payload = {}
 
     to_email = (payload.get("to") or request.form.get("to") or "").strip()
     if not to_email:
+        # fallback: usuário logado ou remetente configurado
         to_email = getattr(current_user, "email", None) or (t.mail_from_email or None)
 
     if not to_email:
@@ -2413,8 +2297,10 @@ def mail_test():
     try:
         cfg = get_tenant_mail_creds(t)
         if not cfg:
-            current_app.logger.info("[EMAIL MOCK] (tenant=%s) To=[%s] Subject=Teste de e-mail — %s",
-                                    t.slug, to_email, t.name or t.slug)
+            current_app.logger.info(
+                "[EMAIL MOCK] (tenant=%s) To=[%s] Subject=Teste de e-mail — %s",
+                t.slug, to_email, t.name or t.slug
+            )
             return jsonify(ok=True, mock=True)
 
         send_test_mail(
@@ -2429,6 +2315,8 @@ def mail_test():
     except Exception as e:
         current_app.logger.exception("mail_test")
         return jsonify(ok=False, error=str(e)), 500
+
+
 
 #===== ROTAS PERMISSÕES USUÁRIOS =====#
 @admin_bp.get("/user-perms-modal")
@@ -2496,6 +2384,8 @@ def user_perms_modal():
 
     return html
 
+
+
 @admin_bp.post("/user-perms-save")
 @login_required
 def user_perms_save():
@@ -2517,10 +2407,11 @@ def user_perms_save():
         current_app.logger.exception("Falha ao salvar permissões")
         return jsonify(ok=False, error="db_commit_failed"), 500
 
+
 @admin_bp.post("/user-delete")
 @login_required
 def user_delete():
-    admin_required()
+    admin_required()  # só quem acessa Settings já é admin, mantém por segurança
     from app.models import User
 
     t = g.tenant
@@ -2531,15 +2422,19 @@ def user_delete():
 
     u = User.query.get_or_404(user_id)
 
+    # escopo do tenant
     if getattr(u, "tenant_id", None) != t.id:
         flash("Usuário não pertence a este tenant.", "danger")
         return redirect(url_for("admin.settings", _anchor="pane-users"))
 
+    # não excluir a si mesmo
     if u.id == current_user.id:
         flash("Você não pode excluir a si mesmo.", "warning")
         return redirect(url_for("admin.settings", _anchor="pane-users"))
 
+    # proteger último admin do tenant
     if u.is_admin:
+        from sqlalchemy import func
         admins_count = db.session.query(func.count(User.id)).filter_by(tenant_id=t.id, is_admin=True).scalar() or 0
         if admins_count <= 1:
             flash("Não é possível excluir o último administrador do tenant.", "warning")
@@ -2561,6 +2456,7 @@ def user_delete():
 def user_activate():
     admin_required()
     from app.models import User
+    from datetime import datetime
 
     t = g.tenant
     user_id = request.form.get("user_id", type=int)
@@ -2573,6 +2469,12 @@ def user_activate():
         flash("Usuário não pertence a este tenant.", "danger")
         return redirect(url_for("admin.settings", _anchor="pane-users"))
 
+    # Não faz sentido 'ativar' a si mesmo pela UI de admin, mas se quiser permitir, ok.
+    # if u.id == current_user.id:
+    #     flash("Você já está autenticado.", "info")
+    #     return redirect(url_for("admin.settings", _anchor="pane-users"))
+
+    # Marca como confirmado/ativo nos campos que existirem no seu modelo
     now = datetime.utcnow()
     changed = False
 
@@ -2580,7 +2482,8 @@ def user_activate():
         nonlocal changed
         if hasattr(u, attr):
             try:
-                setattr(u, attr, True); changed = True
+                setattr(u, attr, True)
+                changed = True
             except Exception:
                 pass
 
@@ -2588,21 +2491,31 @@ def user_activate():
         nonlocal changed
         if hasattr(u, attr):
             try:
-                setattr(u, attr, now); changed = True
+                setattr(u, attr, now)
+                changed = True
             except Exception:
                 pass
 
-    for name in ["is_active","active","email_confirmed","is_confirmed","confirmed","is_verified","email_verified"]:
-        set_bool(name)
-    for name in ["email_confirmed_at","confirmed_at","email_verified_at"]:
-        set_time(name)
+    # Campos comuns em apps Flask
+    set_bool("is_active")
+    set_bool("active")
+    set_bool("email_confirmed")
+    set_bool("is_confirmed")
+    set_bool("confirmed")
+    set_bool("is_verified")
+    set_bool("email_verified")
+
+    set_time("email_confirmed_at")
+    set_time("confirmed_at")
+    set_time("email_verified_at")
 
     try:
         db.session.add(u)
         db.session.commit()
-        flash((f"Usuário '{u.email}' ativado/confirmado." if changed
-               else "Nenhum campo de confirmação/ativação encontrado no modelo User."), 
-              "success" if changed else "warning")
+        if changed:
+            flash(f"Usuário '{u.email}' ativado/confirmado.", "success")
+        else:
+            flash("Nenhum campo de confirmação/ativação encontrado no modelo User.", "warning")
     except Exception:
         db.session.rollback()
         current_app.logger.exception("Falha ao ativar usuário")
@@ -2610,236 +2523,29 @@ def user_activate():
 
     return redirect(url_for("admin.settings", _anchor="pane-users"))
 
+
+
 # ========== SETTINGS: Airports served (per-tenant) ==========
+
 @admin_bp.get("/settings/airports")
-@login_required
 def admin_get_airports_served():
+    """
+    Retorna a lista (array) dos aeroportos atendidos pelo tenant atual.
+    Armazena/ler em: instance/uploads/tenant_settings/<slug>/airports.json
+    """
     tenant_slug = getattr(getattr(g, "tenant", None), "slug", None) or "default"
     airports = load_tenant_airports(current_app.instance_path, tenant_slug)
     return jsonify({"items": airports})
 
+
 @admin_bp.post("/settings/airports")
-@login_required
 def admin_set_airports_served():
+    """
+    Espera JSON: { "items": ["Miami International Airport (MIA) - Miami", "Orlando ... (MCO) - Orlando", ...] }
+    Persiste a lista inteira.
+    """
     payload = request.get_json(silent=True) or {}
     items = payload.get("items") or []
     tenant_slug = getattr(getattr(g, "tenant", None), "slug", None) or "default"
     ok = save_tenant_airports(current_app.instance_path, tenant_slug, items)
     return jsonify({"ok": bool(ok), "count": len(items)})
-
-# ======= SHARE VEHICLE / PARCEIROS =======
-@admin_bp.route("/vehicle/<int:vehicle_id>/share", methods=["GET"])
-@login_required
-def vehicle_share(vehicle_id):
-    vehicle = Vehicle.query.options(joinedload(Vehicle.shares).joinedload(VehicleShare.shared_with_tenant)).get_or_404(vehicle_id)
-    partners_all = Tenant.query.filter(Tenant.id != vehicle.tenant_id).order_by(Tenant.name).all()
-    return render_template(
-        "admin/vehicle_share.html",
-        vehicle=vehicle,
-        partners_all=partners_all,
-        current_shares=vehicle.shares,
-    )
-
-@admin_bp.route("/partners", methods=["GET"])
-@login_required
-def partners_home():
-    invites = PartnerInvite.query.options(
-        joinedload(PartnerInvite.inviter_tenant),
-        joinedload(PartnerInvite.invitee_tenant),
-    ).filter(
-        (PartnerInvite.inviter_tenant_id == g.tenant.id) |
-        (PartnerInvite.invitee_tenant_id == g.tenant.id)
-    ).order_by(PartnerInvite.created_at.desc()).all()
-
-    links = TenantPartner.query.options(
-        joinedload(TenantPartner.partner)
-    ).filter_by(tenant_id=g.tenant.id, active=True).all()
-
-    return render_template("admin/partners.html", invites=invites, links=links)
-
-@admin_bp.route("/partners/create_code", methods=["POST"])
-@login_required
-def partners_create_code():
-    code = token_urlsafe(6)[:10].upper()
-    note = (request.form.get("note") or "").strip() or None
-
-    inv = PartnerInvite(
-        code=code,
-        inviter_tenant_id=g.tenant.id,
-        expires_at=datetime.utcnow() + timedelta(days=14),
-        note=note,
-    )
-    db.session.add(inv)
-    db.session.commit()
-    flash(f"Código gerado: {code}", "success")
-    return redirect(url_for("admin.partners_home", tenant_slug=g.tenant.slug))
-
-@admin_bp.route("/partners/preview_code", methods=["POST"])
-@login_required
-def partners_preview_code():
-    code = (request.form.get("code") or "").strip().upper()
-    inv = PartnerInvite.query.options(
-        joinedload(PartnerInvite.inviter_tenant)
-    ).filter_by(code=code).first()
-
-    if not inv:
-        flash("Código não encontrado.", "danger")
-        return redirect(url_for("admin.partners_home", tenant_slug=g.tenant.slug))
-
-    if inv.status != "pending" or (inv.expires_at and datetime.utcnow() > inv.expires_at):
-        flash("Código inválido ou expirado.", "danger")
-        return redirect(url_for("admin.partners_home", tenant_slug=g.tenant.slug))
-
-    return render_template("admin/partners_preview.html", invite=inv)
-
-@admin_bp.route("/partners/accept", methods=["POST"])
-@login_required
-def partners_accept():
-    code = (request.form.get("code") or "").strip().upper()
-    inv = PartnerInvite.query.filter_by(code=code).with_for_update().first()
-
-    if not inv or inv.status != "pending" or (inv.expires_at and datetime.utcnow() > inv.expires_at):
-        flash("Código inválido ou expirado.", "danger")
-        return redirect(url_for("admin.partners_home", tenant_slug=g.tenant.slug))
-
-    inv.invitee_tenant_id = g.tenant.id
-    inv.status = "claimed"
-
-    def ensure_link(a, b):
-        exists = TenantPartner.query.filter_by(tenant_id=a, partner_tenant_id=b).first()
-        if not exists:
-            db.session.add(TenantPartner(tenant_id=a, partner_tenant_id=b, active=True))
-
-    ensure_link(inv.inviter_tenant_id, g.tenant.id)
-    ensure_link(g.tenant.id, inv.inviter_tenant_id)
-
-    db.session.commit()
-    flash("Parceria criada com sucesso.", "success")
-    return redirect(url_for("admin.partners_home", tenant_slug=g.tenant.slug))
-
-@admin_bp.route("/vehicle/<int:vehicle_id>/share/bulk", methods=["POST"])
-@login_required
-def vehicle_share_bulk(vehicle_id):
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
-    if vehicle.tenant_id != g.tenant.id:
-        flash("Você não pode alterar compartilhamentos de veículos de outro tenant.", "danger")
-        return redirect(url_for("admin.vehicles", tenant_slug=g.tenant.slug))
-
-    raw_ids = request.form.getlist("shared_with_ids")
-    try:
-        selected_ids = [int(x) for x in raw_ids if str(x).isdigit()]
-    except Exception:
-        selected_ids = []
-
-    allowed_ids = {p.id for p in g.tenant.partners}
-    selected_ids = [pid for pid in selected_ids if pid in allowed_ids]
-
-    for share in list(vehicle.shares):
-        if share.shared_with_tenant_id not in selected_ids:
-            db.session.delete(share)
-
-    existing_ids = {s.shared_with_tenant_id for s in vehicle.shares}
-    for tid in selected_ids:
-        if tid not in existing_ids:
-            db.session.add(VehicleShare(vehicle_id=vehicle.id, shared_with_tenant_id=tid, active=True))
-
-    db.session.commit()
-    flash("Compartilhamentos atualizados com sucesso.", "success")
-    return redirect(url_for("admin.vehicle_share", tenant_slug=g.tenant.slug, vehicle_id=vehicle.id))
-
-@admin_bp.route("/vehicle/<int:vehicle_id>/share/update", methods=["POST"])
-@login_required
-def vehicle_share_update(vehicle_id):
-    op = (request.form.get("op") or "").strip()
-    share_id = request.form.get("vehicle_share_id")
-
-    share = VehicleShare.query.get_or_404(share_id)
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
-
-    if share.vehicle_id != vehicle.id:
-        flash("Inconsistência: vínculo não pertence a este veículo.", "danger")
-        return redirect(url_for("admin.vehicle_share", tenant_slug=g.tenant.slug, vehicle_id=vehicle_id))
-
-    if vehicle.tenant_id != g.tenant.id:
-        flash("Você não pode alterar compartilhamentos de veículos de outro tenant.", "danger")
-        return redirect(url_for("admin.vehicles", tenant_slug=g.tenant.slug))
-
-    allowed_ids = {p.id for p in g.tenant.partners}
-    if share.shared_with_tenant_id not in allowed_ids:
-        db.session.delete(share)
-        db.session.commit()
-        flash("Parceiro não é mais válido; vínculo removido.", "warning")
-        return redirect(url_for("admin.vehicle_share", tenant_slug=g.tenant.slug, vehicle_id=vehicle_id))
-
-    if op == "toggle_active":
-        share.active = not share.active
-        db.session.commit()
-        flash("Status do compartilhamento atualizado.", "info")
-    elif op == "delete":
-        db.session.delete(share)
-        db.session.commit()
-        flash("Compartilhamento removido.", "warning")
-    else:
-        flash("Operação inválida.", "danger")
-
-    return redirect(url_for("admin.vehicle_share", tenant_slug=g.tenant.slug, vehicle_id=vehicle_id))
-
-@admin_bp.route("/partners/revoke", methods=["POST"])
-@login_required
-def partners_revoke():
-    link_id = request.form.get("link_id", type=int)
-    if not link_id:
-        flash("ID de parceria inválido.", "danger")
-        return redirect(url_for("admin.partners_home", tenant_slug=g.tenant.slug))
-
-    link = TenantPartner.query.get(link_id)
-    if not link or link.tenant_id != g.tenant.id:
-        flash("Parceria não encontrada.", "warning")
-        return redirect(url_for("admin.partners_home", tenant_slug=g.tenant.slug))
-
-    partner_id = link.partner_tenant_id
-
-    db.session.delete(link)
-    reverse_link = TenantPartner.query.filter_by(
-        tenant_id=partner_id, partner_tenant_id=g.tenant.id
-    ).first()
-    if reverse_link:
-        db.session.delete(reverse_link)
-
-    my_vehicles_sq = select(Vehicle.id).where(Vehicle.tenant_id == g.tenant.id)
-    db.session.execute(
-        delete(VehicleShare).where(
-            VehicleShare.vehicle_id.in_(my_vehicles_sq),
-            VehicleShare.shared_with_tenant_id == partner_id,
-        )
-    )
-    partner_vehicles_sq = select(Vehicle.id).where(Vehicle.tenant_id == partner_id)
-    db.session.execute(
-        delete(VehicleShare).where(
-            VehicleShare.vehicle_id.in_(partner_vehicles_sq),
-            VehicleShare.shared_with_tenant_id == g.tenant.id,
-        )
-    )
-
-    now = datetime.utcnow()
-    affected_status = ["pending", "claimed", "accepted"]
-
-    invites_out = PartnerInvite.query.filter(
-        PartnerInvite.inviter_tenant_id == g.tenant.id,
-        PartnerInvite.invitee_tenant_id == partner_id,
-        PartnerInvite.status.in_(affected_status),
-    ).all()
-
-    invites_in = PartnerInvite.query.filter(
-        PartnerInvite.inviter_tenant_id == partner_id,
-        PartnerInvite.invitee_tenant_id == g.tenant.id,
-        PartnerInvite.status.in_(affected_status),
-    ).all()
-
-    for inv in invites_out + invites_in:
-        inv.status = "revoked"
-        inv.expires_at = now
-
-    db.session.commit()
-    flash("Parceria revogada, compartilhamentos removidos e convites marcados como revogados.", "warning")
-    return redirect(url_for("admin.partners_home", tenant_slug=g.tenant.slug))

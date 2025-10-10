@@ -1,43 +1,21 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Reservas{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3">
   <h3 class="mb-0">Reservas</h3>
-
-  <div class="d-flex align-items-center gap-2 w-100 w-md-auto">
-    <form class="d-flex gap-2 flex-grow-1 flex-md-grow-0" method="get">
-      <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-        <option value="all" {{ 'selected' if status=='all' else '' }}>Todas</option>
-        <option value="pending" {{ 'selected' if status=='pending' else '' }}>Pendentes</option>
-        <option value="confirmed" {{ 'selected' if status=='confirmed' else '' }}>Confirmadas</option>
-        <option value="cancelled" {{ 'selected' if status=='cancelled' else '' }}>Canceladas</option>
-      </select>
-      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.calendar', tenant_slug=g.tenant.slug) }}">
-        Ver calendário
-      </a>
-    </form>
-
-    <button type="button" id="btn-new-reservation" class="btn btn-sm btn-primary">
-      <i class="bi bi-plus-lg"></i> Nova reserva
-    </button>
-  </div>
+  <form class="d-flex gap-2" method="get">
+    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="all" {{ 'selected' if status=='all' else '' }}>Todas</option>
+      <option value="pending" {{ 'selected' if status=='pending' else '' }}>Pendentes</option>
+      <option value="confirmed" {{ 'selected' if status=='confirmed' else '' }}>Confirmadas</option>
+      <option value="cancelled" {{ 'selected' if status=='cancelled' else '' }}>Canceladas</option>
+    </select>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.calendar', tenant_slug=g.tenant.slug) }}">
+      Ver calendário
+    </a>
+  </form>
 </div>
-
-<script>
-  document.addEventListener('click', function (e) {
-    const btn = e.target.closest('#btn-new-reservation');
-    if (!btn) return;
-    const modalEl = document.getElementById('newReservationModal');
-    if (!modalEl) return console.error('[newReservation] modal não encontrado');
-    const m = (window.bootstrap && bootstrap.Modal) ? new bootstrap.Modal(modalEl, {backdrop:'static'}) : null;
-    if (m) m.show(); else modalEl.style.display = 'block';
-    setTimeout(() => {
-      const first = document.querySelector('#newReservationForm input[name="pickup_airport"]');
-      first && first.focus();
-    }, 120);
-  }, { passive: true });
-</script>
 
 <div class="card shadow-sm">
   <div class="card-body">
@@ -51,7 +29,6 @@
             <th>Retirada</th>
             <th>Devolução</th>
             <th>Veículo</th>
-            <th>Obs.</th>
             <th>Status</th>
             <th class="text-end">Ações</th>
           </tr>
@@ -80,14 +57,9 @@
             <td>
               {% if r.vehicle %}
                 {{ r.vehicle.brand or '' }} {{ r.vehicle.model or '' }}
-              {% else %}-{% endif %}
-            </td>
-            <td class="small">
-              {% if r.notes %}
-                <span class="badge bg-light text-dark" data-bs-toggle="tooltip" title="{{ r.notes }}">
-                  <i class="bi bi-chat-left-text me-1"></i> ver
-                </span>
-              {% else %}—{% endif %}
+              {% else %}
+                -
+              {% endif %}
             </td>
             <td>
               <span class="badge
@@ -99,79 +71,79 @@
                 {{ r.status }}
               </span>
             </td>
-            <td class="text-end actions-cell">
-              <div class="d-inline-flex flex-wrap justify-content-end align-items-center gap-1">
-                <a class="btn btn-sm btn-outline-secondary"
-                   href="{{ url_for('public.view_contract', tenant_slug=g.tenant.slug, reserva_id=rid) }}"
-                   target="_blank" data-bs-toggle="tooltip" title="Ver contrato">
-                  <i class="bi bi-file-earmark-pdf"></i>
+            <td class="text-end">
+
+              {# ===== Contrato: ver / (sem botão de download) / assinar ===== #}
+              <a class="btn btn-sm btn-outline-secondary me-2"
+                 href="{{ url_for('public.view_contract', tenant_slug=g.tenant.slug, reserva_id=rid) }}"
+                 target="_blank"
+                 data-bs-toggle="tooltip" title="Ver contrato">
+                <i class="bi bi-file-earmark-pdf"></i>
+              </a>
+
+              {# REMOVIDO: botão de baixar contrato assinado #}
+              {% if not signed %}
+                <a class="btn btn-sm btn-outline-success me-2"
+                   href="{{ url_for('public.sign_contract', tenant_slug=g.tenant.slug, reserva_id=rid) }}"
+                   target="_blank"
+                   data-bs-toggle="tooltip" title="Assinar contrato">
+                  <i class="bi bi-pencil"></i>
                 </a>
+              {% endif %}
 
-                {% if not signed %}
-                  <a class="btn btn-sm btn-outline-success"
-                     href="{{ url_for('public.sign_contract', tenant_slug=g.tenant.slug, reserva_id=rid) }}"
-                     target="_blank" data-bs-toggle="tooltip" title="Assinar contrato">
-                    <i class="bi bi-pencil"></i>
-                  </a>
-                {% endif %}
+              {# ===== Ações de cobrança de saldo (WhatsApp / copiar) — oculto quando confirmado ===== #}
+              {% if status_key != 'confirmed' %}
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-success me-1"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Enviar saldo (WhatsApp)"
+                  data-action="balance-link"
+                  data-kind="whatsapp"
+                  data-rid="{{ rid }}"
+                  data-phone="{{ r.phone or '' }}">
+                  <i class="bi bi-whatsapp"></i>
+                </button>
 
-                {% if r.notes %}
-                  <button type="button" class="btn btn-sm btn-outline-info"
-                          data-bs-toggle="tooltip" title="{{ r.notes }}">
-                    <i class="bi bi-chat-left-text"></i>
-                  </button>
-                {% endif %}
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary me-2"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Copiar link do saldo"
+                  data-action="balance-link"
+                  data-kind="copy"
+                  data-rid="{{ rid }}"
+                  data-phone="{{ r.phone or '' }}">
+                  <i class="bi bi-link-45deg"></i>
+                </button>
+              {% endif %}
 
-                {% if status_key != 'confirmed' %}
-                  <button type="button"
-                          class="btn btn-sm btn-outline-success"
-                          data-bs-toggle="tooltip" data-bs-placement="top"
-                          title="Enviar saldo (WhatsApp)"
-                          data-action="balance-link" data-kind="whatsapp"
-                          data-rid="{{ rid }}" data-phone="{{ r.phone or '' }}">
-                    <i class="bi bi-whatsapp"></i>
-                  </button>
-
-                  <button type="button"
-                          class="btn btn-sm btn-outline-secondary"
-                          data-bs-toggle="tooltip" data-bs-placement="top"
-                          title="Copiar link do saldo"
-                          data-action="balance-link" data-kind="copy"
-                          data-rid="{{ rid }}" data-phone="{{ r.phone or '' }}">
-                    <i class="bi bi-link-45deg"></i>
-                  </button>
-                {% endif %}
-
-                {% if status_key == 'pending' %}
-                  <form class="d-inline m-0" method="post"
-                        action="{{ url_for('admin.reservation_confirm', tenant_slug=g.tenant.slug, reservation_id=rid) }}">
-                    <button class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Confirmar">
-                      <i class="bi bi-check2-circle"></i>
-                    </button>
-                  </form>
-                {% endif %}
-
-                {% if status_key not in ['cancelled','canceled'] %}
-                  <form class="d-inline m-0" method="post"
-                        action="{{ url_for('admin.reservation_cancel', tenant_slug=g.tenant.slug, reservation_id=rid) }}">
-                    <button class="btn btn-sm btn-outline-warning" data-bs-toggle="tooltip" title="Cancelar">
-                      <i class="bi bi-x-circle"></i>
-                    </button>
-                  </form>
-                {% endif %}
-
-                <form class="d-inline m-0" method="post"
-                      action="{{ url_for('admin.reservation_delete', tenant_slug=g.tenant.slug, reservation_id=rid) }}"
-                      onsubmit="return confirm('Excluir esta reserva?')">
-                  <button class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Excluir">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </form>
-              </div>
+              {# ===== Outras ações padrão ===== #}
+              {% if status_key == 'pending' %}
+              <form class="d-inline" method="post" action="{{ url_for('admin.reservation_confirm', tenant_slug=g.tenant.slug, reservation_id=rid) }}">
+                <button class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Confirmar">
+                  <i class="bi bi-check2-circle"></i>
+                </button>
+              </form>
+              {% endif %}
+              {% if status_key not in ['cancelled','canceled'] %}
+              <form class="d-inline" method="post" action="{{ url_for('admin.reservation_cancel', tenant_slug=g.tenant.slug, reservation_id=rid) }}">
+                <button class="btn btn-sm btn-outline-warning" data-bs-toggle="tooltip" title="Cancelar">
+                  <i class="bi bi-x-circle"></i>
+                </button>
+              </form>
+              {% endif %}
+              <form class="d-inline" method="post" action="{{ url_for('admin.reservation_delete', tenant_slug=g.tenant.slug, reservation_id=rid) }}" onsubmit="return confirm('Excluir esta reserva?')">
+                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Excluir">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="9" class="text-center text-muted py-4">Nenhuma reserva encontrada.</td></tr>
+          <tr><td colspan="8" class="text-center text-muted py-4">Nenhuma reserva encontrada.</td></tr>
         {% endfor %}
         </tbody>
       </table>
@@ -179,329 +151,116 @@
   </div>
 </div>
 
-<!-- ========= MODAL: Nova reserva ========= -->
-<div class="modal fade" id="newReservationModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Criar reserva manual</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
-
-      <div class="modal-body">
-        <form id="newReservationForm" class="vstack gap-3">
-          <datalist id="tenant-airports"></datalist>
-
-          <!-- aeroportos + datas/horas + contato -->
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Retirada (aeroporto)</label>
-              <input name="pickup_airport" class="form-control" list="tenant-airports"
-                     placeholder="Ex: Miami Intl (MIA), Orlando, JFK..." required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Devolução (aeroporto)</label>
-              <input name="dropoff_airport" class="form-control" list="tenant-airports"
-                     placeholder="Ex: Miami Intl (MIA), Orlando, JFK..." required>
-            </div>
-
-            <div class="col-6 col-md-3">
-              <label class="form-label">Data de retirada</label>
-              <input name="pickup_date" type="date" class="form-control" required>
-            </div>
-            <div class="col-6 col-md-3">
-              <label class="form-label">Hora de retirada</label>
-              <input name="pickup_time" type="time" class="form-control" value="10:00" required>
-            </div>
-            <div class="col-6 col-md-3">
-              <label class="form-label">Data de devolução</label>
-              <input name="dropoff_date" type="date" class="form-control" required>
-            </div>
-            <div class="col-6 col-md-3">
-              <label class="form-label">Hora de devolução</label>
-              <input name="dropoff_time" type="time" class="form-control" value="10:00" required>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Nome completo</label>
-              <input name="customer_name" class="form-control" placeholder="Seu nome" required>
-            </div>
-            <div class="col-6 col-md-3">
-              <label class="form-label">Telefone (WhatsApp)</label>
-              <input name="phone" class="form-control" placeholder="+1 (US) 88888-7777">
-            </div>
-            <div class="col-6 col-md-3">
-              <label class="form-label">Email</label>
-              <input name="email" type="email" class="form-control" placeholder="voce@exemplo.com">
-            </div>
-
-            <div class="col-md-6">
-            <label class="form-label">Veículo (frota)</label>
-            <select id="vehicle_id" name="vehicle_id" class="form-select">
-              <option value="">— selecionar —</option>
-            </select>
-            <div class="form-text hint-eq">Se não encontrar, cadastre abaixo.</div>
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label">Novo veículo (marca / modelo / placa)</label>
-            <input id="new_vehicle_label" class="form-control" placeholder="Ex.: Toyota Corolla ABC-1D23">
-            <div class="form-text hint-eq">Com uma categoria selecionada, criamos o veículo mínimo e já selecionamos.</div>
-          </div>
-
-
-          <!-- valores + categoria: alinhados pela base -->
-          <div class="row g-3 align-items-end">
-          <div class="col-12 col-sm-6 col-md-4 d-flex flex-column">
-            <label class="form-label">Valor total</label>
-            <input name="total_price" type="number" step="0.01" min="0" class="form-control" placeholder="0.00">
-            <div class="form-text hint-eq">&nbsp;</div>
-          </div>
-
-          <div class="col-12 col-sm-6 col-md-4 d-flex flex-column">
-            <label class="form-label">Categoria da frota</label>
-            <select id="category_id" name="category_id" class="form-select">
-              <option value="">— selecionar —</option>
-            </select>
-            <div class="form-text hint-eq">Para novo Veiculo</div>
-          </div>
-        </div>
-
-
-          <div class="mb-1">
-            <label class="form-label">Observações (opcional)</label>
-            <textarea name="notes" class="form-control" rows="2"></textarea>
-          </div>
-        </form>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
-        <button id="btnSubmitNewRes" class="btn btn-primary">Ver ofertas / Gerar link</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<style>
-  .small-hint{min-height:24px} /*  mesma altura pros helps, evita degrau */
-  .actions-cell .btn{vertical-align:middle}
-  @media (max-width:576px){
-    .actions-cell .btn{padding:.25rem .4rem}
-    .table td, .table th{white-space:nowrap}
-  }
-</style>
-
+{# --- JS: gera o link de SALDO via JSON e copia / abre WhatsApp --- #}
 <script>
 try {
   (function () {
-    /* ---------- Tooltips ---------- */
+    // --- tooltips (não deixa quebrar se bootstrap não existir) ---
     try {
       const tts = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
       tts.forEach(el => window.bootstrap && new bootstrap.Tooltip(el));
     } catch (_) {}
 
-    /* ---------- Helpers ---------- */
-    function digits(s){ return (s||'').replace(/\D+/g,''); }
-    function norm(s){ return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
-    async function copyToClipboard(text){
-      try{ if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); return true; } }catch(_){}
-      try{
-        const ta=document.createElement('textarea'); ta.value=text; ta.setAttribute('readonly','');
-        ta.style.position='fixed'; ta.style.top='-9999px'; document.body.appendChild(ta);
-        ta.select(); const ok=document.execCommand('copy'); document.body.removeChild(ta); return ok;
-      }catch(_){ return false; }
-    }
+    // --- utils ---
+    function digits(s) { return (s || '').replace(/\D+/g, ''); }
 
-    /* ---------- Airports ---------- */
-    const DL_AIR = document.getElementById('tenant-airports');
-    const inpPickup  = document.querySelector('#newReservationForm input[name="pickup_airport"]');
-    const inpDropoff = document.querySelector('#newReservationForm input[name="dropoff_airport"]');
-    let SERVED = [];
-
-    async function loadAirportsServed(){
-      try{
-        const url = "{{ url_for('admin.admin_get_airports_served', tenant_slug=g.tenant.slug) }}";
-        const res = await fetch(url, { headers:{'Accept':'application/json'}, credentials:'same-origin' });
-        const ct = res.headers.get('Content-Type') || '';
-        if(!ct.includes('application/json')) throw new Error('airports served: não veio JSON (provável login)');
-        const data = await res.json();
-        SERVED = Array.isArray(data.items) ? data.items : [];
-      }catch(e){
-        console.warn('airports served falhou; fallback público', e);
-        try{
-          const url2 = "{{ url_for('public.airports_json', tenant_slug=g.tenant.slug) }}";
-          const res2 = await fetch(url2, { credentials:'same-origin' });
-          const arr2 = await res2.json();
-          SERVED = Array.isArray(arr2) ? arr2 : [];
-        }catch(e2){ SERVED = []; }
+    async function fetchBalanceLink(rid) {
+      // Precisa responder JSON: { ok: true, link: "https://..." }
+      const urlBase = "{{ url_for('public.checkout_pay_link', tenant_slug=g.tenant.slug, reservation_id=0) }}";
+      const url = urlBase.replace('/0/', `/${rid}/`) + "?mode=balance&return=1";
+      console.debug("[reservations] POST", url);
+      const res = await fetch(url, { method: "POST" });
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      if (!res.ok || !data.ok || !data.link) {
+        console.error("Falha ao gerar link do saldo:", res.status, data);
+        throw new Error(data.error || "Não foi possível gerar o link de pagamento.");
       }
-      renderAirOptions('');
-    }
-    function suggestFromServed(q){ if(!q) return SERVED.slice(); const qn=norm(q); return SERVED.filter(s=>norm(s).includes(qn)); }
-    function renderAirOptions(q){
-      const list = suggestFromServed(q).slice(0,50);
-      DL_AIR.innerHTML = '';
-      for(const label of list){ const opt=document.createElement('option'); opt.value=label; DL_AIR.appendChild(opt); }
-    }
-    inpPickup?.addEventListener('input', e=>renderAirOptions(e.target.value));
-    inpDropoff?.addEventListener('input', e=>renderAirOptions(e.target.value));
-
-    /* ---------- Frota (veículos) ---------- */
-    const vehicleSel = document.getElementById('vehicle_id');
-    async function tryFetch(url){
-      const res = await fetch(url, { headers:{'Accept':'application/json'}, credentials:'same-origin' });
-      if(!res.ok) throw new Error(res.status+' '+res.statusText);
-      const ct = res.headers.get('Content-Type') || '';
-      if(!ct.includes('application/json')) throw new Error('not json');
-      return res.json();
-    }
-    function pushVehicleOption(v){
-      const id = v.id || v.vehicle_id; if (!id) return;
-      const plate = v.plate || v.license_plate || v.placa || '';
-      const brand = v.brand || ''; const model = v.model || '';
-      const opt = document.createElement('option');
-      opt.value = id; opt.textContent = `${plate ? plate+' — ' : ''}${brand} ${model}`.trim();
-      vehicleSel.appendChild(opt);
-    }
-    async function loadVehicles(){
-      const tries = [
-        "{{ '/' + g.tenant.slug + '/admin/vehicles.json' }}",
-        "{{ '/' + g.tenant.slug + '/admin/fleet/vehicles.json' }}",
-        "{{ '/' + g.tenant.slug + '/admin/api/vehicles' }}",
-        "{{ url_for('admin.vehicles', tenant_slug=g.tenant.slug) }}?format=json"
-      ];
-      for(const u of tries){
-        try{
-          const data = await tryFetch(u);
-          const list = Array.isArray(data) ? data
-                     : (Array.isArray(data.items) ? data.items
-                     : (Array.isArray(data.vehicles) ? data.vehicles : []));
-          if(!list.length) continue;
-          vehicleSel.innerHTML = '<option value="">— selecionar —</option>';
-          list.forEach(pushVehicleOption);
-          return;
-        }catch(e){ /* tenta próxima */ }
-      }
-      vehicleSel.innerHTML = '<option value="" disabled>(não foi possível carregar a frota)</option>';
-    }
-
-    /* ---------- Categorias ---------- */
-    const catSel = document.getElementById('category_id');
-    async function loadCategories(){
-      try{
-        const url = "{{ url_for('admin.admin_categories_json', tenant_slug=g.tenant.slug) }}";
-        const res = await fetch(url, { headers:{'Accept':'application/json'}, credentials:'same-origin' });
-        const ct = res.headers.get('Content-Type') || '';
-        if(!ct.includes('application/json')) throw new Error('categories: não veio JSON (provável login)');
-        const data = await res.json();
-        const items = Array.isArray(data.items) ? data.items : [];
-        catSel.innerHTML = '<option value="">— selecionar —</option>';
-        for(const c of items){
-          const opt = document.createElement('option');
-          opt.value = c.id; opt.textContent = c.name;
-          catSel.appendChild(opt);
-        }
-      }catch(e){
-        console.warn('Falha ao carregar categorias', e);
-        catSel.innerHTML = '<option value="" disabled>(não foi possível carregar categorias)</option>';
-      }
-    }
-
-    /* ---------- Criar veículo mínimo (opcional) ---------- */
-    async function maybeCreateVehicleQuick(label, categoryId){
-      if(!label || !categoryId) return null;
-      const parts=label.trim().split(/\s+/); if(parts.length<2) return null;
-      const plate=parts[parts.length-1].toUpperCase();
-      const brand=parts[0]; const model=parts.slice(1,-1).join(' ') || '';
-      const fd=new FormData();
-      fd.set('plate',plate); fd.set('brand',brand); fd.set('model',model);
-      fd.set('status','available'); fd.set('category_id',String(categoryId));
-      const url="{{ url_for('admin.vehicles', tenant_slug=g.tenant.slug) }}";
-      const res=await fetch(url,{method:'POST', body:fd, credentials:'same-origin'});
-      if(!res.ok){ console.warn('Falha ao criar veículo rápido', await res.text()); return null; }
-      await loadVehicles();
-      const found = Array.from(vehicleSel.options).find(o => (o.textContent||'').toUpperCase().includes(plate));
-      if(found) vehicleSel.value=found.value;
-      return found ? found.value : null;
-    }
-
-    /* ---------- Link de saldo ---------- */
-    async function fetchBalanceLink(rid){
-      const urlBase="{{ url_for('public.checkout_pay_link', tenant_slug=g.tenant.slug, reservation_id=0) }}";
-      const url=urlBase.replace('/0/','/'+rid+'/')+"?mode=balance&return=1";
-      const res=await fetch(url,{method:'POST', credentials:'same-origin'});
-      const data=await res.json().catch(()=>({}));
-      if(!res.ok || !data.ok || !data.link) throw new Error(data.error || 'Não foi possível gerar o link de pagamento.');
       return data.link;
     }
-    document.querySelectorAll('[data-action="balance-link"]').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        const rid=btn.dataset.rid, kind=btn.dataset.kind, phone=digits(btn.dataset.phone);
-        btn.disabled=true; let prewin=null;
-        if(kind==='whatsapp'){ prewin=window.open('', '_blank'); if(prewin && !prewin.closed){ prewin.document.write('<!doctype html><title>Abrindo WhatsApp…</title><p style="font:14px sans-serif">Aguarde, abrindo WhatsApp…</p>'); prewin.document.close(); } }
-        try{
-          const link=await fetchBalanceLink(rid);
-          if(kind==='copy'){ const ok=await copyToClipboard(link); if(!ok) throw new Error('Não consegui copiar para a área de transferência.'); }
-          else{ const msg=encodeURIComponent(`Olá! Para concluir sua reserva #${rid}, pague o saldo neste link:\n${link}`); const wa=phone?`https://wa.me/${phone}?text=${msg}`:`https://wa.me/?text=${msg}`; if(prewin && !prewin.closed){ prewin.location=wa; } else { window.location.href=wa; } }
-        }catch(err){ console.error('[reservations] erro:', err); if(prewin && !prewin.closed) prewin.close(); alert(err.message || 'Falha ao processar ação.'); }
-        finally{ btn.disabled=false; }
+
+    async function copyToClipboard(text) {
+      try {
+        // navigator.clipboard só funciona em contexto seguro (https ou localhost)
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch (_) {}
+      // fallback
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch (_) { return false; }
+    }
+
+    // --- handlers dos botões ---
+    document.querySelectorAll('[data-action="balance-link"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const rid   = btn.dataset.rid;
+        const kind  = btn.dataset.kind;    // "copy" | "whatsapp"
+        const phone = digits(btn.dataset.phone);
+        console.debug("[reservations] click", { rid, kind, phone });
+
+        btn.disabled = true;
+
+        // Pré-abre janela para evitar bloqueio de popup
+        let prewin = null;
+        if (kind === 'whatsapp') {
+  // sem noopener/noreferrer para podermos controlar a janela
+        prewin = window.open('', '_blank');
+        if (prewin && !prewin.closed) {
+          prewin.document.write('<!doctype html><title>Abrindo WhatsApp…</title><p style="font:14px sans-serif">Aguarde, abrindo WhatsApp…</p>');
+          prewin.document.close();
+        }
+      }
+
+        try {
+          const link = await fetchBalanceLink(rid);
+          console.debug("[reservations] link recebido:", link);
+
+          if (kind === 'copy') {
+            const ok = await copyToClipboard(link);
+            if (!ok) throw new Error("Não consegui copiar para a área de transferência.");
+            // feedback rápido
+            btn.classList.remove('btn-outline-secondary'); btn.classList.add('btn-secondary');
+            setTimeout(() => {
+              btn.classList.add('btn-outline-secondary'); btn.classList.remove('btn-secondary');
+            }, 900);
+          } else {
+            const msg = encodeURIComponent(`Olá! Para concluir sua reserva #${rid}, pague o saldo neste link:\n${link}`);
+            const wa  = phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
+            console.debug("[reservations] abrindo WhatsApp:", wa);
+            if (prewin && !prewin.closed) {
+              prewin.location = wa;
+            } else {
+              window.location.href = wa;
+            }
+          }
+        } catch (err) {
+          console.error("[reservations] erro:", err);
+          if (prewin && !prewin.closed) prewin.close();
+          alert(err.message || "Falha ao processar ação.");
+        } finally {
+          btn.disabled = false;
+        }
       });
     });
 
-    /* ---------- Submit: cria reserva via JSON ---------- */
-    document.getElementById('btnSubmitNewRes').addEventListener('click', async ()=>{
-      const form=document.getElementById('newReservationForm');
-      const vals=Object.fromEntries(new FormData(form).entries());
-      const newLabel=document.getElementById('new_vehicle_label').value.trim();
-
-      if(!vals.vehicle_id && newLabel && vals.category_id){
-        await maybeCreateVehicleQuick(newLabel, Number(vals.category_id));
-      }
-
-      const joinDt=(d,t)=>(d||'')+' '+(t||'10:00');
-      const payload={
-        customer_name: vals.customer_name || '',
-        phone        : vals.phone || '',
-        email        : vals.email || '',
-        pickup_airport : vals.pickup_airport || '',
-        dropoff_airport: vals.dropoff_airport || '',
-        pickup_dt    : joinDt(vals.pickup_date, vals.pickup_time),
-        dropoff_dt   : joinDt(vals.dropoff_date, vals.dropoff_time),
-        total_price  : vals.total_price ? parseFloat(vals.total_price) : undefined,
-        notes        : vals.notes || ''
-      };
-      if(vals.vehicle_id) payload.vehicle_id = Number(vals.vehicle_id);
-      else if(vals.category_id) payload.category_id = Number(vals.category_id);
-      if(!payload.vehicle_id && !payload.category_id){
-        alert('Selecione um veículo da frota OU escolha uma categoria.'); return;
-      }
-
-      const btn=document.getElementById('btnSubmitNewRes'); btn.disabled=true;
-      try{
-        const res=await fetch("{{ url_for('admin.reservation_create_json', tenant_slug=g.tenant.slug) }}",{
-          method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify(payload)
-        });
-        const data=await res.json().catch(()=>({}));
-        if(!res.ok || !data.ok) throw new Error(data.error || 'Não foi possível criar a reserva.');
-        const msg=`Reserva #${data.id} criada.\nAbrir checkout agora?`;
-        if(confirm(msg)) window.open(data.checkout_url,'_blank');
-        else { const ok=await copyToClipboard(data.checkout_url); if(!ok) alert('Link:\n'+data.checkout_url); }
-        const modalEl=document.getElementById('newReservationModal');
-        modalEl.addEventListener('hidden.bs.modal', ()=>window.location.reload(), {once:true});
-        bootstrap.Modal.getInstance(modalEl)?.hide();
-      }catch(err){ console.error('create.json erro', err); alert(err.message || 'Falha ao criar a reserva.'); }
-      finally{ btn.disabled=false; }
-    });
-
-    /* ---------- Carregar ao abrir o modal ---------- */
-    const modalEl=document.getElementById('newReservationModal');
-    modalEl?.addEventListener('show.bs.modal', ()=>{
-      loadVehicles();
-      loadCategories();
-      if(!SERVED.length) loadAirportsServed(); else renderAirOptions('');
-    });
+    console.log("[reservations] ações de saldo prontas");
   })();
-} catch(e) { console.error('Erro no script de reservas:', e); }
+} catch (e) {
+  console.error("Erro no script de reservas:", e);
+}
 </script>
+
+
 {% endblock %}

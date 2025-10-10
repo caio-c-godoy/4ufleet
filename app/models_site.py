@@ -172,5 +172,3 @@ class MediaAsset(db.Model):
 
     def __repr__(self):
         return f"<MediaAsset tenant_id={self.tenant_id} filename={self.filename}>"
-
-
