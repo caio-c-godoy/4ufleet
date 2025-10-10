@@ -91,7 +91,7 @@
                 <th style="width:90px">Ano</th>
                 <th>Cor</th>
                 <th style="width:120px">Status</th>
-                <th class="text-end" style="width:200px">Ações</th>
+                <th class="text-end" style="width:240px">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -106,7 +106,32 @@
 
                 <td class="fw-semibold">
                   {{ (v.brand ~ ' ') if v.brand else '' }}{{ v.model }}
+
+                  {# === BLOCO NOVO: badges de compartilhamento === #}
+                  {% set meta = share_info.get(v.id) if share_info else None %}
+
+                  {# Se é um carro que veio de parceiro (você está vendo o carro do parceiro Y) #}
+                  {% if meta and meta.shared_from %}
+                    <div class="small mt-1">
+                      <span class="badge rounded-pill bg-secondary">de parceiro</span>
+                      <span class="text-muted">{{ meta.shared_from.name }}</span>
+                    </div>
+                  {% endif %}
+
+                  {# Se é um carro seu compartilhado com parceiros (X, …) #}
+                  {% if meta and meta.shared_to and meta.shared_to|length > 0 %}
+                    {% set names = meta.shared_to | map(attribute='name') | list %}
+                    <div class="small mt-1">
+                      <span class="badge rounded-pill bg-info">compartilhado</span>
+                      <span class="text-muted"
+                            title="{{ names|join(', ') }}">
+                        com {{ names|join(', ') if names|length <= 2 else (names|length ~ ' parceiros') }}
+                      </span>
+                    </div>
+                  {% endif %}
+                  {# === /BLOCO NOVO === #}
                 </td>
+
                 <td class="text-muted">{{ v.category.name if v.category else '-' }}</td>
                 <td class="text-muted">{{ v.plate or '-' }}</td>
                 <td class="text-muted">{{ v.year or '-' }}</td>
@@ -126,6 +151,13 @@
                           data-modal-url="{{ url_for('admin.vehicle_edit_modal', tenant_slug=tenant.slug, vehicle_id=v.id) }}">
                     <i class="bi bi-pencil-square"></i>
                   </button>
+
+                  <!-- Compartilhar veículo -->
+                  <a class="btn btn-sm btn-outline-primary me-1"
+                     title="Compartilhar veículo"
+                     href="{{ url_for('admin.vehicle_share', tenant_slug=tenant.slug, vehicle_id=v.id) }}">
+                    <i class="bi bi-people"></i>
+                  </a>
 
                   <!-- Dropdown de Status -->
                   <div class="btn-group me-1">

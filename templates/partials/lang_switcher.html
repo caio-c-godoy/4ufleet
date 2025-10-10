@@ -1,0 +1,23 @@
+{# templates/partials/lang_switcher.html #}
+{% set langs = current_app.config.get('LANGUAGES', ['pt','en','es']) %}
+{% set here_endpoint = request.endpoint %}
+{% set here_args = request.view_args or {} %}
+{% set here_query = request.args.to_dict() %}
+
+<div class="dropdown">
+  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+    {% if (get_locale() or 'pt') == 'pt' %}Português{% elif get_locale() == 'en' %}English{% else %}Español{% endif %}
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    {% for code, label in [('pt','Português'), ('en','English'), ('es','Español')] if code in langs %}
+      <li>
+        {% set merged = dict(here_args, **here_query, **{'lang': code}) %}
+        {% if here_endpoint %}
+          <a class="dropdown-item" href="{{ url_for(here_endpoint, **merged) }}">{{ label }}</a>
+        {% else %}
+          <a class="dropdown-item" href="{{ url_for('site.home', lang=code) }}">{{ label }}</a>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</div>

@@ -1,0 +1,616 @@
+{% extends "base.html" %}
+{% block title %}4uFleet Pro — Software completo para locadoras (ilimitado){% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ========== PALETA & TOKENS ========== */
+  :root{
+    --ink:#0b1220;        /* texto forte */
+    --muted:#64748b;      /* texto suave */
+    --primary:#0d6efd;    /* azul 4u */
+    --accent:#7c3aed;     /* roxo destaque */
+    --accent-2:#22c55e;   /* verde sucesso */
+    --bg:#ffffff;         /* fundo base */
+    --card:#ffffff;       /* cartões */
+    --ring:#e5e7eb;       /* bordas */
+    --grad-hero: radial-gradient(1200px 520px at 15% -12%, rgba(13,110,253,.26), transparent 60%),
+                 conic-gradient(from 210deg at 80% 20%, rgba(124,58,237,.16), transparent 40%),
+                 linear-gradient(180deg, #0d6efd0f, transparent 45%), #0a0f1e;
+  }
+
+  *{scroll-margin-top:80px}
+
+  /* ========== HERO ========== */
+  .hero{
+    position:relative; min-height:86vh; display:grid; place-items:center; overflow:hidden;
+    background:var(--grad-hero);
+    color:#fff;
+  }
+  .hero .media{ position:absolute; inset:0; z-index:-2; overflow:hidden; mix-blend:screen; opacity:.35; }
+  .hero video{ width:100%; height:100%; object-fit:cover; }
+  .hero .veil{ position:absolute; inset:0; z-index:-1;
+    background:linear-gradient(180deg, rgba(2,6,23,.65), rgba(2,6,23,.3) 44%, rgba(255,255,255,0) 78%);}
+  .hero .glow{
+    position:absolute; inset:auto -260px -180px auto; width:620px; height:620px;
+    background:radial-gradient(closest-side, rgba(124,58,237,.25), transparent 70%);
+    filter: blur(10px);
+  }
+  .hero .box{ text-align:center; padding: clamp(28px, 5vw, 64px); max-width: 1150px; }
+  .hero h1{ font-size: clamp(33px, 5.3vw, 66px); line-height:1.04; letter-spacing:.2px; }
+  .hero p{ color:#e5e7eb; font-size: clamp(16px, 1.7vw, 20px); }
+
+  .pill{
+    display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px;
+    background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.22);
+    backdrop-filter: blur(8px); font-weight:600; font-size:13px;
+  }
+
+  /* ========== SEÇÕES / CARTÕES / ICONE ========== */
+  .section{ padding:84px 0; background:var(--bg); }
+  .section-light{ background:#f6f9ff; }
+  .section-dark{ background:linear-gradient(180deg, #0b1220, #0e172f); color:#c7d2fe; }
+  .muted{ color:var(--muted); }
+  .card-ff{
+    border:1px solid var(--ring); border-radius:18px; background:var(--card);
+    height:100%; box-shadow:0 10px 30px rgba(2,6,23,.08);
+  }
+  .icon{
+    width:46px; height:46px; display:grid; place-items:center; border-radius:12px;
+    background:linear-gradient(135deg,#eef4ff,#f7f9ff); color:#305df5; font-size:20px;
+    box-shadow: inset 0 0 0 1px #e7efff;
+  }
+
+  /* ========== LISTAS / BADGES / MICRO UI ========== */
+  .list-check li{ margin-bottom:10px; }
+  .list-check i{ color:var(--accent-2); }
+  .chip{ display:inline-flex; gap:6px; align-items:center; border:1px solid #e5e7eb; padding:6px 10px; border-radius:20px; font-size:12px; background:#fff; }
+  .badge-pro{ background:#e7f1ff; color:#0a58ca; border:1px solid #cfe2ff; font-weight:700; }
+
+  /* ========== STATS ========== */
+  .stats{ border:1px solid rgba(255,255,255,.38); background:rgba(255,255,255,.65); border-radius:16px; padding:18px 20px; backdrop-filter: blur(10px); }
+  .stat{ display:flex; align-items:center; gap:12px; }
+  .stat + .stat{ border-left:1px solid rgba(0,0,0,.06); padding-left:18px; }
+  .num{ font-weight:800; font-size: clamp(28px, 4vw, 40px); letter-spacing:-.6px; line-height:1; color:#0b5ed7; }
+  .label{ color:#1f2937; font-size:14px; }
+  @media (max-width: 991.98px){
+    .stat + .stat{ border-left:0; padding-left:0; border-top:1px solid rgba(0,0,0,.06); padding-top:14px; margin-top:14px; }
+  }
+
+  /* ========== SPOTLIGHT ========== */
+  .spotlight{
+    border:1px dashed #c7d2fe; background:linear-gradient(180deg,#f8faff,#ffffff); border-radius:18px;
+  }
+  .spotlight .tag{ font-size:12px; color:#6d28d9; background:#f3e8ff; border:1px solid #e9d5ff; border-radius:999px; padding:5px 10px; display:inline-block; }
+
+  /* ========== MATRIZ ========== */
+  .matrix td, .matrix th{ vertical-align: middle; }
+  .matrix .yes{ color:#16a34a; }
+  .matrix .road{ color:#64748b; }
+
+  /* ========== INTEGRAÇÕES MOSAICO ========== */
+  .integrations .i{ border:1px solid #e5e7eb; border-radius:14px; padding:14px; background:#fff; height:100%;
+    transition: transform .15s ease, box-shadow .15s ease; }
+  .integrations .i:hover{ transform: translateY(-2px); box-shadow:0 12px 28px rgba(2,6,23,.08); }
+  .integrations .i h6{ margin:8px 0 4px; }
+
+  /* ========== KPI / SPARKS (decorativos) ========== */
+  .kpi .k{ border:1px solid #e5e7eb; border-radius:12px; padding:14px; background:#fff; }
+  .spark{ height:60px; border-radius:8px;
+    background:
+      linear-gradient(90deg, rgba(13,110,253,.18), transparent 50%),
+      repeating-linear-gradient(90deg, rgba(2,6,23,.06), rgba(2,6,23,.06) 2px, transparent 2px, transparent 6px);
+    animation: flow 8s linear infinite;
+  }
+  @keyframes flow { from{background-position:0 0, 0 0} to{background-position:1200px 0, 0 0} }
+
+  /* ========== PREÇO ========== */
+  .price{ font-size:56px; font-weight:800; letter-spacing:-.6px; }
+  .sub{ color:var(--muted); }
+
+  /* ========== TESTIMONIALS ======= */
+  .quote{ font-size:18px; color:#111827; }
+  .who { color:#475569; font-weight:600; }
+
+  /* ========== PASSOS VISUAIS ========== */
+  .step{ display:flex; gap:14px; align-items:flex-start; }
+  .step .dot{
+    width:24px; height:24px; border-radius:999px; background:linear-gradient(135deg,#2563eb,#7c3aed);
+    color:#fff; display:grid; place-items:center; font-size:12px; box-shadow:0 6px 16px rgba(13,110,253,.35);
+  }
+
+  /* ========== CTA & SITEMAP ========== */
+  .cta{ border:1px solid #dbeafe; background:linear-gradient(180deg,#eff6ff,#ffffff); border-radius:16px; padding:22px; }
+  .sitemap h6{ font-weight:700; color:var(--ink); }
+  .sitemap a{ color:#334155; text-decoration:none; }
+  .sitemap a:hover{ color:var(--primary); text-decoration:underline; }
+  .sitemap .mini{ font-size:12px; color:#64748b; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ===================== HERO ===================== -->
+<section id="hero" class="hero">
+  <div class="media">
+    <video autoplay muted loop playsinline poster="{{ url_for('static', filename='img/video-cover.jpg') }}">
+      <source src="{{ url_for('static', filename='uploads/hero.mp4') }}" type="video/mp4">
+    </video>
+  </div>
+  <div class="veil"></div>
+  <div class="glow"></div>
+
+  <div class="box container">
+    <div class="d-flex justify-content-center flex-wrap gap-2 mb-3">
+      <span class="pill"><i class="bi bi-rocket-takeoff"></i> Multi-filiais sem atrito</span>
+      <span class="pill"><i class="bi bi-palette2"></i> White-label por tenant</span>
+      <span class="pill"><i class="bi bi-shield-check"></i> RBAC & Auditoria</span>
+      <span class="pill"><i class="bi bi-braces"></i> API & Webhooks</span>
+      <span class="pill"><i class="bi bi-cloud-check"></i> SMTP por tenant</span>
+    </div>
+
+    <h1>4uFleet Pro — escale sua locadora com integrações, segurança e operação <em>zero atrito</em></h1>
+    <p class="mt-2">
+      Do orçamento ao contrato assinado: calendário, bloqueios, tarifas, repasses, checklist com fotos, PDF, e-mails e relatórios — tudo no mesmo lugar.
+    </p>
+
+    <div class="d-flex flex-wrap justify-content-center gap-2 mt-3">
+      <button id="btnStripe" class="btn btn-primary btn-lg px-4"
+              data-plan="4UFLEET_PRO_MONTHLY" data-price="89.90" data-currency="USD">
+        Assinar Pro — US$ 89,90/mês
+      </button>
+      <a class="btn btn-outline-light btn-lg px-4" data-bs-toggle="modal" data-bs-target="#videoModal">
+        <i class="bi bi-play-circle me-1"></i> Ver demo (1:10)
+      </a>
+    </div>
+    <div class="small mt-3" style="color:#dbeafe">Usuários e veículos ilimitados. Cancele quando quiser.</div>
+
+    <!-- Números -->
+    <div class="stats card-ff mt-4">
+      <div class="row g-3 align-items-center">
+        <div class="col-12 col-lg-3">
+          <div class="stat">
+            <div class="num" data-counter data-total="sum" data-sum-selector="#hero-stats [data-region]">0</div>
+            <div class="label">Locadoras ativas</div>
+          </div>
+        </div>
+        <div id="hero-stats" class="col-12 col-lg-9">
+          <div class="row g-3">
+            <div class="col-4"><div class="stat"><div class="num" data-counter data-target="128" data-region="us">0</div><div class="label">Estados Unidos</div></div></div>
+            <div class="col-4"><div class="stat"><div class="num" data-counter data-target="64"  data-region="ca">0</div><div class="label">Canadá</div></div></div>
+            <div class="col-4"><div class="stat"><div class="num" data-counter data-target="228" data-region="eu">0</div><div class="label">Europa</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SPOTLIGHT (argumento forte) ===================== -->
+<section class="section">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-6">
+        <div class="spotlight p-4 p-lg-5">
+          <span class="tag"><i class="bi bi-stars me-1"></i> O que muda do “básico” para o Pro</span>
+          <h2 class="mt-2">Operação que aguenta crescimento</h2>
+          <p class="muted">O Pro foi desenhado para locadoras que querem escala e padronização, sem abrir mão de marca própria e segurança.</p>
+          <ul class="list-unstyled list-check">
+            <li><i class="bi bi-check2-circle me-2"></i> White-label por filial (cores, logos, domínios e SMTP)</li>
+            <li><i class="bi bi-check2-circle me-2"></i> Permissões (RBAC) e trilhas de auditoria</li>
+            <li><i class="bi bi-check2-circle me-2"></i> Importadores CSV (frota, clientes, reservas) com validação</li>
+            <li><i class="bi bi-check2-circle me-2"></i> API & Webhooks para automações e ERPs</li>
+          </ul>
+          <div class="d-flex gap-2 mt-3">
+            <a class="btn btn-primary" href="#pricing">Ver preço</a>
+            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#preSignupModal">Testar antes</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <img class="img-fluid rounded border"
+             src="{{ url_for('static', filename='img/placeholder-wide.jpg') }}"
+             alt="Spotlight"
+             onerror="this.src='{{ url_for('static', filename='img/video-cover.jpg') }}'">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PILARES / FEATURES ===================== -->
+<section class="section section-light">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>Poder nas rotinas que mais importam</h2>
+      <p class="muted">Menos atrito, mais controle: do balcão ao financeiro.</p>
+    </div>
+
+    <div class="row g-4">
+      {% set features = [
+        ('bi-clipboard2-check','Check-in/out com fotos','Mapa do carro, múltiplas fotos, observações e assinatura.'),
+        ('bi-filetype-pdf','Contrato digital em PDF','Modelo editável com variáveis; gere e assine em segundos.'),
+        ('bi-calendar3','Calendário e bloqueios','Entregas, devoluções, manutenção e indisponibilidades.'),
+        ('bi-cash-coin','Tarifas, adicionais e repasses','Preço por categoria, diárias, taxas, caução e split interno.'),
+        ('bi-envelope-paper','E-mails transacionais (SMTP)','SMTP por tenant (Office/Google) com identidade própria.'),
+        ('bi-shield-lock','RBAC & Auditoria','Perfis e trilhas de alteração para ações críticas.')
+      ] %}
+      {% for icon, title, desc in features %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card-ff p-4">
+          <div class="d-flex align-items-center gap-3 mb-2">
+            <div class="icon"><i class="bi {{ icon }}"></i></div>
+            <h5 class="mb-0">{{ title }}</h5>
+          </div>
+          <p class="muted mb-3">{{ desc }}</p>
+          <img class="img-fluid rounded border"
+               src="{{ url_for('static', filename='img/feature-' ~ loop.index|string ~ '.jpg') }}"
+               alt="{{ title }}" onerror="this.style.display='none'">
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ===================== COMPARATIVO / MATRIZ ===================== -->
+<section class="section">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>Pronto para crescer</h2>
+      <p class="muted">White-label por filial, importadores e trilhas de auditoria — diferenciais para escala.</p>
+    </div>
+
+    <div class="card-ff p-3 p-lg-4">
+      <div class="table-responsive">
+        <table class="table matrix align-middle mb-0">
+          <thead>
+            <tr>
+              <th class="text-start">Recurso</th>
+              <th class="text-center">Incluso</th>
+              <th class="text-start">Detalhes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>White-label por tenant/filial</td>
+              <td class="text-center yes"><i class="bi bi-check2-circle fs-5"></i></td>
+              <td><span class="chip"><i class="bi bi-palette2"></i> cores/logos</span> <span class="chip"><i class="bi bi-envelope-paper"></i> SMTP</span> <span class="chip"><i class="bi bi-link-45deg"></i> domínio</span></td>
+            </tr>
+            <tr>
+              <td>Importadores (CSV)</td>
+              <td class="text-center yes"><i class="bi bi-check2-circle fs-5"></i></td>
+              <td class="muted">Frota, clientes e reservas com validação e relatório de inconsistências</td>
+            </tr>
+            <tr>
+              <td>API & Webhooks</td>
+              <td class="text-center yes"><i class="bi bi-check2-circle fs-5"></i></td>
+              <td class="muted">Eventos de reserva, contrato, checklist e devolução</td>
+            </tr>
+            <tr>
+              <td>Permissões (RBAC)</td>
+              <td class="text-center yes"><i class="bi bi-check2-circle fs-5"></i></td>
+              <td class="muted">visualizar • cadastrar • editar • excluir • exportar • admin</td>
+            </tr>
+            <tr>
+              <td>App mobile</td>
+              <td class="text-center road"><i class="bi bi-circle"></i></td>
+              <td class="muted">Checklist offline + sincronização posterior (roadmap)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="small muted mt-2">* “Roadmap” indica funcionalidades planejadas/próximas entregas.</p>
+  </div>
+</section>
+
+<!-- ===================== INTEGRAÇÕES (mosaico) ===================== -->
+<section class="section section-light">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>Integrações que cortam trabalho manual</h2>
+      <p class="muted">Pagamentos, documentos, contabilidade e comunicação — conectados.</p>
+    </div>
+
+    <div class="row g-3 integrations">
+      {% set ints = [
+        ('bi-credit-card','Pagamentos','Stripe (recorrência e links de cobrança)'),
+        ('bi-filetype-pdf','Documentos','Modelos com variáveis; assinatura em balcão'),
+        ('bi-envelope-paper','E-mail/SMTP','Office365, Google Workspace (por tenant)'),
+        ('bi-receipt','Fiscal/Contábil','Exportações CSV/Excel; webhooks para ERPs'),
+        ('bi-geo','Mapas/Endereços','Autocomplete e normalização de endereço'),
+        ('bi-bell','Webhooks','Eventos: reserva, contrato, checklist, devolução')
+      ] %}
+      {% for icon, title, desc in ints %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="i h-100">
+          <div class="d-flex align-items-center gap-2"><i class="bi {{ icon }}"></i><h6 class="mb-0">{{ title }}</h6></div>
+          <div class="muted small mt-1">{{ desc }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="text-center mt-4 opacity-75">
+      <img src="{{ url_for('static', filename='img/brand1.png') }}" height="24" alt="">
+      <img src="{{ url_for('static', filename='img/brand2.png') }}" height="24" class="ms-4" alt="">
+      <img src="{{ url_for('static', filename='img/brand3.png') }}" height="24" class="ms-4" alt="">
+      <img src="{{ url_for('static', filename='img/brand4.png') }}" height="24" class="ms-4" alt="">
+    </div>
+  </div>
+</section>
+
+<!-- ===================== RELATÓRIOS & KPIs ===================== -->
+<section class="section">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-6">
+        <h2>Relatórios que guiam decisões</h2>
+        <p class="muted">Desempenho por categoria, utilização de frota, manutenção, recebíveis e receita.</p>
+        <ul class="list-unstyled list-check">
+          <li><i class="bi bi-check2-circle me-2"></i> KPI por período e filial</li>
+          <li><i class="bi bi-check2-circle me-2"></i> Exportar para CSV/Excel</li>
+          <li><i class="bi bi-check2-circle me-2"></i> Logs e trilhas de auditoria</li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <div class="row g-3 kpi">
+          <div class="col-6"><div class="k"><div class="small muted">Utilização da frota</div><div class="spark"></div></div></div>
+          <div class="col-6"><div class="k"><div class="small muted">Receita por categoria</div><div class="spark"></div></div></div>
+          <div class="col-6"><div class="k"><div class="small muted">Ticket médio</div><div class="spark"></div></div></div>
+          <div class="col-6"><div class="k"><div class="small muted">Atrasos & incidências</div><div class="spark"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PROCESSO (3 passos visuais) ===================== -->
+<section class="section section-dark">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2 class="text-white">Como começar em 3 passos</h2>
+      <p class="opacity-75">Fluxo rápido da criação à operação.</p>
+    </div>
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="step">
+          <div class="dot">1</div>
+          <div>
+            <strong>Criar conta e identidade</strong><br>
+            <span class="opacity-75">Defina cores, logo, domínio e SMTP do seu tenant.</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="step">
+          <div class="dot">2</div>
+          <div>
+            <strong>Importar dados & configurar tarifas</strong><br>
+            <span class="opacity-75">Frota, clientes e políticas; adicionais e caução.</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="step">
+          <div class="dot">3</div>
+          <div>
+            <strong>Fechar contratos com fotos & PDF</strong><br>
+            <span class="opacity-75">Checklist com evidências, assinatura e e-mails automáticos.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="text-center mt-4">
+      <a class="btn btn-light btn-lg" data-bs-toggle="modal" data-bs-target="#preSignupModal">Começar agora</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== TESTEMUNHOS ===================== -->
+<section class="section">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>Histórias reais</h2>
+      <p class="muted">Quem usa, recomenda. Resultados em poucos dias.</p>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="card-ff p-4 h-100">
+          <p class="quote">“Migramos num fim de semana. O checklist com fotos salvou o nosso caução duas vezes.”</p>
+          <div class="who">Carla M. <span class="muted">— JetCar</span></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card-ff p-4 h-100">
+          <p class="quote">“Contrato digital e e-mails automáticos acabaram com o retrabalho. Atendimento subiu muito.”</p>
+          <div class="who">Rafael T. <span class="muted">— EasyDrive</span></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card-ff p-4 h-100">
+          <p class="quote">“Com calendário e tarifário por categoria, parei de errar preço. Escalamos sem dor.”</p>
+          <div class="who">Bianca A. <span class="muted">— BlueRent</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PREÇO ===================== -->
+<section id="pricing" class="section section-light">
+  <div class="container">
+    <div class="text-center mb-4">
+      <span class="badge badge-pro rounded-pill px-3 py-2">Plano Pro</span>
+      <h2 class="mt-2">Preço simples, ilimitado</h2>
+      <p class="muted">Sem limite de usuários. Sem limite de veículos.</p>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+        <div class="card-ff p-4 p-lg-5 text-center">
+          <div class="price">US$ 89,90 <span class="sub fs-6 fw-normal">/ mês</span></div>
+          <div class="sub">Contrato PDF • Checklists com fotos • SMTP por tenant • API & Webhooks • Auditoria</div>
+          <hr>
+          <div class="vstack gap-2 text-start mx-auto" style="max-width:520px">
+            <div><i class="bi bi-check2-circle text-success me-2"></i> Calendário e bloqueios</div>
+            <div><i class="bi bi-check2-circle text-success me-2"></i> Tarifas, adicionais e repasses</div>
+            <div><i class="bi bi-check2-circle text-success me-2"></i> Importadores de dados (CSV)</div>
+            <div><i class="bi bi-check2-circle text-success me-2"></i> Logs e permissões por perfil</div>
+          </div>
+          <div class="d-grid gap-2 mt-4">
+            <button id="btnStripe2" class="btn btn-primary btn-lg"
+                    data-plan="4UFLEET_PRO_MONTHLY" data-price="89.90" data-currency="USD">
+              Assinar agora
+            </button>
+            <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#preSignupModal">
+              Testar antes
+            </button>
+          </div>
+          <div class="small sub mt-2">Cancelamento a qualquer momento.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CTA ===================== -->
+<section class="section">
+  <div class="container">
+    <div class="cta d-flex flex-wrap align-items-center gap-3">
+      <i class="bi bi-question-circle-fill fs-4 text-primary"></i>
+      <div class="me-auto">
+        <strong>Dúvidas? Implementamos com você</strong>
+        <div class="muted small">Migração de dados, configuração de políticas e treinamento do time.</div>
+      </div>
+      <a class="btn btn-success"
+         href="https://wa.me/14072321476?text={{ 'Olá! Quero conhecer o 4uFleet Pro e entender a implementação.'|urlencode }}"
+         target="_blank" rel="noopener">
+        <i class="bi bi-whatsapp me-1"></i> WhatsApp
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MAPA DO SITE ===================== -->
+<section class="section section-light">
+  <div class="container sitemap">
+    <div class="text-center mb-4">
+      <h2>Mapa do Site</h2>
+      <p class="muted">Atalhos para tudo que você precisa, em um só lugar.</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-6 col-md-3">
+        <h6>Produto</h6>
+        <ul class="list-unstyled mb-0">
+          <li><a href="#hero">Visão geral</a></li>
+          <li><a href="#pricing">Preços (Plano Pro)</a></li>
+          <li><a href="#" data-bs-toggle="modal" data-bs-target="#videoModal">Ver demo (1:10)</a></li>
+          <li><a href="#" data-bs-toggle="modal" data-bs-target="#preSignupModal">Começar agora</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-md-3">
+        <h6>Recursos</h6>
+        <ul class="list-unstyled mb-0">
+          <li><a href="#pricing">Contrato PDF</a></li>
+          <li><a href="#pricing">Checklists com fotos</a></li>
+          <li><a href="#pricing">Calendário & bloqueios</a></li>
+          <li><a href="#pricing">Tarifas & repasses</a></li>
+          <li><a href="#pricing">SMTP por tenant</a></li>
+          <li><a href="#pricing">API & Webhooks</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-md-3">
+        <h6>Integrações</h6>
+        <ul class="list-unstyled mb-0">
+          <li><a href="#pricing">Stripe (pagamentos)</a></li>
+          <li><a href="#pricing">E-mail (Office/Google)</a></li>
+          <li><a href="#pricing">Exportações CSV/Excel</a></li>
+          <li><a href="#pricing">Mapas/Endereços</a></li>
+          <li><a href="#pricing">Webhooks (eventos)</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-md-3">
+        <h6>Empresa</h6>
+        <ul class="list-unstyled mb-0">
+          <li><a href="tel:+14072321476">Contato comercial</a></li>
+          <li><a href="https://wa.me/14072321476?text={{ 'Olá! Quero conhecer o 4uFleet Pro.'|urlencode }}" target="_blank" rel="noopener">WhatsApp</a></li>
+          <li><a href="/login">Login</a></li>
+          <li><a href="/signup">Criar conta</a></li>
+          <li><a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Termos de uso</a></li>
+          <li><a href="/politica-de-privacidade">Política de Privacidade</a></li>
+          <li><a href="/sitemap.xml" target="_blank" rel="nofollow">Sitemap XML (SEO)</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <hr class="my-4">
+    <div class="mini">* Ajuste os paths conforme suas rotas ativas.</div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Pausar vídeo do modal demo ao fechar (se você usa #videoModal global)
+  const videoModal = document.getElementById('videoModal');
+  videoModal?.addEventListener('hidden.bs.modal', () => {
+    const iframe = document.getElementById('demoVideo');
+    if(iframe){ iframe.src = iframe.src; }
+  });
+
+  // Contadores animados no HERO
+  (function(){
+    const hero = document.querySelector('.hero');
+    if(!hero) return;
+
+    const fmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+
+    function animateNumber(el, target, duration){
+      const start = performance.now();
+      function tick(now){
+        const p = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const val = Math.round(target * eased);
+        el.textContent = fmt.format(val);
+        if(p < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function run(){
+      hero.querySelectorAll('[data-counter]').forEach(el => {
+        let target = Number(el.getAttribute('data-target') || '0');
+        if (el.getAttribute('data-total') === 'sum') {
+          const sel = el.getAttribute('data-sum-selector') || '[data-region]';
+          target = Array.from(hero.querySelectorAll(sel))
+                    .map(n => Number(n.getAttribute('data-target') || '0'))
+                    .reduce((a,b)=>a+b, 0);
+        }
+        const dur = 1200 + (Math.random()*600|0);
+        animateNumber(el, target, dur);
+      });
+    }
+
+    const io = new IntersectionObserver((entries, obs) => {
+      entries.forEach(e => { if(e.isIntersecting){ run(); obs.disconnect(); }});
+    }, { threshold: 0.35 });
+
+    io.observe(hero);
+  })();
+
+  // Botões de Stripe (placeholder — próximo passo conecto o checkout)
+  function hookStripe(btnId){
+    const b = document.getElementById(btnId);
+    b?.addEventListener('click', () => {
+      // Próximo passo: chamar endpoint /billing/checkout e redirecionar para o Stripe Checkout
+      const m = new bootstrap.Modal(document.getElementById('preSignupModal'));
+      m.show();
+    });
+  }
+  hookStripe('btnStripe');
+  hookStripe('btnStripe2');
+</script>
+{% endblock %}
