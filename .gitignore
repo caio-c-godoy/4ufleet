@@ -8,3 +8,9 @@ __pycache__/
 # IDEs
 .vscode/
 .idea/
+
+.env
+.env.*
+.env copy
+instance/
+*.db
