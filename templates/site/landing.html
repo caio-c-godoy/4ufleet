@@ -211,10 +211,9 @@
     <div class="text-center mt-5">
       <div class="text-uppercase small text-muted mb-2">Confiado por locadoras independentes</div>
       <div class="d-flex justify-content-center flex-wrap gap-4 opacity-75">
-        <img src="{{ url_for('static', filename='img/brand1.png') }}" alt="" height="26">
-        <img src="{{ url_for('static', filename='img/brand2.png') }}" alt="" height="26">
-        <img src="{{ url_for('static', filename='img/brand3.png') }}" alt="" height="26">
-        <img src="{{ url_for('static', filename='img/brand4.png') }}" alt="" height="26">
+        {% set logo_height = 26 %}
+        {% set logo_count = 4 %}
+        {% include "partials/brand_logos.html" %}
       </div>
     </div>
   </div>
@@ -280,7 +279,7 @@
           </div>
           <p class="ff-muted mb-3">{{ desc }}</p>
           <img class="img-fluid rounded border"
-               src="{{ url_for('static', filename='img/feature-' ~ loop.index|string ~ '.jpg') }}"
+               src="{{ url_for('static', filename='img/placeholder-wide.jpg') }}"
                alt="{{ title }}"
                onerror="this.style.display='none'">
         </div>
@@ -296,7 +295,7 @@
     <div class="row g-4 align-items-center">
       <div class="col-lg-6">
         <div class="position-relative ff-card overflow-hidden">
-          <img class="img-fluid" src="{{ url_for('static', filename='img/video-cover.jpg') }}" alt="Demo"
+          <img class="img-fluid" src="{{ url_for('static', filename='img/login-vehicles.jpg') }}" alt="Demo"
                onerror="this.src='{{ url_for('static', filename='img/placeholder-wide.jpg') }}'">
           <button class="btn btn-primary position-absolute top-50 start-50 translate-middle rounded-pill px-4 py-2"
                   data-bs-toggle="modal" data-bs-target="#videoModal">
@@ -338,7 +337,7 @@
         {% for i in range(1,5) %}
         <div class="carousel-item {% if loop.index==1 %}active{% endif %}">
           <img class="d-block w-100"
-               src="{{ url_for('static', filename='img/screen-'~i|string~'.jpg') }}"
+               src="{{ url_for('static', filename='img/placeholder-wide.jpg') }}"
                onerror="this.src='{{ url_for('static', filename='img/placeholder-wide.jpg') }}'"
                alt="Tela {{ i }}">
         </div>
