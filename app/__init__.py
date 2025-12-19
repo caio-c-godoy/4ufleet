@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from datetime import date, datetime
 
-from flask import Flask, redirect, url_for, g, request
+from flask import Flask, redirect, url_for, g, request, session
 from dotenv import load_dotenv, find_dotenv
 from flask_migrate import Migrate
 from . import models_site
@@ -30,6 +30,8 @@ def create_app() -> Flask:
     )
     app.config.from_object(Config())
     app.config.setdefault("TEMPLATES_AUTO_RELOAD", True)
+    app.config.setdefault("LANGUAGES", ["pt", "en", "es"])
+    app.config.setdefault("BABEL_DEFAULT_LOCALE", "pt")
 
     from .filters import imgsrc
     app.jinja_env.filters['imgsrc'] = imgsrc
@@ -64,6 +66,36 @@ def create_app() -> Flask:
 
     app.add_template_filter(datefmt_long_pt, "datefmt_long_pt")
 
+    def _gettext(message: str, **kwargs) -> str:
+        if not kwargs:
+            return message
+        try:
+            return message % kwargs
+        except Exception:
+            return message.format(**kwargs)
+
+    def _select_locale() -> str:
+        langs = app.config.get("LANGUAGES", ["pt", "en", "es"])
+        qlang = request.args.get("lang")
+        if qlang and qlang in langs:
+            session["lang"] = qlang
+            return qlang
+        slang = session.get("lang")
+        if slang in langs:
+            return slang
+        return app.config.get("BABEL_DEFAULT_LOCALE", "pt")
+
+    def locale_url(lang_code: str) -> str:
+        try:
+            ep = request.endpoint or "site.landing"
+            path_args = dict(request.view_args or {})
+            path_args["lang"] = lang_code
+            qs = request.args.to_dict(flat=True) if request.args else {}
+            qs.pop("lang", None)
+            return url_for(ep, **path_args, **qs)
+        except Exception:
+            return url_for("site.landing", lang=lang_code)
+
     @app.template_filter("static_rel")
     def static_rel(path: str | None) -> str:
         """Remove 'static/' e a barra inicial para uso em url_for('static', filename=...)."""
@@ -86,6 +118,10 @@ def create_app() -> Flask:
             "env": env,
             "tenant": t,
             "current_tenant": t,  # alias p/ templates legados
+            "LANGUAGES": app.config.get("LANGUAGES", ["pt", "en", "es"]),
+            "current_locale": _select_locale(),
+            "locale_url": locale_url,
+            "_": _gettext,
         }
 
     # --------- Extensões ----------

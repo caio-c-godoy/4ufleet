@@ -1,0 +1,632 @@
+{% extends "base.html" %}
+{% block title %}{{ _('4uFleet — Car rental software') }}{% endblock %}
+{% block extra_head %}
+<style>
+  :root{
+    --ff-primary:#0d6efd;
+    --ff-ink:#1f2937;
+    --ff-muted:#6b7280;
+    --ff-card:#ffffff;
+    --ff-glass:rgba(255,255,255,65);
+  }
+  .ff-hero{
+    position:relative; padding:96px 0 56px;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(13,110,253,25), transparent 60%),
+      linear-gradient(180deg, #0d6efd10, transparent 45%),
+      linear-gradient(180deg, #f8fafc, #ffffff 30%);
+    overflow:hidden;
+  }
+  .ff-blob{ position:absolute; inset:auto -200px -180px auto; width:520px; height:520px; background:radial-gradient(closest-side, rgba(13,110,253,12), transparent 70%); filter: blur(10px); }
+  .ff-logo-wrap{ display:flex; justify-content:center; }
+  .ff-logo{ height: clamp(140px, 20vw, 320px); width:auto; display:block; filter: drop-shadow(0 6px 22px rgba(13,110,253,18)); }
+  .ff-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 12px; border-radius:999px; background:#e7f1ff; color:#0a58ca; font-weight:700; font-size:12px;
+    border:1px solid #cfe2ff;
+  }
+  .ff-hero h1{ font-size:clamp(28px,4.1vw,48px); line-height:1.08; letter-spacing:.2px; color:var(--ff-ink); }
+  .ff-lead{ color:var(--ff-muted); }
+  .ff-card{ border:1px solid #e5e7eb; border-radius:18px; background:var(--ff-card); box-shadow:0 10px 30px rgba(0,0,0,05); }
+  .ff-glass{ border:1px solid rgba(255,255,255,35); background:var(--ff-glass); backdrop-filter: blur(10px); }
+  .ff-section{ padding:72px 0; }
+  .ff-section-light{ background:#f8fafc; }
+  .ff-muted{ color:var(--ff-muted); }
+  .ff-icon{ width:42px; height:42px; display:grid; place-items:center; border-radius:12px; background:#eef4ff; color:#2f63ff; font-size:20px; }
+  .ff-price{ font-size:44px; font-weight:900; letter-spacing:-.6px; }
+  .ff-step{ display:flex; gap:14px; align-items:flex-start; }
+  .ff-step .dot{ width:22px; height:22px; border-radius:999px; background:#0d6efd; color:#fff; display:grid; place-items:center; font-size:12px; box-shadow:0 6px 16px rgba(13,110,253,35); }
+  .ff-step + .ff-step{ margin-top:14px; }
+  .ff-carousel img{ object-fit:cover; height:380px; border-radius:18px; }
+  .ff-footer{ background:#0b1220; color:#e5e7eb; padding:42px 0; }
+  .ff-footer a{ color:#c7d2fe; text-decoration:none; }
+  .ff-footer a:hover{ text-decoration:underline; }
+  .ff-support{ border:1px solid #e5e7eb; border-radius:18px; padding:18px 18px; background:#ffffff; box-shadow:0 10px 30px rgba(0,0,0,05); }
+  .ff-stats .stat{ text-align:center; padding:10px 8px; }
+  .ff-stats .num{ font-size:28px; font-weight:900; letter-spacing:-.3px; color:#111827; }
+  .ff-stats .label{ font-size:13px; color:var(--ff-muted); }
+  .ff-fab{
+    position:fixed; right:18px; bottom:18px; z-index:1030;
+    width:54px; height:54px; border-radius:999px; display:grid; place-items:center;
+    background:#22c55e; color:#fff; box-shadow:0 14px 36px rgba(34,197,94,35);
+    text-decoration:none; font-size:26px;
+  }
+  .ff-fab:hover{ filter:brightness(.95); color:#fff; }
+  .lang-fab{
+    position:fixed; left:14px; bottom:18px; z-index:1030;
+    display:flex; gap:8px; padding:8px; border-radius:999px;
+    background:rgba(255,255,255,.85); border:1px solid rgba(229,231,235,.8); backdrop-filter: blur(10px);
+    box-shadow:0 10px 24px rgba(0,0,0,.08);
+  }
+  .lang-fab .btn{ padding:.25rem .55rem; border-radius:999px; border:1px solid #e5e7eb; background:#fff; font-weight:700; font-size:12px; }
+  .lang-fab .btn.active{ background:#0d6efd; border-color:#0d6efd; color:#fff; }
+  .lang-flag{ width:18px; height:18px; border-radius:999px; }
+  @media (max-width: 575.98px){
+    .ff-hero{ padding:74px 0 42px; }
+    .ff-price{ font-size:38px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# Seletor de idioma #}
+<div class="lang-fab" aria-label="{{ _('Idioma') }}">
+  {% set langs = LANGUAGES or ['pt','en','es'] %}
+  {% for code,label in [('pt','PT'),('en','EN'),('es','ES')] if code in langs %}
+    <a class="btn d-inline-flex align-items-center {% if (current_locale|string) == code %}active{% endif %}"
+       href="{{ locale_url(code) }}">
+      <span>{{ label }}</span>
+    </a>
+  {% endfor %}
+</div>
+
+{% set BRAND = config.get('PUBLIC_BRAND', '4uFleet') %}
+{% set MONTHLY_PRICE = (config.get('PUBLIC_MONTHLY_PRICE', 199.90) | float) %}
+{# NOVOS defaults (não quebram nada se não existirem no config) #}
+{% set MONTHLY_FROM = (config.get('PUBLIC_MONTHLY_FROM', MONTHLY_PRICE) | float) %}
+{% set SETUP_FROM   = (config.get('PUBLIC_SETUP_FROM', 990) | float) %}
+{% set IMPLEMENT_DAYS = (config.get('PUBLIC_IMPLEMENT_DAYS', 14) | int) %}
+{% set MONTHLY_FROM_FMT = '%.2f' % MONTHLY_FROM %}
+{% set SETUP_FROM_FMT = '%.0f' % SETUP_FROM %}
+{% set MONTHLY_PRICE_FMT = '%.2f' % MONTHLY_PRICE %}
+
+<!-- HERO -->
+<section id="hero" class="ff-hero">
+  <div class="ff-blob"></div>
+  <div class="container">
+    <div class="row align-items-center g-4">
+
+      <div class="col-lg-7 order-1 order-lg-1">
+
+        <div class="ff-logo-wrap mb-3">
+          <img class="ff-logo"
+            src="{{ url_for('static', filename='img/4ufleet-logo.png') }}"
+            srcset="{{ url_for('static', filename='img/4ufleet-logo.png') }} 1x,
+                    {{ url_for('static', filename='img/4ufleet-logo.png') }} 2x"
+            alt="{{ BRAND }}" decoding="async" fetchpriority="high">
+        </div>
+
+        <span class="ff-badge"><i class="bi bi-lightning-charge-fill"></i> {{ _('Implantação guiada em %(days)s dias', days=IMPLEMENT_DAYS) }}</span>
+
+        <h1 class="mt-3">
+          {{ _('Sua frota organizada, sem conflito de reserva e sem carro parado.') }}
+        </h1>
+
+        <p class="lead ff-lead mt-2">
+          {{ _('Controle de reservas, status dos veículos, checklists com fotos e contrato em PDF — com processo claro e implantação acompanhada.') }}
+        </p>
+
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+          <span class="badge rounded-pill text-bg-light border"><i class="bi bi-check2-circle text-success me-1"></i> {{ _('Status da frota em 1 tela') }}</span>
+          <span class="badge rounded-pill text-bg-light border"><i class="bi bi-check2-circle text-success me-1"></i> {{ _('Checklist com fotos e assinatura') }}</span>
+          <span class="badge rounded-pill text-bg-light border"><i class="bi bi-check2-circle text-success me-1"></i> {{ _('Contrato PDF pronto na hora') }}</span>
+        </div>
+
+        <div class="d-flex flex-wrap gap-3 mt-4">
+          <a href="#"
+             class="btn btn-primary btn-lg"
+             data-bs-toggle="modal"
+             data-bs-target="#preSignupModal">
+            {{ _('Agendar demo (12 min)') }}
+          </a>
+
+          <a class="btn btn-success btn-lg"
+             href="https://wa.me/14072321476?text={{ _('Olá! Quero entender como funciona a implantação do 4uFleet. Podemos falar?')|urlencode }}"
+             target="_blank" rel="noopener">
+            <i class="bi bi-whatsapp me-1"></i> WhatsApp
+          </a>
+
+          <button class="btn btn-outline-secondary btn-lg" data-bs-toggle="modal" data-bs-target="#termsModal">
+            {{ _('Ver termos') }}
+          </button>
+        </div>
+
+        <div class="text-muted small mt-2">
+          {{ _('Implantação acompanhada • Sem “autoatendimento confuso” • Suporte humano') }}
+        </div>
+      </div>
+
+      <!-- Price Card -->
+      <div class="col-lg-5 order-2 order-lg-2">
+        <div class="ff-card p-4 p-lg-4">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="bi bi-credit-card-2-front text-primary"></i>
+            <strong>{{ _('Plano Pro') }}</strong>
+          </div>
+
+          <div class="ff-price">
+            {{ _('A partir de US$ %(price)s', price=MONTHLY_FROM_FMT) }}
+            <span class="fs-6 fw-normal">/{{ _('mês') }}</span>
+          </div>
+
+          <div class="text-muted small">
+            {{ _('Opção de implantação guiada em %(days)s dias.', days=IMPLEMENT_DAYS) }}
+          </div>
+
+          <hr>
+
+          <div class="vstack gap-2">
+            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-calendar3"></i></span> {{ _('Reservas e calendário operacional') }}</div>
+            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-car-front"></i></span> {{ _('Status do veículo (disponível/alugado/manutenção)') }}</div>
+            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-clipboard2-check"></i></span> {{ _('Checklists com evidências (fotos + assinatura)') }}</div>
+            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-filetype-pdf"></i></span> {{ _('Contrato PDF editável e geração instantânea') }}</div>
+            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-shield-check"></i></span> {{ _('Auditoria e logs') }}</div>
+          </div>
+
+          <div class="alert alert-light border mt-3 mb-0">
+            <div class="small">
+              <strong>{{ _('Implantação guiada (opcional):') }}</strong>
+              {{ _('a partir de US$ %(setup)s (pagamento único).', setup=SETUP_FROM_FMT) }}
+              <span class="text-muted">{{ _('Inclui configuração, importação e treinamento.') }}</span>
+            </div>
+          </div>
+
+          <a class="btn btn-primary w-100 mt-3"
+             href="#"
+             data-bs-toggle="modal"
+             data-bs-target="#preSignupModal">
+            {{ _('Quero uma demo + acesso') }}
+          </a>
+
+          <div class="small text-muted mt-2">
+            {{ _('Sem promessas mágicas: se você não operar processo, nenhum software salva.') }}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Social proof -->
+    <div class="text-center mt-5">
+      <div class="text-uppercase small text-muted mb-2">{{ _('Confiado por locadoras independentes') }}</div>
+      <div class="d-flex justify-content-center flex-wrap gap-4 opacity-75">
+        {% set logo_height = 26 %}
+        {% set logo_count = 4 %}
+        {% include "partials/brand_logos.html" %}
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- STATS (reais / orientados a valor) -->
+<section id="stats" class="mt-3">
+  <div class="container">
+    <div class="ff-stats ff-card ff-glass">
+      <div class="row g-3 align-items-center">
+        <div class="col-12 col-lg-4">
+          <div class="stat">
+            <div class="num">{{ _('%(days)s dias', days=IMPLEMENT_DAYS) }}</div>
+            <div class="label">{{ _('pra implantar com você (não “jogar o sistema e sumir”)') }}</div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="stat">
+            <div class="num">{{ _('1 tela') }}</div>
+            <div class="label">{{ _('pra saber o que está alugado, disponível e pendente') }}</div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="stat">
+            <div class="num">{{ _('Processo') }}</div>
+            <div class="label">{{ _('check-in/out com evidência + contrato + rastreabilidade') }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES GRID -->
+<section id="features" class="ff-section">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>{{ _('O essencial pra rodar sem caos') }}</h2>
+      <p class="ff-muted">{{ _('Menos improviso, mais previsibilidade.') }}</p>
+    </div>
+
+    <div class="row g-4">
+      {% set features = [
+        ('bi-calendar3',_('Calendário de reservas'),_('Visão clara de entregas, devoluções e bloqueios.')),
+        ('bi-car-front',_('Status da frota'),_('Disponível, reservado, alugado, manutenção — sem adivinhação.')),
+        ('bi-clipboard2-check',_('Checklists com fotos'),_('Registro de danos com evidência e assinatura do cliente.')),
+        ('bi-filetype-pdf',_('Contrato em PDF'),_('Modelo editável, geração instantânea e assinatura no balcão.')),
+        ('bi-envelope-paper',_('Comunicação'),_('Notificações e e-mails transacionais com identidade do seu tenant.')),
+        ('bi-shield-check',_('Auditoria e logs'),_('Rastreabilidade do que foi feito e por quem.'))
+      ] %}
+      {% for icon, title, desc in features %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="ff-card h-100 p-4">
+          <div class="d-flex align-items-center gap-3 mb-2">
+            <div class="ff-icon"><i class="bi {{ icon }}"></i></div>
+            <h5 class="mb-0">{{ title }}</h5>
+          </div>
+          <p class="ff-muted mb-3">{{ desc }}</p>
+          <img class="img-fluid rounded border"
+               src="{{ url_for('static', filename='img/placeholder-wide.jpg') }}"
+               alt="{{ title }}">
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- VIDEO + HIGHLIGHTS (mantido visualmente, sem depender de YouTube) -->
+<section id="video" class="ff-section ff-section-light">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-6">
+        <div class="position-relative ff-card overflow-hidden">
+          <img class="img-fluid" src="{{ url_for('static', filename='img/login-vehicles.jpg') }}" alt="{{ _('Fluxo de operação') }}"
+               onerror="this.src='{{ url_for('static', filename='img/placeholder-wide.jpg') }}'">
+          <div class="position-absolute top-0 start-0 w-100 h-100 d-grid" style="place-items:center; background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.05));">
+            <button class="btn btn-light btn-lg" data-bs-toggle="modal" data-bs-target="#preSignupModal">
+              <i class="bi bi-play-circle me-1"></i> {{ _('Ver o fluxo (via demo)') }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <h2>{{ _('O que muda na prática') }}</h2>
+        <p class="ff-muted">
+          {{ _('Você deixa de “apagar incêndio” e passa a operar com um fluxo padrão: reserva → status → pendências → devolução, com evidências.') }}
+        </p>
+        <div class="vstack gap-3">
+          <div class="d-flex align-items-start gap-3">
+            <div class="ff-icon"><i class="bi bi-speedometer2"></i></div>
+            <div><strong>{{ _('Menos tempo perdido') }}</strong><br><span class="ff-muted">{{ _('Você enxerga a operação e decide mais rápido.') }}</span></div>
+          </div>
+          <div class="d-flex align-items-start gap-3">
+            <div class="ff-icon"><i class="bi bi-camera"></i></div>
+            <div><strong>{{ _('Menos briga por danos') }}</strong><br><span class="ff-muted">{{ _('Checklist com fotos + assinatura reduz discussão e prejuízo.') }}</span></div>
+          </div>
+          <div class="d-flex align-items-start gap-3">
+            <div class="ff-icon"><i class="bi bi-check2-square"></i></div>
+            <div><strong>{{ _('Mais previsibilidade') }}</strong><br><span class="ff-muted">{{ _('Processo repetível: treina equipe e escala sem virar caos.') }}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works" class="ff-section">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-6">
+        <h2>{{ _('Como funciona (sem enrolação)') }}</h2>
+        <ul class="list-unstyled">
+          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>{{ _('Você agenda uma demo rápida e mostra sua rotina atual.') }}</li>
+          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>{{ _('A gente implanta junto em até %(days)s dias (configuração + importação + treino).', days=IMPLEMENT_DAYS) }}</li>
+          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>{{ _('Você opera com um fluxo padrão (status + pendências + evidências).') }}</li>
+          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>{{ _('Assinatura a partir de') }} <strong>US$ {{ MONTHLY_FROM_FMT }}</strong>/{{ _('mês') }}.</li>
+        </ul>
+        <div class="mt-3 d-flex gap-2 flex-wrap">
+          <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#preSignupModal">{{ _('Agendar demo') }}</a>
+          <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#termsModal">{{ _('Ver termos') }}</button>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="ff-card p-4">
+          <h5 class="mb-3"><i class="bi bi-magic me-1"></i> {{ _('Em 3 passos') }}</h5>
+          <div class="ff-step"><div class="dot">1</div><div><strong>{{ _('Fale com a gente') }}</strong><br><span class="ff-muted">{{ _('Agende uma demo curta e alinhe o seu fluxo atual.') }}</span></div></div>
+          <div class="ff-step"><div class="dot">2</div><div><strong>{{ _('Implantação guiada') }}</strong><br><span class="ff-muted">{{ _('Configuração + importação de dados + treinamento da equipe.') }}</span></div></div>
+          <div class="ff-step"><div class="dot">3</div><div><strong>{{ _('Operação previsível') }}</strong><br><span class="ff-muted">{{ _('Reserva, contrato, checklist, status e pendências em um só lugar.') }}</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SUPPORT STRIP -->
+<section id="support" class="ff-section">
+  <div class="container">
+    <div class="ff-support d-flex flex-wrap align-items-center gap-3">
+      <i class="bi bi-question-circle-fill fs-4 text-primary"></i>
+      <div class="me-auto">
+        <strong>{{ _('Quer implantar rápido?') }}</strong>
+        <span class="ms-1">{{ _('Fale direto com a equipe — sem suporte genérico, sem “se vira”.') }}</span>
+      </div>
+      <a class="btn btn-success"
+         href="https://wa.me/14072321476?text={{ _('Olá! Quero implantar o 4uFleet. Pode me explicar o processo e valores?')|urlencode }}"
+         target="_blank" rel="noopener">
+        <i class="bi bi-whatsapp me-1"></i> WhatsApp
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials" class="ff-section">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2>{{ _('Quem usa, sente no dia a dia') }}</h2>
+      <p class="ff-muted">{{ _('Menos improviso, mais controle.') }}</p>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4"><div class="ff-card h-100 p-4"><p class="quote">“{{ _('O check-in com fotos reduziu discussão e prejuízo. A implantação foi rápida e objetiva.') }}”</p><small>Carla M. — <span class="text-muted">{{ _('Sócia, JetCar') }}</span></small></div></div>
+      <div class="col-md-4"><div class="ff-card h-100 p-4"><p class="quote">“{{ _('Parei de ter conflito de reserva. Hoje eu sei o status da frota sem perguntar pra ninguém.') }}”</p><small>Rafael T. — <span class="text-muted">{{ _('Gerente, EasyDrive') }}</span></small></div></div>
+      <div class="col-md-4"><div class="ff-card h-100 p-4"><p class="quote">“{{ _('Contrato + checklist virou rotina. A operação ficou previsível e a equipe entrou no ritmo.') }}”</p><small>Bianca A. — <span class="text-muted">{{ _('Owner, BlueRent') }}</span></small></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="ff-section ff-section-light">
+  <div class="container">
+    <div class="text-center mb-4"><h2>{{ _('Perguntas frequentes') }}</h2></div>
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="accordion" id="faqAcc">
+          <div class="accordion-item">
+            <h2 class="accordion-header"><button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#q1">{{ _('O que é “implantação guiada”?') }}</button></h2>
+            <div id="q1" class="accordion-collapse collapse show" data-bs-parent="#faqAcc">
+              <div class="accordion-body">
+                {{ _('A gente configura seu ambiente, importa dados e treina sua equipe. O objetivo é rodar de verdade em até %(days)s dias — não só “criar conta”.', days=IMPLEMENT_DAYS) }}
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#q2">{{ _('Preciso pagar taxa de implantação?') }}</button></h2>
+            <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faqAcc">
+              <div class="accordion-body">
+                {{ _('A implantação guiada é opcional. Se você quer curto prazo e menos risco, é o caminho recomendado.') }}
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#q3">{{ _('Tem limite de frota ou usuários?') }}</button></h2>
+            <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faqAcc">
+              <div class="accordion-body">{{ _('Depende do plano contratado. Na demo, a gente te recomenda o melhor encaixe pelo tamanho da frota.') }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section id="cta" class="ff-section text-center">
+  <div class="container">
+    <h2>{{ _('Quer tirar sua operação do improviso?') }}</h2>
+    <p class="ff-muted">{{ _('Em até %(days)s dias você sai do caos e passa a operar com processo.', days=IMPLEMENT_DAYS) }}</p>
+    <a href="#" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#preSignupModal">{{ _('Agendar demo') }}</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="ff-footer">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-12 col-md-4">
+        <h6>{{ BRAND }}</h6>
+        <p class="mb-2">© {{ BRAND }} — {{ config.get('APP_NAME', 'Car Rental SaaS') }}</p>
+        <div class="small opacity-75">{{ _('SaaS com opção de implantação guiada.') }}</div>
+      </div>
+      <div class="col-6 col-md-2">
+        <h6>{{ _('Produto') }}</h6>
+        <ul class="list-unstyled small mb-0">
+          <li><a href="#features">{{ _('Recursos') }}</a></li>
+          <li><a href="#how-it-works">{{ _('Como funciona') }}</a></li>
+          <li><a href="#faq">{{ _('FAQ') }}</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-md-3">
+        <h6>{{ _('Suporte') }}</h6>
+        <ul class="list-unstyled small mb-0">
+          <li><a href="#support">{{ _('Contato') }}</a></li>
+          <li><a href="https://wa.me/14072321476" target="_blank" rel="noopener">WhatsApp</a></li>
+          <li><a href="tel:+14072321476">{{ _('Telefone') }}</a></li>
+        </ul>
+      </div>
+      <div class="col-12 col-md-3">
+        <h6>{{ _('Ação') }}</h6>
+        <button class="btn btn-light btn-sm w-100 mb-2" data-bs-toggle="modal" data-bs-target="#preSignupModal">{{ _('Agendar demo') }}</button>
+        <button class="btn btn-outline-light btn-sm w-100" data-bs-toggle="modal" data-bs-target="#termsModal">{{ _('Termos de uso') }}</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- MODAIS (mantidos) -->
+<div class="modal fade" id="preSignupModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog"><div class="modal-content">
+    <form id="preSignupForm">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ _('Agende uma demo e receba acesso') }}</h5>
+        <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="{{ _('Fechar') }}"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">{{ _('Seu nome') }}</label><input type="text" name="name" class="form-control" required></div>
+        <div class="mb-3"><label class="form-label">{{ _('Telefone') }}</label><input type="tel" name="phone" class="form-control" placeholder="+1 407. "></div>
+        <div class="mb-3"><label class="form-label">{{ _('E-mail') }}</label><input type="email" name="email" class="form-control" required></div>
+
+        <div class="small text-muted">
+        Vamos enviar um e-mail com o link de acesso e, se você informou telefone, podemos te chamar no WhatsApp para agendar a demo.
+        <a href="#" id="preSignupOpenTerms" class="link-primary ms-1">Ver Termos de Uso</a>
+      </div>
+
+
+        <div id="preSignupAlert" class="alert d-none mt-3" role="alert"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">{{ _('Cancelar') }}</button>
+        <button class="btn btn-primary" id="preSignupSubmitBtn" type="submit">{{ _('Enviar') }}</button>
+      </div>
+    </form>
+  </div></div>
+</div>
+
+<div class="modal fade" id="termsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+    <div class="modal-header">
+      <h5 class="modal-title">{{ _('Termos de uso — Assinatura Pro %(brand)s', brand=BRAND) }}</h5>
+      <button class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Fechar') }}"></button>
+    </div>
+    <div class="modal-body">
+      <ul>
+        <li><strong>{{ _('Período de teste:') }}</strong> {{ _('15 dias com acesso completo (quando aplicável). O teste inicia na ativação da conta.') }}</li>
+        <li><strong>{{ _('Cobrança:') }}</strong> {{ _('após o teste, a assinatura continua por US$ %(price)s/mês, recorrente.', price=MONTHLY_PRICE_FMT) }}</li>
+        <li><strong>{{ _('Cancelamento:') }}</strong> {{ _('você pode cancelar a qualquer momento pelo painel. O acesso permanece até o fim do ciclo vigente.') }}</li>
+        <li><strong>{{ _('Limites:') }}</strong> {{ _('aplicam-se limites técnicos de uso justo (armazenamento de fotos, e-mails etc.).') }}</li>
+        <li><strong>{{ _('Implantação guiada:') }}</strong> {{ _('serviço opcional e cobrado à parte, conforme escopo e tamanho da frota.') }}</li>
+        <li><strong>{{ _('Privacidade:') }}</strong> {{ _('seguimos boas práticas de proteção de dados; consulte a Política de Privacidade.') }}</li>
+        <li><strong>{{ _('Suporte:') }}</strong> {{ _('atendimento por e-mail/WhatsApp; prazos podem variar conforme demanda.') }}</li>
+        <li><strong>{{ _('Atualizações:') }}</strong> {{ _('podemos atualizar estes termos a qualquer momento.') }}</li>
+      </ul>
+      <p class="small text-muted mb-0">{{ _('Dúvidas? Fale conosco!') }}</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" id="termsGoSignup">{{ _('Agendar demo') }}</button>
+      <button class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ _('Fechar') }}</button>
+    </div>
+  </div></div>
+</div>
+
+{# Mantido por compatibilidade (JS já existe); agora não é o foco #}
+<div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content bg-black">
+    <div class="ratio ratio-16x9">
+      <iframe id="demoVideo" src="about:blank"
+              title="4uFleet Demo" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    </div>
+  </div></div>
+</div>
+
+{% set WHATS_MSG = _("Olá! Tenho dúvidas sobre a implementação do 4uFleet. Podemos falar?") %}
+<a class="ff-fab" href="https://wa.me/14072321476?text={{ WHATS_MSG|urlencode }}"
+   title="{{ _('Falar no WhatsApp') }}" target="_blank" rel="noopener" aria-label="WhatsApp">
+  <i class="bi bi-whatsapp"></i>
+</a>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const I18N = {
+    sending: {{ _('Enviando...')|tojson }},
+    success: {{ _('Pronto! Enviamos um e-mail com o link de acesso. Se você informou telefone, podemos te chamar no WhatsApp para agendar a demo.')|tojson }},
+    warn:    {{ _('Não foi possível enviar agora.')|tojson }},
+    neterr:  {{ _('Falha de rede. Tente novamente.')|tojson }}
+  };
+</script>
+
+<script>
+  // parar o vídeo ao fechar (mantido)
+  const videoModal = document.getElementById('videoModal');
+  videoModal?.addEventListener('hidden.bs.modal', () => {
+    const iframe = document.getElementById('demoVideo');
+    if(iframe){ iframe.src = iframe.src; }
+  });
+
+  // pré-signup (mantido: mesmos IDs, mesmos names, mesma rota)
+  (function(){
+    const form   = document.getElementById('preSignupForm');
+    const alertB = document.getElementById('preSignupAlert');
+    const btn    = document.getElementById('preSignupSubmitBtn');
+
+    function showAlert(kind, msg){
+      alertB.className = 'alert alert-' + kind;
+      alertB.textContent = msg;
+      alertB.classList.remove('d-none');
+    }
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertB.classList.add('d-none');
+      btn.disabled = true; btn.textContent = I18N.sending;
+
+      try {
+        const fd = new FormData(form);
+        const resp = await fetch('{{ url_for("site.pre_signup") }}', { method:'POST', body: fd });
+        const data = await resp.json().catch(()=>({}));
+
+        if (resp.ok && data.ok){
+          showAlert('success', I18N.success);
+          form.reset();
+          setTimeout(() => {
+            const m = bootstrap.Modal.getInstance(document.getElementById('preSignupModal'));
+            m && m.hide();
+          }, 1600);
+        } else {
+          showAlert('warning', (data && data.error) || I18N.warn);
+        }
+      } catch (err) {
+        showAlert('danger', I18N.neterr);
+      } finally {
+        btn.disabled = false; btn.textContent = {{ _('Enviar')|tojson }};
+      }
+    });
+  })();
+
+  // Termos -> abrir pré-signup (mantido)
+  (function(){
+    const btn = document.getElementById('termsGoSignup');
+    if(!btn) return;
+
+    btn.addEventListener('click', () => {
+      const terms = document.getElementById('termsModal');
+      const pre   = document.getElementById('preSignupModal');
+
+      const openPre = () => {
+        const m2 = new bootstrap.Modal(pre);
+        m2.show();
+        terms.removeEventListener('hidden.bs.modal', openPre);
+      };
+
+      const inst = bootstrap.Modal.getOrCreateInstance(terms);
+      terms.addEventListener('hidden.bs.modal', openPre);
+      inst.hide();
+    });
+  })();
+</script>
+<script>
+  // PreSignup -> abrir termos (sem empilhar modal)
+  (function(){
+    const a = document.getElementById('preSignupOpenTerms');
+    if(!a) return;
+
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const pre = document.getElementById('preSignupModal');
+      const terms = document.getElementById('termsModal');
+
+      const preInst = bootstrap.Modal.getOrCreateInstance(pre);
+      const openTerms = () => {
+        const tInst = bootstrap.Modal.getOrCreateInstance(terms);
+        tInst.show();
+        pre.removeEventListener('hidden.bs.modal', openTerms);
+      };
+
+      pre.addEventListener('hidden.bs.modal', openTerms);
+      preInst.hide();
+    });
+  })();
+</script>
+
+
+{% endblock %}
