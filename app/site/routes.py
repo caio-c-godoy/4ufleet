@@ -50,6 +50,7 @@ def _save_logo(file_storage, slug: str) -> str | None:
 
 
 # -------------------- LANDING --------------------
+@site_bp.route("/", methods=["GET"], strict_slashes=False)
 @site_bp.route("/landing", methods=["GET"], strict_slashes=False)
 def landing():
     # hide_chrome -> esconde topbar/sidebar só nesta página

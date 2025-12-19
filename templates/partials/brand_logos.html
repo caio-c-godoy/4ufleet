@@ -1,0 +1,6 @@
+{% set logo_height = logo_height|default(26) %}
+{% set logo_count = logo_count|default(4) %}
+{% set logo_src = logo_src|default("img/4ufleet-logo.svg") %}
+{% for _ in range(logo_count) %}
+  <img src="{{ url_for('static', filename=logo_src) }}" alt="" height="{{ logo_height }}">
+{% endfor %}

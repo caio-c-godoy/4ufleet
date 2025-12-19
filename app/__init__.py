@@ -130,10 +130,4 @@ def create_app() -> Flask:
     app.register_blueprint(superadmin_bp)
     app.register_blueprint(emailtest_bp, url_prefix="/")
 
-    # --------- Home -> landing ----------
-    @app.get("/")
-    def index():
-        return redirect(url_for("site.landing"))
-    
-
     return app

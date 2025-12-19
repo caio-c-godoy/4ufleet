@@ -157,9 +157,9 @@
           <div class="text-center mt-4">
             <span class="text-muted small">Confiado por locadoras independentes</span>
             <div class="d-flex justify-content-center flex-wrap gap-4 mt-2 opacity-75">
-              <img src="{{ url_for('static', filename='img/brand1.png') }}" alt="" height="22">
-              <img src="{{ url_for('static', filename='img/brand2.png') }}" alt="" height="22">
-              <img src="{{ url_for('static', filename='img/brand3.png') }}" alt="" height="22">
+              {% set logo_height = 22 %}
+              {% set logo_count = 3 %}
+              {% include "partials/brand_logos.html" %}
             </div>
           </div>
 

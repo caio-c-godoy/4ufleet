@@ -1,7 +1,7 @@
 # app/site/__init__.py
 from flask import Blueprint
 
-# sem prefixo (fica /landing diretamente)
+# sem prefixo (fica /landing e / diretamente)
 site_bp = Blueprint("site", __name__)
 
 # IMPORTANTE: carrega as rotas para “prender” os decorators no blueprint
