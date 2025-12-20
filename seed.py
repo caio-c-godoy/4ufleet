@@ -7,6 +7,7 @@ import json
 from app import create_app
 from app.extensions import db
 from app.models import Tenant, User, VehicleCategory, Rate, Vehicle
+from app.services.subscription import initialize_trial
 
 # slugify fallback simples (caso não tenha util pronto)
 def slugify(s: str) -> str:
@@ -62,6 +63,7 @@ def seed():
         t = Tenant.query.filter_by(slug="locadora1").first()
         if not t:
             t = Tenant(name="Locadora 1", slug="locadora1")
+            initialize_trial(t)
             db.session.add(t)
             db.session.commit()
 

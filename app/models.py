@@ -1,7 +1,7 @@
 # app/models.py
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import url_for
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,7 +14,7 @@ try:
 except Exception:  # fallback p/ SQLite, MySQL, etc.
     from sqlalchemy.types import JSON as JSONType  # type: ignore
     # app/models.py  (ou onde fica seu modelo Tenant)
-from sqlalchemy import Boolean, String, Text
+from sqlalchemy import Boolean, String, Text, event
 
 from sqlalchemy.ext.mutable import MutableDict
 # =====================================================================
@@ -89,6 +89,12 @@ class Tenant(db.Model):
     last_activity_at = db.Column(db.DateTime)                 # atualizado quando alguém usa
     to_be_deleted_at = db.Column(db.DateTime, nullable=True)  # marcado p/ exclusão futura
 
+    # --------- TRIAL / ASSINATURA ----------
+    trial_started_at = db.Column(db.DateTime, nullable=False)
+    trial_ends_at = db.Column(db.DateTime, nullable=False)
+    subscription_status = db.Column(db.String(20), nullable=False, default="trialing")
+    subscription_provider = db.Column(db.String(20), nullable=False, default="none")
+
     # Relacionamentos
     users = db.relationship("User", back_populates="tenant", lazy=True, cascade="all, delete-orphan")
     vehicles = db.relationship("Vehicle", back_populates="tenant", lazy=True, cascade="all, delete-orphan")
@@ -115,6 +121,26 @@ class Tenant(db.Model):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Tenant {self.slug}>"
+
+
+DEFAULT_TRIAL_DAYS = 30
+
+
+def ensure_trial_fields(target: Tenant, now: datetime | None = None) -> None:
+    now = now or datetime.utcnow()
+    if not target.trial_started_at:
+        target.trial_started_at = now
+    if not target.trial_ends_at:
+        target.trial_ends_at = target.trial_started_at + timedelta(days=DEFAULT_TRIAL_DAYS)
+    if not target.subscription_status:
+        target.subscription_status = "trialing"
+    if not target.subscription_provider:
+        target.subscription_provider = "none"
+
+
+@event.listens_for(Tenant, "before_insert")
+def _tenant_before_insert(mapper, connection, target: Tenant):
+    ensure_trial_fields(target)
 
 
 # =====================================================================
@@ -506,5 +532,3 @@ class Prospect(db.Model):
 
     def __repr__(self):
         return f"<Prospect {self.email} status={self.status}>"
-
-
