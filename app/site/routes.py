@@ -18,6 +18,7 @@ from . import site_bp  # blueprint criado em app/site/__init__.py
 # helper que monta e envia o e-mail de confirmação (plataforma: ACS/SMTP)
 from app.auth.routes import _send_confirmation_email
 from app.services.mailer import send_platform_mail_html
+from app.services.subscription import initialize_trial
 
 
 # -------------------- Utils locais --------------------
@@ -105,6 +106,7 @@ def signup_submit():
         # caminho padrão (se tiver CDN/Blob, ajuste aqui)
         login_hero_image=f"https://st4ufleetprd.blob.core.windows.net/branding/{slug}/login-hero.jpg",
     )
+    initialize_trial(t)
     db.session.add(t)
     db.session.flush()  # t.id disponível
 

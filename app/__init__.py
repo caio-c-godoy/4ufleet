@@ -18,7 +18,7 @@ migrate = Migrate()
 from . import utils
 
 
-def create_app() -> Flask:
+def create_app(config_override: dict | None = None) -> Flask:
     # Carrega .env
     load_dotenv(find_dotenv(), override=True)
 
@@ -30,6 +30,8 @@ def create_app() -> Flask:
     )
     app.config.from_object(Config())
     app.config.setdefault("TEMPLATES_AUTO_RELOAD", True)
+    if config_override:
+        app.config.update(config_override)
     app.config.setdefault("LANGUAGES", ["pt", "en", "es"])
     app.config.setdefault("BABEL_DEFAULT_LOCALE", "pt")
 
