@@ -269,6 +269,11 @@ fim do desativar botão-->
         {% endwith %}
 
         {% block content %}{% endblock %}
+        {% if app_version or git_sha %}
+        <footer class="text-muted small mt-4 text-end">
+          {% if app_version %}Versão {{ app_version }}{% endif %}{% if git_sha %}{% if app_version %} · {% endif %}Git {{ git_sha }}{% endif %}
+        </footer>
+        {% endif %}
       </div>
     </main>
   </div>

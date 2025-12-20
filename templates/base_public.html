@@ -91,6 +91,12 @@
     {% block content %}{% endblock %}
   </main>
 
+  {% if app_version or git_sha %}
+  <footer class="container pb-4 text-muted small text-end">
+    {% if app_version %}Versão {{ app_version }}{% endif %}{% if git_sha %}{% if app_version %} · {% endif %}Git {{ git_sha }}{% endif %}
+  </footer>
+  {% endif %}
+
   {# mantido para os inputs com list="us-airports" #}
   <datalist id="us-airports"></datalist>
 
