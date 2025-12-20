@@ -1,87 +1,188 @@
 {% extends "base.html" %}
 {% block title %}{{ _('4uFleet — Car rental software') }}{% endblock %}
+{% from "_csrf.html" import csrf_field %}
 
 {% block extra_head %}
 <style>
   :root{
-    --ff-primary:#0d6efd;
-    --ff-ink:#1f2937;
-    --ff-muted:#6b7280;
-    --ff-card:#ffffff;
-    --ff-glass:rgba(255,255,255,.65);
-  }
-  .ff-hero{
-    position:relative; padding:96px 0 56px;
-    background:
-      radial-gradient(1200px 600px at 20% -10%, rgba(13,110,253,.25), transparent 60%),
-      linear-gradient(180deg, #0d6efd10, transparent 45%),
-      linear-gradient(180deg, #f8fafc, #ffffff 30%);
-    overflow:hidden;
-  }
-  .ff-blob{ position:absolute; inset:auto -200px -180px auto; width:520px; height:520px; background:radial-gradient(closest-side, rgba(13,110,253,.12), transparent 70%); filter: blur(10px); }
-  .ff-logo-wrap{ display:flex; justify-content:center; }
-  .ff-logo{ height: clamp(140px, 20vw, 320px); width:auto; display:block; filter: drop-shadow(0 6px 22px rgba(13,110,253,.18)); }
-  .ff-badge{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:6px 12px; border-radius:999px; background:#e7f1ff; color:#0a58ca; font-weight:600; font-size:12px;
-    border:1px solid #cfe2ff;
-  }
-  .ff-hero h1{ font-size:clamp(28px,4.1vw,48px); line-height:1.08; letter-spacing:.2px; color:var(--ff-ink); }
-  .ff-lead{ color:var(--ff-muted); }
-  .ff-card{ border:1px solid #e5e7eb; border-radius:18px; background:var(--ff-card); box-shadow:0 10px 30px rgba(0,0,0,.05); }
-  .ff-glass{ border:1px solid rgba(255,255,255,.35); background:var(--ff-glass); backdrop-filter: blur(10px); }
-  .ff-section{ padding:72px 0; }
-  .ff-section-light{ background:#f8fafc; }
-  .ff-muted{ color:var(--ff-muted); }
-  .ff-icon{ width:42px; height:42px; display:grid; place-items:center; border-radius:12px; background:#eef4ff; color:#2f63ff; font-size:20px; }
-  .ff-price{ font-size:48px; font-weight:800; letter-spacing:-.5px; }
-  .ff-step{ display:flex; gap:14px; align-items:flex-start; }
-  .ff-step .dot{ width:22px; height:22px; border-radius:999px; background:#0d6efd; color:#fff; display:grid; place-items:center; font-size:12px; box-shadow:0 6px 16px rgba(13,110,253,.35); }
-  .ff-step + .ff-step{ margin-top:14px; }
-  .ff-carousel img{ object-fit:cover; height:380px; border-radius:16px; }
-  .quote{ font-size:18px; color:#111827; }
-  .quote small{ color:var(--ff-muted); }
-  .accordion-button:not(.collapsed){ background:#eef4ff; color:#0b5ed7; }
-  .ff-support{ border:1px solid #dbeafe; background:#eff6ff; border-radius:16px; padding:18px 20px; }
-  .ff-support strong{ color:#0b5ed7; }
-  .ff-footer{ padding:48px 0; background:#0b5ed7; color:#dbeafe; }
-  .ff-footer h6{ color:#fff; font-weight:700; }
-  .ff-footer a{ color:#dbeafe; text-decoration:none; }
-  .ff-footer a:hover{ text-decoration:underline; }
-  .topbar{ background:#0b5ed7 !important; }
-  .ff-fab{
-    position:fixed; right:20px; bottom:20px; z-index:1050; width:60px; height:60px; border-radius:999px;
-    background:linear-gradient(135deg,#25D366,#128C7E); display:grid; place-items:center; color:#fff; font-size:28px;
-    box-shadow:0 14px 34px rgba(18,140,126,.35); transition: transform .12s, box-shadow .12s;
-  }
-  .ff-fab:hover{ transform: translateY(-2px) scale(1.03); box-shadow:0 16px 40px rgba(18,140,126,.40); }
-  .ff-stats{ padding:22px; border-radius:16px; background:var(--ff-glass); backdrop-filter:blur(10px); }
-  .ff-stats .stat{ display:flex; align-items:center; gap:12px; }
-  .ff-stats .stat + .stat{ border-left:1px solid rgba(0,0,0,.06); padding-left:18px; }
-  .ff-stats .num{ font-weight:800; font-size: clamp(28px, 4vw, 40px); letter-spacing:-.5px; line-height:1; color:#0b5ed7; }
-  .ff-stats .label{ color:var(--ff-muted); font-size:14px; }
-  @media (max-width: 991.98px){
-    .ff-stats .stat + .stat{ border-left:0; padding-left:0; border-top:1px solid rgba(0,0,0,.06); padding-top:14px; margin-top:14px; }
+    --lp-primary:#0d6efd;
+    --lp-ink:#0f172a;
+    --lp-muted:#475569;
+    --lp-border:#e5e7eb;
+    --lp-bg:#ffffff;
+    --lp-bg-soft:#f8fafc;
   }
 
-  /* === Seletor de idioma independente (flutuante) === */
-  .lang-fab{ position:fixed; top:12px; right:12px; z-index:3000; display:flex; gap:6px; }
-  .lang-fab .btn{ padding:.25rem .5rem; line-height:1.2; border-radius:.5rem; border:1px solid rgba(0,0,0,.15); background:#fff; font-weight:600; font-size:.85rem; box-shadow:0 2px 6px rgba(0,0,0,.06); }
-  .lang-fab .btn.active{ background:#f0f3f7; border-color:rgba(0,0,0,.25); }
-  .lang-flag{ width:16px; height:11px; object-fit:cover; margin-right:.35rem; vertical-align:-1px; }
-  @media (max-width:480px){ .lang-fab{ top:8px; right:8px } .lang-fab .btn{ padding:.2rem .45rem; font-size:.8rem } }
+  /* Layout base */
+  .lp-section{ padding:72px 0; }
+  @media (max-width: 575.98px){
+    .lp-section{ padding:52px 0; }
+  }
+
+  /* HERO: estilo enterprise (clean) */
+  .lp-hero{
+    padding:72px 0 48px;
+    background:
+      linear-gradient(180deg, rgba(13,110,253,.06), rgba(255,255,255,0) 55%),
+      var(--lp-bg);
+    border-bottom:1px solid var(--lp-border);
+  }
+  @media (max-width: 575.98px){
+    .lp-hero{ padding:56px 0 32px; }
+  }
+
+  .lp-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 10px; border-radius:999px;
+    border:1px solid rgba(13,110,253,.25);
+    background:rgba(13,110,253,.06);
+    color:#0b5ed7;
+    font-weight:600;
+    font-size:12px;
+  }
+  .lp-title{
+    color:var(--lp-ink);
+    letter-spacing:-.3px;
+    line-height:1.08;
+    font-weight:800;
+    font-size:clamp(28px, 4vw, 44px);
+    margin:14px 0 10px;
+  }
+  .lp-lead{
+    color:var(--lp-muted);
+    font-size:clamp(15px, 1.5vw, 18px);
+    margin:0 0 18px;
+  }
+
+  /* Logo: menor e consistente no mobile */
+  .lp-logo{
+    max-width:240px;
+    width:100%;
+    height:auto;
+  }
+  @media (max-width: 575.98px){
+    .lp-logo{ max-width:180px; }
+  }
+
+  /* Cards: minimalista, sem “efeitos” */
+  .lp-card{
+    background:var(--lp-bg);
+    border:1px solid var(--lp-border);
+    border-radius:14px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .06);
+  }
+  .lp-card-soft{
+    background:var(--lp-bg-soft);
+    border:1px solid var(--lp-border);
+    border-radius:14px;
+  }
+
+  .lp-kicker{
+    color:var(--lp-muted);
+    font-size:12px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    margin-bottom:10px;
+  }
+
+  /* Ícones: simples, sem “caixinha chamativa” */
+  .lp-icon{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:36px; height:36px;
+    border-radius:10px;
+    border:1px solid var(--lp-border);
+    background:#fff;
+    color:var(--lp-primary);
+    flex:0 0 auto;
+  }
+
+  .lp-price{
+    font-weight:800;
+    letter-spacing:-.4px;
+    color:var(--lp-ink);
+    font-size:clamp(30px, 3vw, 40px);
+    margin:6px 0;
+  }
+
+  /* Trust bar */
+  .lp-trust{
+    padding:18px 0;
+    background:var(--lp-bg);
+  }
+  .lp-trust .logo-row img{ height:22px; opacity:.7; }
+  .lp-trust .logo-row img:hover{ opacity:1; }
+
+  /* Botões mobile */
+  .lp-actions .btn{ white-space:nowrap; }
+  @media (max-width: 575.98px){
+    .lp-actions{ gap:10px !important; }
+    .lp-actions .btn{
+      width:100%;
+      justify-content:center;
+    }
+  }
+
+  /* FAQ accordion: remove “cara de template” */
+  .accordion-item{ border:1px solid var(--lp-border) !important; border-radius:12px !important; overflow:hidden; }
+  .accordion-button{ font-weight:600; }
+  .accordion-button:not(.collapsed){ background:#fff; color:var(--lp-ink); box-shadow:none; }
+
+  /* Footer enterprise */
+  .lp-footer{
+    padding:44px 0;
+    background:#0b1220;
+    color:#e5e7eb;
+  }
+  .lp-footer a{ color:#c7d2fe; text-decoration:none; }
+  .lp-footer a:hover{ text-decoration:underline; }
+
+  /* WhatsApp FAB: menor e sem glow */
+  .lp-fab{
+    position:fixed; right:18px; bottom:18px; z-index:1030;
+    width:52px; height:52px;
+    border-radius:999px;
+    display:grid; place-items:center;
+    background:#22c55e; color:#fff;
+    text-decoration:none;
+    box-shadow:0 10px 24px rgba(0,0,0,.18);
+    font-size:24px;
+  }
+  .lp-fab:hover{ filter:brightness(.96); color:#fff; }
+
+  /* Seletor de idioma: discreto */
+  .lp-lang{
+    position:fixed; left:14px; bottom:18px; z-index:1030;
+    display:flex; gap:8px;
+    padding:6px;
+    border-radius:999px;
+    background:rgba(255,255,255,.9);
+    border:1px solid rgba(229,231,235,.9);
+    box-shadow:0 10px 24px rgba(0,0,0,.08);
+  }
+  .lp-lang .btn{
+    padding:.25rem .55rem;
+    border-radius:999px;
+    border:1px solid var(--lp-border);
+    background:#fff;
+    font-weight:700;
+    font-size:12px;
+  }
+  .lp-lang .btn.active{ background:var(--lp-primary); border-color:var(--lp-primary); color:#fff; }
+  .lp-flag{ width:18px; height:18px; border-radius:999px; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-{# === HTML do seletor (independente do base) === #}
-<div class="lang-fab" aria-label="{{ _('Idioma') }}">
+{# Seletor de idioma (mantido) #}
+<div class="lp-lang" aria-label="{{ _('Idioma') }}">
   {% set langs = LANGUAGES or ['pt','en','es'] %}
   {% for code,label in [('pt','PT'),('en','EN'),('es','ES')] if code in langs %}
     <a class="btn d-inline-flex align-items-center {% if (current_locale|string) == code %}active{% endif %}"
        href="{{ locale_url(code) }}">
-      <img class="lang-flag"
+      <img class="lp-flag"
            src="{{ url_for('static', filename='img/flags/' ~ code ~ '.svg') }}"
            onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';"
            alt="{{ label }}">
@@ -91,167 +192,206 @@
 </div>
 
 {% set BRAND = config.get('PUBLIC_BRAND', '4uFleet') %}
-{% set MONTHLY_PRICE = (config.get('PUBLIC_MONTHLY_PRICE', 89.90) | float) %}
+{% set MONTHLY_PRICE = (config.get('PUBLIC_MONTHLY_PRICE', 199.90) | float) %}
+{% set MONTHLY_FROM = (config.get('PUBLIC_MONTHLY_FROM', 199.90) | float) %}
+{% set SETUP_FROM   = (config.get('PUBLIC_SETUP_FROM', 990) | float) %}
+{% set IMPLEMENT_DAYS = (config.get('PUBLIC_IMPLEMENT_DAYS', 14) | int) %}
 
 <!-- HERO -->
-<section id="hero" class="ff-hero">
-  <div class="ff-blob"></div>
+<section id="hero" class="lp-hero">
   <div class="container">
     <div class="row align-items-center g-4">
-      <div class="col-lg-7 order-1 order-lg-1">
 
-        <div class="ff-logo-wrap mb-3">
-          <img class="ff-logo"
-            src="{{ url_for('static', filename='img/4ufleet-logo.png') }}"
-            srcset="{{ url_for('static', filename='img/4ufleet-logo.png') }} 1x,
-                    {{ url_for('static', filename='img/4ufleet-logo.png') }} 2x"
-            alt="{{ BRAND }}" decoding="async" fetchpriority="high">
+      <!-- Left -->
+      <div class="col-lg-7">
+        <div class="mb-3">
+          <img class="lp-logo"
+               src="{{ url_for('static', filename='img/4ufleet-logo.png') }}"
+               alt="{{ BRAND }}" decoding="async" fetchpriority="high">
         </div>
 
-        <span class="ff-badge"><i class="bi bi-lightning-charge-fill"></i> {{ _('Teste grátis de 7 dias') }}</span>
-        <h1 class="mt-3">
-          {{ _('O sistema de locação que acelera sua operação — simples, moderno e ilimitado.') }}
+        <span class="lp-badge">
+          <i class="bi bi-lightning-charge-fill"></i>
+          {% trans d=IMPLEMENT_DAYS %}Implantação guiada em {{ d }} dias{% endtrans %}
+        </span>
+
+        <h1 class="lp-title">
+          {{ _('Gestão de frota e reservas com operação previsível.') }}
         </h1>
-        <p class="lead ff-lead mt-2">
-          {% trans %}
-          Reservas, checklist com fotos e assinatura, contrato PDF, repasses e régua de cobrança — tudo em uma plataforma unificada.
-          {% endtrans %}
+
+        <p class="lp-lead">
+          {% trans %}Controle de reservas, status dos veículos e check-in/out com evidências — com implantação acompanhada para você rodar de verdade, não só “criar conta”.{% endtrans %}
         </p>
 
-        <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
-          <span class="badge rounded-pill text-bg-light border"><i class="bi bi-check2-circle text-success me-1"></i> {{ _('Contrato assinado em PDF') }}</span>
-          <span class="badge rounded-pill text-bg-light border"><i class="bi bi-check2-circle text-success me-1"></i> {{ _('Checklists com mapa do carro') }}</span>
-          <span class="badge rounded-pill text-bg-light border"><i class="bi bi-check2-circle text-success me-1"></i> {{ _('E-mails transacionais') }}</span>
+        <div class="row g-2 mt-2">
+          <div class="col-12 col-md-4">
+            <div class="d-flex gap-2 align-items-start">
+              <span class="lp-icon"><i class="bi bi-car-front"></i></span>
+              <div>
+                <div class="fw-semibold">{{ _('Status em 1 tela') }}</div>
+                <div class="small text-muted">{{ _('Disponível, reservado, alugado, manutenção') }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="d-flex gap-2 align-items-start">
+              <span class="lp-icon"><i class="bi bi-camera"></i></span>
+              <div>
+                <div class="fw-semibold">{{ _('Checklist com fotos') }}</div>
+                <div class="small text-muted">{{ _('Menos discussão por danos') }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="d-flex gap-2 align-items-start">
+              <span class="lp-icon"><i class="bi bi-filetype-pdf"></i></span>
+              <div>
+                <div class="fw-semibold">{{ _('Contrato em PDF') }}</div>
+                <div class="small text-muted">{{ _('Geração rápida e padronizada') }}</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="d-flex flex-wrap gap-3 mt-4">
+        <div class="lp-actions d-flex flex-wrap gap-2 mt-4">
           <a href="#"
-             class="btn btn-primary btn-lg"
+             class="btn btn-primary btn-lg d-inline-flex align-items-center gap-2"
              data-bs-toggle="modal"
              data-bs-target="#preSignupModal">
-            {{ _('Iniciar teste de 7 dias') }}
+            <i class="bi bi-calendar2-check"></i> {{ _('Agendar demo (12 min)') }}
           </a>
 
-          <button class="btn btn-outline-secondary btn-lg" data-bs-toggle="modal" data-bs-target="#termsModal">
-            {{ _('Ver termos') }}
-          </button>
-          <button class="btn btn-outline-primary btn-lg" data-bs-toggle="modal" data-bs-target="#videoModal">
-            <i class="bi bi-play-circle me-1"></i> {{ _('Ver vídeo (1:10)') }}
+          <a class="btn btn-outline-success btn-lg d-inline-flex align-items-center gap-2"
+             href="https://wa.me/14072321476?text={{ _('Olá! Quero entender como funciona a implantação do 4uFleet. Podemos falar?')|urlencode }}"
+             target="_blank" rel="noopener">
+            <i class="bi bi-whatsapp"></i> WhatsApp
+          </a>
+
+          <button class="btn btn-outline-secondary btn-lg d-inline-flex align-items-center gap-2"
+                  data-bs-toggle="modal" data-bs-target="#termsModal">
+            <i class="bi bi-shield-check"></i> {{ _('Termos') }}
           </button>
         </div>
 
-        <div class="text-muted small mt-2">{{ _('Teste de 7 dias • Ativação imediata') }}</div>
+        <div class="small text-muted mt-2">
+          {{ _('Implantação acompanhada • Suporte humano • Sem “autoatendimento confuso”') }}
+        </div>
       </div>
 
-      <!-- Price Card -->
-      <div class="col-lg-5 order-2 order-lg-2">
-        <div class="ff-card p-4 p-lg-4">
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <i class="bi bi-credit-card-2-front text-primary"></i>
-            <strong>{{ _('Assinatura Pro') }}</strong>
-          </div>
-          <div class="ff-price">US$ {{ '%.2f' % MONTHLY_PRICE }}<span class="fs-6 fw-normal"> /{{ _('mês') }}</span></div>
-          <div class="text-muted small">
-            {{ _('Inclui teste gratuito de 7 dias. Após o período, a cobrança é mensal.') }}
-          </div>
-          <hr>
-          <div class="vstack gap-2">
-            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-people"></i></span> {{ _('Usuários ilimitados') }}</div>
-            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-car-front"></i></span> {{ _('Veículos e categorias ilimitados') }}</div>
-            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-filetype-pdf"></i></span> {{ _('Templates de contrato editáveis') }}</div>
-            <div><span class="ff-icon me-2 d-inline-flex"><i class="bi bi-envelope-paper"></i></span> {{ _('Notificações por e-mail') }}</div>
+      <!-- Right: Pricing -->
+      <div class="col-lg-5">
+        <div class="lp-card p-4">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="lp-kicker mb-1">{{ _('Plano') }}</div>
+              <div class="h5 mb-0">{{ _('Pro') }}</div>
+              <div class="small text-muted">{% trans d=IMPLEMENT_DAYS %}Opção de implantação em {{ d }} dias.{% endtrans %}</div>
+            </div>
+            <span class="badge text-bg-light border">{{ _('B2B') }}</span>
           </div>
 
-          <a class="btn btn-primary w-100 mt-3"
+          <div class="lp-price">
+            {% trans price=('%.2f' % MONTHLY_FROM) %}US$ {{ price }}{% endtrans %}
+            <span class="fs-6 fw-normal text-muted">/{{ _('mês') }}</span>
+          </div>
+
+          <hr class="my-3">
+
+          <div class="d-grid gap-2">
+            <div class="d-flex gap-2">
+              <i class="bi bi-check2 text-success"></i>
+              <div class="small">{{ _('Reservas e calendário operacional') }}</div>
+            </div>
+            <div class="d-flex gap-2">
+              <i class="bi bi-check2 text-success"></i>
+              <div class="small">{{ _('Status de frota e manutenção') }}</div>
+            </div>
+            <div class="d-flex gap-2">
+              <i class="bi bi-check2 text-success"></i>
+              <div class="small">{{ _('Checklists com evidências (fotos + assinatura)') }}</div>
+            </div>
+            <div class="d-flex gap-2">
+              <i class="bi bi-check2 text-success"></i>
+              <div class="small">{{ _('Contrato PDF e rastreabilidade') }}</div>
+            </div>
+          </div>
+
+          <div class="lp-card-soft p-3 mt-3">
+            <div class="small">
+              <strong>{{ _('Implantação guiada (opcional):') }}</strong>
+              {% trans setup=('%.0f' % SETUP_FROM) %}a partir de US$ {{ setup }} (pagamento único).{% endtrans %}
+              <span class="text-muted">{{ _('Configuração + importação + treinamento.') }}</span>
+            </div>
+          </div>
+
+          <a class="btn btn-primary btn-lg w-100 mt-3"
              href="#"
              data-bs-toggle="modal"
              data-bs-target="#preSignupModal">
-            {{ _('Começar agora — 7 dias grátis') }}
+            {{ _('Quero a demo') }}
           </a>
 
           <div class="small text-muted mt-2">
-            {{ _('Cancele quando quiser. Sem taxa de instalação.') }}
+            {{ _('Se você não operar processo, nenhum software salva. A gente implementa com você.') }}
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Social proof -->
-    <div class="text-center mt-5">
-      <div class="text-uppercase small text-muted mb-2">{{ _('Confiado por locadoras independentes') }}</div>
-      <div class="d-flex justify-content-center flex-wrap gap-4 opacity-75">
-        <img src="{{ url_for('static', filename='img/brand1.png') }}" alt="" height="26">
-        <img src="{{ url_for('static', filename='img/brand2.png') }}" alt="" height="26">
-        <img src="{{ url_for('static', filename='img/brand3.png') }}" alt="" height="26">
-        <img src="{{ url_for('static', filename='img/brand4.png') }}" alt="" height="26">
+    </div>
+  </div>
+</section>
+
+<!-- TRUST BAR -->
+<section class="lp-trust">
+  <div class="container">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+      <div class="small text-muted">{{ _('Criado para locadoras independentes e operações enxutas.') }}</div>
+      <div class="logo-row d-flex align-items-center gap-4 flex-wrap justify-content-center">
+        <img src="{{ url_for('static', filename='img/brand1.png') }}" alt="" onerror="this.style.display='none'">
+        <img src="{{ url_for('static', filename='img/brand2.png') }}" alt="" onerror="this.style.display='none'">
+        <img src="{{ url_for('static', filename='img/brand3.png') }}" alt="" onerror="this.style.display='none'">
+        <img src="{{ url_for('static', filename='img/brand4.png') }}" alt="" onerror="this.style.display='none'">
       </div>
     </div>
   </div>
 </section>
 
-<!-- STATS STRIP (counters) -->
-<section id="stats" class="mt-3">
+<!-- FEATURES -->
+<section id="features" class="lp-section">
   <div class="container">
-    <div class="ff-stats ff-card ff-glass">
-      <div class="row g-3 align-items-center">
-        <div class="col-12 col-lg-3">
-          <div class="stat">
-            <div class="num" data-counter data-total="sum" data-sum-selector="#stats [data-region]">0</div>
-            <div class="label">{{ _('Locadoras ativas') }}</div>
-          </div>
-        </div>
-        <div class="col-12 col-lg-3">
-          <div class="stat">
-            <div class="num" data-counter data-target="128" data-region="us">0</div>
-            <div class="label">{{ _('Estados Unidos') }}</div>
-          </div>
-        </div>
-        <div class="col-12 col-lg-3">
-          <div class="stat">
-            <div class="num" data-counter data-target="64" data-region="ca">0</div>
-            <div class="label">{{ _('Canadá') }}</div>
-          </div>
-        </div>
-        <div class="col-12 col-lg-3">
-          <div class="stat">
-            <div class="num" data-counter data-target="228" data-region="eu">0</div>
-            <div class="label">{{ _('Europa') }}</div>
-          </div>
-        </div>
+    <div class="row mb-4 align-items-end g-2">
+      <div class="col-lg-8">
+        <div class="lp-kicker">{{ _('Recursos') }}</div>
+        <h2 class="mb-1">{{ _('O essencial para rodar sem caos') }}</h2>
+        <p class="text-muted mb-0">{{ _('Menos improviso, mais previsibilidade operacional.') }}</p>
+      </div>
+      <div class="col-lg-4 text-lg-end">
+        <a href="#" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#preSignupModal">
+          {{ _('Ver na demo') }}
+        </a>
       </div>
     </div>
-  </div>
-</section>
 
-<!-- FEATURES GRID -->
-<section id="features" class="ff-section">
-  <div class="container">
-    <div class="text-center mb-4">
-      <h2>{{ _('Tudo que você precisa para operar bem') }}</h2>
-      <p class="ff-muted">{{ _('Foco em velocidade, segurança e simplicidade.') }}</p>
-    </div>
+    {% set features = [
+      ('bi-calendar3',_('Calendário de reservas'),_('Visão clara de entregas, devoluções e bloqueios.')),
+      ('bi-car-front',_('Status da frota'),_('Controle simples e objetivo do ciclo do veículo.')),
+      ('bi-clipboard2-check',_('Check-in/out padronizado'),_('Checklist com fotos e assinatura para reduzir disputa.')),
+      ('bi-filetype-pdf',_('Contrato em PDF'),_('Modelos e geração rápida no fluxo da operação.')),
+      ('bi-envelope-paper',_('Comunicação'),_('Notificações e e-mails transacionais por tenant.')),
+      ('bi-shield-check',_('Auditoria'),_('Rastreabilidade do que foi feito e por quem.'))
+    ] %}
 
-    <div class="row g-4">
-      {% set features = [
-        ('bi-clipboard2-check',_('Checklists com fotos'),_('Registre danos com evidências fotográficas, mapa do carro e assinatura.')),
-        ('bi-filetype-pdf',_('Contrato em PDF'),_('Modelo editável, geração instantânea e assinatura no balcão.')),
-        ('bi-calendar3',_('Calendário de reservas'),_('Visão clara de entregas, devoluções e manutenções.')),
-        ('bi-cash-coin',_('Tarifas e repasses'),_('Controle de preços, adicionais e repasses.')),
-        ('bi-mailbox',_('E-mails transacionais'),_('Envio por SMTP do seu tenant, com identidade própria.')),
-        ('bi-shield-check',_('Auditoria e logs'),_('Rastreabilidade de ações críticas no sistema.'))
-      ] %}
+    <div class="row g-3">
       {% for icon, title, desc in features %}
       <div class="col-12 col-md-6 col-lg-4">
-        <div class="ff-card h-100 p-4">
-          <div class="d-flex align-items-center gap-3 mb-2">
-            <div class="ff-icon"><i class="bi {{ icon }}"></i></div>
-            <h5 class="mb-0">{{ title }}</h5>
+        <div class="lp-card h-100 p-4">
+          <div class="d-flex gap-3">
+            <span class="lp-icon"><i class="bi {{ icon }}"></i></span>
+            <div>
+              <div class="fw-semibold">{{ title }}</div>
+              <div class="text-muted small">{{ desc }}</div>
+            </div>
           </div>
-          <p class="ff-muted mb-3">{{ desc }}</p>
-          <img class="img-fluid rounded border"
-               src="{{ url_for('static', filename='img/feature-' ~ loop.index|string ~ '.jpg') }}"
-               alt="{{ title }}"
-               onerror="this.style.display='none'">
         </div>
       </div>
       {% endfor %}
@@ -259,175 +399,96 @@
   </div>
 </section>
 
-<!-- VIDEO + HIGHLIGHTS -->
-<section id="video" class="ff-section ff-section-light">
+<!-- HOW IT WORKS -->
+<section id="how-it-works" class="lp-section" style="background: var(--lp-bg-soft); border-top:1px solid var(--lp-border); border-bottom:1px solid var(--lp-border);">
   <div class="container">
     <div class="row g-4 align-items-center">
       <div class="col-lg-6">
-        <div class="position-relative ff-card overflow-hidden">
-          <img class="img-fluid" src="{{ url_for('static', filename='img/video-cover.jpg') }}" alt="{{ _('Demo') }}"
-               onerror="this.src='{{ url_for('static', filename='img/placeholder-wide.jpg') }}'">
-          <button class="btn btn-primary position-absolute top-50 start-50 translate-middle rounded-pill px-4 py-2"
-                  data-bs-toggle="modal" data-bs-target="#videoModal">
-            <i class="bi bi-play-circle me-1"></i> {{ _('Assistir demo') }}
-          </button>
-        </div>
-      </div>
-      <div class="col-lg-6">
-        <h3>{{ _('Visão rápida em 60 segundos') }}</h3>
-        <p class="ff-muted">{{ _('Conheça o fluxo de ponta a ponta: da reserva ao contrato assinado — com checagem e fotos.') }}</p>
-        <div class="vstack gap-3">
-          <div class="d-flex align-items-start gap-3">
-            <div class="ff-icon"><i class="bi bi-speedometer2"></i></div>
-            <div><strong>{{ _('Onboarding em minutos') }}</strong><br><span class="ff-muted">{{ _('Crie sua conta e publique a frota em 15 minutos.') }}</span></div>
-          </div>
-          <div class="d-flex align-items-start gap-3">
-            <div class="ff-icon"><i class="bi bi-cloud-check"></i></div>
-            <div><strong>{{ _('Nuvem segura') }}</strong><br><span class="ff-muted">{{ _('Backups, SSL e atualizações contínuas.') }}</span></div>
-          </div>
-          <div class="d-flex align-items-start gap-3">
-            <div class="ff-icon"><i class="bi bi-wrench-adjustable"></i></div>
-            <div><strong>{{ _('Sem limite de uso') }}</strong><br><span class="ff-muted">{{ _('Usuários e veículos ilimitados no plano Pro.') }}</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+        <div class="lp-kicker">{{ _('Como funciona') }}</div>
+        <h2 class="mb-2">{{ _('Implantação simples, operação consistente') }}</h2>
+        <p class="text-muted mb-3">
+          {% trans d=IMPLEMENT_DAYS %}A gente configura, importa e treina — para você rodar em até {{ d }} dias com um fluxo padrão.{% endtrans %}
+        </p>
 
-<!-- GALLERY / CAROUSEL -->
-<section id="gallery" class="ff-section">
-  <div class="container">
-    <div class="text-center mb-4">
-      <h2>{{ _('Interface moderna e clara') }}</h2>
-      <p class="ff-muted">{{ _('Alguns prints da aplicação.') }}</p>
-    </div>
-    <div id="screensCarousel" class="carousel slide ff-carousel" data-bs-ride="carousel">
-      <div class="carousel-inner rounded">
-        {% for i in range(1,5) %}
-        <div class="carousel-item {% if loop.index==1 %}active{% endif %}">
-          <img class="d-block w-100"
-               src="{{ url_for('static', filename='img/screen-'~i|string~'.jpg') }}"
-               onerror="this.src='{{ url_for('static', filename='img/placeholder-wide.jpg') }}'"
-               alt="{{ _('Tela') }} {{ i }}">
-        </div>
-        {% endfor %}
-      </div>
-      <button class="carousel-control-prev" type="button" data-bs-target="#screensCarousel" data-bs-slide="prev">
-        <span class="carousel-control-prev-icon"></span>
-      </button>
-      <button class="carousel-control-next" type="button" data-bs-target="#screensCarousel" data-bs-slide="next">
-        <span class="carousel-control-next-icon"></span>
-      </button>
-    </div>
-  </div>
-</section>
-
-<!-- HOW IT WORKS (TIMELINE) -->
-<section id="how-it-works" class="ff-section ff-section-light">
-  <div class="container">
-    <div class="row g-4 align-items-center">
-      <div class="col-lg-6">
-        <h2>{{ _('Como funciona o teste e a assinatura') }}</h2>
-        <ul class="list-unstyled">
-          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>
-            {{ _('7 dias de teste com todos os recursos.') }}
-          </li>
-          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>
-            {% trans price=("%.2f"|format(MONTHLY_PRICE)) %}Após o teste, a assinatura continua por <strong>US$ {{ price }}</strong>/mês.{% endtrans %}
-          </li>
-          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>
-            {{ _('Usuários e veículos ilimitados, sem taxas ocultas.') }}
-          </li>
-          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i>
-            {{ _('Cancele quando quiser, direto pelo painel.') }}
-          </li>
-        </ul>
-        <div class="mt-3 d-flex gap-2">
-          <a href="#"
-             class="btn btn-primary"
-             data-bs-toggle="modal"
-             data-bs-target="#preSignupModal">
-            {{ _('Iniciar meu teste') }}
-          </a>
-          <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#termsModal">
-            {{ _('Ver termos') }}
-          </button>
-        </div>
-      </div>
-      <div class="col-lg-6">
-        <div class="ff-card p-4">
-          <h5 class="mb-3"><i class="bi bi-magic me-1"></i> {{ _('Em 3 passos') }}</h5>
-          <div class="ff-step">
-            <div class="dot">1</div>
-            <div>
-              <strong>{{ _('Crie sua conta') }}</strong><br>
-              <span class="ff-muted">
-                {{ _('Acesse') }}
-                <a href="#"
-                   data-bs-toggle="modal"
-                   data-bs-target="#preSignupModal"
-                   role="button">/signup</a>
-                {{ _('e ative sua locadora.') }}
-              </span>
+        <div class="d-grid gap-2">
+          <div class="lp-card p-3">
+            <div class="d-flex gap-3">
+              <span class="lp-icon"><strong>1</strong></span>
+              <div>
+                <div class="fw-semibold">{{ _('Demo rápida') }}</div>
+                <div class="small text-muted">{{ _('Você mostra como opera hoje. A gente mapeia seu fluxo.') }}</div>
+              </div>
             </div>
           </div>
-          <div class="ff-step">
-            <div class="dot">2</div>
-            <div><strong>{{ _('Cadastre frota e tarifas') }}</strong><br><span class="ff-muted">{{ _('Defina preços, adicionais e posicione sua assinatura no contrato.') }}</span></div>
+          <div class="lp-card p-3">
+            <div class="d-flex gap-3">
+              <span class="lp-icon"><strong>2</strong></span>
+              <div>
+                <div class="fw-semibold">{{ _('Configuração + importação') }}</div>
+                <div class="small text-muted">{{ _('Veículos, clientes, regras e modelos prontos.') }}</div>
+              </div>
+            </div>
           </div>
-          <div class="ff-step">
-            <div class="dot">3</div>
-            <div><strong>{{ _('Finalize os aluguéis no sistema') }}</strong><br><span class="ff-muted">{{ _('Checklist com fotos, contrato PDF e comunicação por e-mail.') }}</span></div>
+          <div class="lp-card p-3">
+            <div class="d-flex gap-3">
+              <span class="lp-icon"><strong>3</strong></span>
+              <div>
+                <div class="fw-semibold">{{ _('Treinamento e go-live') }}</div>
+                <div class="small text-muted">{{ _('Equipe operando com checklist, contrato e status.') }}</div>
+              </div>
+            </div>
           </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#preSignupModal">{{ _('Agendar demo') }}</a>
+          <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#termsModal">{{ _('Termos') }}</button>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="lp-card p-4">
+          <div class="lp-kicker">{{ _('O que você ganha') }}</div>
+          <ul class="mb-0 text-muted">
+            <li class="mb-2">{{ _('Menos conflito de reserva e menos “carro sumido”.') }}</li>
+            <li class="mb-2">{{ _('Redução de discussão por danos com evidência.') }}</li>
+            <li class="mb-2">{{ _('Padronização do check-in/out para treinar equipe rápido.') }}</li>
+            <li class="mb-0">{{ _('Visão operacional diária sem depender de “quem sabe”.') }}</li>
+          </ul>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- SUPPORT STRIP -->
-<section id="support" class="ff-section">
+<!-- TESTIMONIALS (clean) -->
+<section id="testimonials" class="lp-section">
   <div class="container">
-    <div class="ff-support d-flex flex-wrap align-items-center gap-3">
-      <i class="bi bi-question-circle-fill fs-4 text-primary"></i>
-      <div class="me-auto">
-        <strong>{{ _('Dúvidas na implementação?') }}</strong>
-        <span class="ms-1">{{ _('Fale direto com nossa equipe — vamos profissionalizar sua operação e dar mais confiança ao seu cliente.') }}</span>
+    <div class="row mb-4 g-2 align-items-end">
+      <div class="col-lg-8">
+        <div class="lp-kicker">{{ _('Clientes') }}</div>
+        <h2 class="mb-1">{{ _('Resultados no dia a dia') }}</h2>
+        <p class="text-muted mb-0">{{ _('Sem exagero. Operação mais previsível.') }}</p>
       </div>
-      <a class="btn btn-success"
-         href="https://wa.me/14072321476?text={{ _('Olá! Tenho dúvidas sobre a implementação do 4uFleet. Podemos falar?')|urlencode }}"
-         target="_blank" rel="noopener">
-        <i class="bi bi-whatsapp me-1"></i> WhatsApp
-      </a>
     </div>
-  </div>
-</section>
 
-<!-- TESTIMONIALS -->
-<section id="testimonials" class="ff-section">
-  <div class="container">
-    <div class="text-center mb-4">
-      <h2>{{ _('Quem usa, recomenda') }}</h2>
-      <p class="ff-muted">{{ _('Feedback de locadoras que simplificaram a operação.') }}</p>
-    </div>
-    <div class="row g-4">
-      <div class="col-md-4">
-        <div class="ff-card h-100 p-4">
-          <p class="quote">“{{ _('Implementamos em um fim de semana. O check-in com fotos salvou meu depósito em duas ocasiões.') }}”</p>
-          <small>Carla M. — <span class="text-muted">{{ _('Sócia, JetCar') }}</span></small>
+    <div class="row g-3">
+      <div class="col-12 col-lg-4">
+        <div class="lp-card p-4 h-100">
+          <p class="mb-3">“{{ _('O check-in com fotos reduziu discussão e prejuízo. A implantação foi objetiva.') }}”</p>
+          <div class="small text-muted">Carla M. — {{ _('Sócia, JetCar') }}</div>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="ff-card h-100 p-4">
-          <p class="quote">“{{ _('O contrato digital e os e-mails automáticos eliminaram ligações e papel. Fluxo muito mais confiável.') }}”</p>
-          <small>Rafael T. — <span class="text-muted">{{ _('Gerente, EasyDrive') }}</span></small>
+      <div class="col-12 col-lg-4">
+        <div class="lp-card p-4 h-100">
+          <p class="mb-3">“{{ _('Parei de ter conflito de reserva. Hoje eu vejo o status sem perguntar pra ninguém.') }}”</p>
+          <div class="small text-muted">Rafael T. — {{ _('Gerente, EasyDrive') }}</div>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="ff-card h-100 p-4">
-          <p class="quote">“{{ _('Com o calendário e as tarifas por categoria, parei de errar preço. Crescemos com previsibilidade.') }}”</p>
-          <small>Bianca A. — <span class="text-muted">{{ _('Owner, BlueRent') }}</span></small>
+      <div class="col-12 col-lg-4">
+        <div class="lp-card p-4 h-100">
+          <p class="mb-3">“{{ _('Contrato + checklist virou rotina. A equipe entrou no ritmo rápido.') }}”</p>
+          <div class="small text-muted">Bianca A. — {{ _('Owner, BlueRent') }}</div>
         </div>
       </div>
     </div>
@@ -435,83 +496,101 @@
 </section>
 
 <!-- FAQ -->
-<section id="faq" class="ff-section ff-section-light">
+<section id="faq" class="lp-section" style="background: var(--lp-bg-soft); border-top:1px solid var(--lp-border);">
   <div class="container">
     <div class="text-center mb-4">
-      <h2>{{ _('Perguntas frequentes') }}</h2>
+      <div class="lp-kicker">{{ _('Dúvidas') }}</div>
+      <h2 class="mb-1">{{ _('Perguntas frequentes') }}</h2>
+      <p class="text-muted mb-0">{{ _('Direto ao ponto.') }}</p>
     </div>
+
     <div class="row justify-content-center">
       <div class="col-lg-10">
         <div class="accordion" id="faqAcc">
-          <div class="accordion-item">
-            <h2 class="accordion-header"><button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#q1">{{ _('Como funciona o teste de 7 dias?') }}</button></h2>
+          <div class="accordion-item mb-2">
+            <h2 class="accordion-header">
+              <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#q1">
+                {{ _('O que é “implantação guiada”?') }}
+              </button>
+            </h2>
             <div id="q1" class="accordion-collapse collapse show" data-bs-parent="#faqAcc">
-              <div class="accordion-body">
-                {{ _('Você tem acesso completo por 7 dias. Ao final do período, a assinatura é ativada automaticamente, a menos que você cancele antes do vencimento.') }}
+              <div class="accordion-body text-muted">
+                {% trans d=IMPLEMENT_DAYS %}A gente configura seu ambiente, importa dados e treina sua equipe. O objetivo é rodar de verdade em até {{ d }} dias — não só “criar conta”.{% endtrans %}
               </div>
             </div>
           </div>
-          <div class="accordion-item">
-            <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#q2">{{ _('Posso cancelar quando quiser?') }}</button></h2>
+
+          <div class="accordion-item mb-2">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#q2">
+                {{ _('Preciso pagar taxa de implantação?') }}
+              </button>
+            </h2>
             <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faqAcc">
-              <div class="accordion-body">{{ _('Sim. O cancelamento pode ser feito a qualquer momento pelo painel, sem multa.') }}</div>
+              <div class="accordion-body text-muted">
+                {{ _('A implantação guiada é opcional e recomendada quando você quer reduzir risco e acelerar go-live.') }}
+              </div>
             </div>
           </div>
+
           <div class="accordion-item">
-            <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#q3">{{ _('Tem limite de frota ou usuários?') }}</button></h2>
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#q3">
+                {{ _('Tem limite de frota ou usuários?') }}
+              </button>
+            </h2>
             <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faqAcc">
-              <div class="accordion-body">{{ _('Não. O plano Pro inclui usuários e veículos ilimitados.') }}</div>
+              <div class="accordion-body text-muted">
+                {{ _('Na demo, a gente recomenda o melhor encaixe pelo tamanho da frota e da operação.') }}
+              </div>
             </div>
           </div>
+        </div>
+
+        <div class="text-center mt-4">
+          <a href="#" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#preSignupModal">
+            {{ _('Agendar demo') }}
+          </a>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- CTA FINAL -->
-<section id="cta" class="ff-section text-center">
-  <div class="container">
-    <h2>{{ _('Pronto para começar seu teste de 7 dias?') }}</h2>
-    <p class="ff-muted">{{ _('Leva poucos minutos para configurar e colocar sua operação no ar.') }}</p>
-    <a href="#" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#preSignupModal">
-      {{ _('Iniciar meu teste agora') }}
-    </a>
-  </div>
-</section>
-
 <!-- FOOTER -->
-<footer class="ff-footer">
+<footer class="lp-footer">
   <div class="container">
     <div class="row g-4">
       <div class="col-12 col-md-4">
-        <h6>{{ BRAND }}</h6>
-        <p class="mb-2">© {{ BRAND }} — {{ config.get('APP_NAME', 'Car Rental SaaS') }}</p>
-        <div class="small opacity-75">{{ _('Plano Pro com teste gratuito de 7 dias.') }}</div>
+        <div class="fw-semibold">{{ BRAND }}</div>
+        <div class="small opacity-75 mt-1">© {{ BRAND }} — {{ config.get('APP_NAME', 'Car Rental SaaS') }}</div>
+        <div class="small opacity-75">{{ _('SaaS com opção de implantação guiada.') }}</div>
       </div>
+
       <div class="col-6 col-md-2">
-        <h6>{{ _('Produto') }}</h6>
+        <div class="fw-semibold mb-2">{{ _('Produto') }}</div>
         <ul class="list-unstyled small mb-0">
-          <li><a href="#features">{{ _('Recursos') }}</a></li>
-          <li><a href="#gallery">{{ _('Screenshots') }}</a></li>
-          <li><a href="#how-it-works">{{ _('Como funciona') }}</a></li>
+          <li class="mb-1"><a href="#features">{{ _('Recursos') }}</a></li>
+          <li class="mb-1"><a href="#how-it-works">{{ _('Como funciona') }}</a></li>
           <li><a href="#faq">{{ _('FAQ') }}</a></li>
         </ul>
       </div>
+
       <div class="col-6 col-md-3">
-        <h6>{{ _('Suporte') }}</h6>
+        <div class="fw-semibold mb-2">{{ _('Suporte') }}</div>
         <ul class="list-unstyled small mb-0">
-          <li><a href="#support">{{ _('Contato') }}</a></li>
-          <li><a href="https://wa.me/14072321476" target="_blank" rel="noopener">WhatsApp</a></li>
-          <li><a href="tel:+14072321476">{{ _('Telefone') }}</a></li>
+          <li class="mb-1"><a href="https://wa.me/14072321476" target="_blank" rel="noopener">WhatsApp</a></li>
+          <li class="mb-1"><a href="tel:+14072321476">{{ _('Telefone') }}</a></li>
+          <li><a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">{{ _('Termos de uso') }}</a></li>
         </ul>
       </div>
+
       <div class="col-12 col-md-3">
-        <h6>{{ _('Ação') }}</h6>
-        <button class="btn btn-light btn-sm w-100 mb-2" data-bs-toggle="modal" data-bs-target="#preSignupModal">
-          {{ _('Iniciar teste de 7 dias') }}
-        </button>
-        <a class="btn btn-outline-light btn-sm w-100" href="#" data-bs-toggle="modal" data-bs-target="#termsModal">
+        <div class="fw-semibold mb-2">{{ _('Ação') }}</div>
+        <a href="#" class="btn btn-light btn-sm w-100 mb-2" data-bs-toggle="modal" data-bs-target="#preSignupModal">
+          {{ _('Agendar demo') }}
+        </a>
+        <a href="#" class="btn btn-outline-light btn-sm w-100" data-bs-toggle="modal" data-bs-target="#termsModal">
           {{ _('Termos de uso') }}
         </a>
       </div>
@@ -519,13 +598,14 @@
   </div>
 </footer>
 
-<!-- MODAIS (inalterados) -->
+<!-- MODAIS (mantidos) -->
 <div class="modal fade" id="preSignupModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <form id="preSignupForm">
+        {{ csrf_field() }}
         <div class="modal-header">
-          <h5 class="modal-title">{{ _('Comece seu teste em minutos') }}</h5>
+          <h5 class="modal-title">{{ _('Agende uma demo e receba acesso') }}</h5>
           <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="{{ _('Fechar') }}"></button>
         </div>
         <div class="modal-body">
@@ -535,15 +615,18 @@
           </div>
           <div class="mb-3">
             <label class="form-label">{{ _('Telefone') }}</label>
-            <input type="tel" name="phone" class="form-control" placeholder="+1 407... ">
+            <input type="tel" name="phone" class="form-control" placeholder="+1 407...">
           </div>
           <div class="mb-3">
             <label class="form-label">{{ _('E-mail') }}</label>
             <input type="email" name="email" class="form-control" required>
           </div>
+
           <div class="small text-muted">
-            {{ _('Enviaremos um e-mail com o link para criar sua conta e iniciar o teste.') }}
+            {{ _('Vamos enviar um e-mail com o link de acesso e, se você informou telefone, podemos te chamar no WhatsApp para agendar a demo.') }}
+            <a href="#" id="preSignupOpenTerms" class="link-primary ms-1">{{ _('Ver Termos de Uso') }}</a>
           </div>
+
           <div id="preSignupAlert" class="alert d-none mt-3" role="alert"></div>
         </div>
         <div class="modal-footer">
@@ -563,32 +646,32 @@
         <button class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Fechar') }}"></button>
       </div>
       <div class="modal-body">
-        <ul>
-          <li><strong>{{ _('Período de teste:') }}</strong> {{ _('7 dias com acesso completo. O teste inicia na ativação da conta.') }}</li>
-          <li><strong>{{ _('Cobrança:') }}</strong>
-            {% trans price=("%.2f"|format(MONTHLY_PRICE)) %}após o teste, a assinatura continua por US$ {{ price }}/mês, recorrente.{% endtrans %}
-          </li>
-          <li><strong>{{ _('Cancelamento:') }}</strong> {{ _('você pode cancelar a qualquer momento pelo painel. O acesso permanece até o fim do ciclo vigente.') }}</li>
-          <li><strong>{{ _('Limites:') }}</strong> {{ _('usuários e veículos ilimitados no plano Pro; aplicam-se apenas limites técnicos de uso justo (armazenamento de fotos, e-mails etc.).') }}</li>
-          <li><strong>{{ _('Privacidade:') }}</strong> {{ _('seguimos boas práticas de proteção de dados; consulte a Política de Privacidade.') }}</li>
-          <li><strong>{{ _('Suporte:') }}</strong> {{ _('atendimento por e-mail; prazos podem variar conforme demanda.') }}</li>
-          <li><strong>{{ _('Atualizações:') }}</strong> {{ _('podemos atualizar estes termos a qualquer momento.') }}</li>
+        <ul class="text-muted">
+          <li><strong class="text-dark">{{ _('Período de teste:') }}</strong> {{ _('15 dias com acesso completo (quando aplicável). O teste inicia na ativação da conta.') }}</li>
+          <li><strong class="text-dark">{{ _('Cobrança:') }}</strong> {% trans price=("%.2f"|format(MONTHLY_PRICE)) %}após o teste, a assinatura continua por US$ {{ price }}/mês, recorrente.{% endtrans %}</li>
+          <li><strong class="text-dark">{{ _('Cancelamento:') }}</strong> {{ _('você pode cancelar a qualquer momento pelo painel. O acesso permanece até o fim do ciclo vigente.') }}</li>
+          <li><strong class="text-dark">{{ _('Limites:') }}</strong> {{ _('aplicam-se limites técnicos de uso justo (armazenamento de fotos, e-mails etc.).') }}</li>
+          <li><strong class="text-dark">{{ _('Implantação guiada:') }}</strong> {{ _('serviço opcional e cobrado à parte, conforme escopo e tamanho da frota.') }}</li>
+          <li><strong class="text-dark">{{ _('Privacidade:') }}</strong> {{ _('seguimos boas práticas de proteção de dados; consulte a Política de Privacidade.') }}</li>
+          <li><strong class="text-dark">{{ _('Suporte:') }}</strong> {{ _('atendimento por e-mail/WhatsApp; prazos podem variar conforme demanda.') }}</li>
+          <li><strong class="text-dark">{{ _('Atualizações:') }}</strong> {{ _('podemos atualizar estes termos a qualquer momento.') }}</li>
         </ul>
         <p class="small text-muted mb-0">{{ _('Dúvidas? Fale conosco!') }}</p>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-primary" id="termsGoSignup">{{ _('Iniciar meu teste') }}</button>
+        <button type="button" class="btn btn-primary" id="termsGoSignup">{{ _('Agendar demo') }}</button>
         <button class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ _('Fechar') }}</button>
       </div>
     </div>
   </div>
 </div>
 
+{# Mantido por compatibilidade #}
 <div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content bg-black">
       <div class="ratio ratio-16x9">
-        <iframe id="demoVideo" src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0"
+        <iframe id="demoVideo" src="about:blank"
                 title="4uFleet Demo" allow="autoplay; encrypted-media" allowfullscreen></iframe>
       </div>
     </div>
@@ -596,8 +679,10 @@
 </div>
 
 {% set WHATS_MSG = _("Olá! Tenho dúvidas sobre a implementação do 4uFleet. Podemos falar?") %}
-<a class="ff-fab" href="https://wa.me/14072321476?text={{ WHATS_MSG|urlencode }}"
-   title="{{ _('Falar no WhatsApp') }}" target="_blank" rel="noopener" aria-label="WhatsApp">
+<a class="lp-fab"
+   href="https://wa.me/14072321476?text={{ WHATS_MSG|urlencode }}"
+   title="{{ _('Falar no WhatsApp') }}"
+   target="_blank" rel="noopener" aria-label="WhatsApp">
   <i class="bi bi-whatsapp"></i>
 </a>
 
@@ -607,18 +692,19 @@
 <script>
   const I18N = {
     sending: {{ _('Enviando...')|tojson }},
-    success: {{ _('Pronto! Enviamos um e-mail com o link para você criar sua conta e iniciar o teste.')|tojson }},
+    success: {{ _('Pronto! Enviamos um e-mail com o link de acesso. Se você informou telefone, podemos te chamar no WhatsApp para agendar a demo.')|tojson }},
     warn:    {{ _('Não foi possível enviar agora.')|tojson }},
     neterr:  {{ _('Falha de rede. Tente novamente.')|tojson }}
   };
-</script>
-<script>
+
+  // parar o vídeo ao fechar (mantido)
   const videoModal = document.getElementById('videoModal');
   videoModal?.addEventListener('hidden.bs.modal', () => {
     const iframe = document.getElementById('demoVideo');
     if(iframe){ iframe.src = iframe.src; }
   });
 
+  // pré-signup (mantido)
   (function(){
     const form   = document.getElementById('preSignupForm');
     const alertB = document.getElementById('preSignupAlert');
@@ -634,17 +720,19 @@
       e.preventDefault();
       alertB.classList.add('d-none');
       btn.disabled = true; btn.textContent = I18N.sending;
+
       try {
         const fd = new FormData(form);
         const resp = await fetch('{{ url_for("site.pre_signup") }}', { method:'POST', body: fd });
         const data = await resp.json().catch(()=>({}));
+
         if (resp.ok && data.ok){
           showAlert('success', I18N.success);
           form.reset();
           setTimeout(() => {
             const m = bootstrap.Modal.getInstance(document.getElementById('preSignupModal'));
             m && m.hide();
-          }, 1600);
+          }, 1400);
         } else {
           showAlert('warning', (data && data.error) || I18N.warn);
         }
@@ -656,57 +744,43 @@
     });
   })();
 
+  // Termos -> abrir pré-signup (mantido)
   (function(){
     const btn = document.getElementById('termsGoSignup');
     if(!btn) return;
+
     btn.addEventListener('click', () => {
       const terms = document.getElementById('termsModal');
       const pre   = document.getElementById('preSignupModal');
 
       const openPre = () => {
-        const m2 = new bootstrap.Modal(pre);
-        m2.show();
+        bootstrap.Modal.getOrCreateInstance(pre).show();
         terms.removeEventListener('hidden.bs.modal', openPre);
       };
 
-      const inst = bootstrap.Modal.getOrCreateInstance(terms);
+      bootstrap.Modal.getOrCreateInstance(terms).hide();
       terms.addEventListener('hidden.bs.modal', openPre);
-      inst.hide();
     });
   })();
 
+  // PreSignup -> abrir termos (sem empilhar)
   (function(){
-    const sec = document.getElementById('stats');
-    if(!sec) return;
-    const fmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
-    function animateNumber(el, target, duration){
-      const start = performance.now(); const from = 0;
-      function tick(now){
-        const p = Math.min(1, (now - start) / duration);
-        const eased = 1 - Math.pow(1 - p, 3);
-        const val = Math.round(from + (target - from) * eased);
-        el.textContent = fmt.format(val);
-        if(p < 1) requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
-    }
-    function run(){
-      sec.querySelectorAll('[data-counter]').forEach(el => {
-        let target = Number(el.getAttribute('data-target') || '0');
-        if (el.getAttribute('data-total') === 'sum') {
-          const sel = el.getAttribute('data-sum-selector') || '[data-region]';
-          target = Array.from(sec.querySelectorAll(sel))
-                    .map(n => Number(n.getAttribute('data-target') || '0'))
-                    .reduce((a,b)=>a+b, 0);
-        }
-        const dur = 1200 + (Math.random()*600|0);
-        animateNumber(el, target, dur);
-      });
-    }
-    const io = new IntersectionObserver((entries, obs) => {
-      entries.forEach(e => { if(e.isIntersecting){ run(); obs.disconnect(); } });
-    }, { threshold: 0.35 });
-    io.observe(sec);
+    const a = document.getElementById('preSignupOpenTerms');
+    if(!a) return;
+
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const pre = document.getElementById('preSignupModal');
+      const terms = document.getElementById('termsModal');
+
+      const openTerms = () => {
+        bootstrap.Modal.getOrCreateInstance(terms).show();
+        pre.removeEventListener('hidden.bs.modal', openTerms);
+      };
+
+      bootstrap.Modal.getOrCreateInstance(pre).hide();
+      pre.addEventListener('hidden.bs.modal', openTerms);
+    });
   })();
 </script>
 {% endblock %}
