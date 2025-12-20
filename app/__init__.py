@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 from datetime import date, datetime
 
 from flask import Flask, redirect, url_for, g, request, session
@@ -34,6 +35,27 @@ def create_app(config_override: dict | None = None) -> Flask:
         app.config.update(config_override)
     app.config.setdefault("LANGUAGES", ["pt", "en", "es"])
     app.config.setdefault("BABEL_DEFAULT_LOCALE", "pt")
+
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+    def _git_cmd(args: list[str]) -> str:
+        try:
+            return subprocess.check_output(
+                ["git", "-C", repo_root, *args],
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).strip()
+        except Exception:
+            return ""
+
+    app_version = os.getenv("APP_VERSION") or os.getenv("RELEASE_VERSION") or ""
+    git_sha = os.getenv("GIT_SHA") or os.getenv("COMMIT_SHA") or ""
+    if not app_version:
+        app_version = _git_cmd(["describe", "--tags", "--always"])
+    if not git_sha:
+        git_sha = _git_cmd(["rev-parse", "--short", "HEAD"])
+    app.config["APP_VERSION"] = app_version
+    app.config["GIT_SHA"] = git_sha
 
     from .filters import imgsrc
     app.jinja_env.filters['imgsrc'] = imgsrc
@@ -124,6 +146,8 @@ def create_app(config_override: dict | None = None) -> Flask:
             "current_locale": _select_locale(),
             "locale_url": locale_url,
             "_": _gettext,
+            "app_version": app.config.get("APP_VERSION", ""),
+            "git_sha": app.config.get("GIT_SHA", ""),
         }
 
     # --------- Extensões ----------
