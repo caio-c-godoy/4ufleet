@@ -15,6 +15,13 @@ from app.admin.routes_email_test import emailtest_bp
 
 migrate = Migrate()
 
+# Debug-friendly version/hash defaults (env overrides these).
+try:
+    from .version import APP_VERSION as DEFAULT_APP_VERSION, GIT_SHA as DEFAULT_GIT_SHA
+except Exception:
+    DEFAULT_APP_VERSION = ""
+    DEFAULT_GIT_SHA = ""
+
 # importa utils uma única vez; o filtro imgsrc vem daqui
 from . import utils
 
@@ -48,8 +55,8 @@ def create_app(config_override: dict | None = None) -> Flask:
         except Exception:
             return ""
 
-    app_version = os.getenv("APP_VERSION") or os.getenv("RELEASE_VERSION") or ""
-    git_sha = os.getenv("GIT_SHA") or os.getenv("COMMIT_SHA") or ""
+    app_version = os.getenv("APP_VERSION") or os.getenv("RELEASE_VERSION") or DEFAULT_APP_VERSION or ""
+    git_sha = os.getenv("GIT_SHA") or os.getenv("COMMIT_SHA") or DEFAULT_GIT_SHA or ""
     if not app_version:
         app_version = _git_cmd(["describe", "--tags", "--always"])
     if not git_sha:
