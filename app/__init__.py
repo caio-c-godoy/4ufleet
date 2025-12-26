@@ -105,6 +105,13 @@ def create_app(config_override: dict | None = None) -> Flask:
         except Exception:
             return message.format(**kwargs)
 
+    def _ngettext(singular: str, plural: str, n: int, **kwargs) -> str:
+        text = singular if n == 1 else plural
+        return _gettext(text, **kwargs)
+
+    app.jinja_env.add_extension("jinja2.ext.i18n")
+    app.jinja_env.install_gettext_callables(_gettext, _ngettext, newstyle=False)
+
     def _select_locale() -> str:
         langs = app.config.get("LANGUAGES", ["pt", "en", "es"])
         qlang = request.args.get("lang")
