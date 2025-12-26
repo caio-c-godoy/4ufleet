@@ -37,6 +37,5 @@ COPY . .
 # ---- Porta do Gunicorn (App Service para containers expõe WEBSITES_PORT=8000)
 ENV PORT=8000
 
-# ---- Start (ajuste se seu alvo não for run:app)
-# Se seu run.py tem: from app import create_app; app = create_app()
-CMD ["gunicorn", "run:app", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120"]
+# ---- Start (roda migrations antes de subir o Gunicorn)
+CMD ["bash", "/app/scripts/entrypoint.sh"]
